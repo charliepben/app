@@ -286,7 +286,12 @@
   #btnNext { background: var(--grass); }
   #btnStart { background: var(--grass); }
   #btnReplay { background: var(--coral); }
-  #btnSkip { background: var(--sky); }
+  #btnSkip {
+    flex: 0 0 58px;
+    background: var(--sky);
+    font-size: 22px;
+    padding: 16px 4px;
+  }
   #btnFlag {
     flex: 0 0 58px;
     background: var(--flag);
@@ -339,10 +344,14 @@
     top: -24px;
     opacity: 0.95;
     animation: confettiFall linear forwards;
+    will-change: transform;
   }
   @keyframes confettiFall {
-    0%   { transform: translateY(0) rotate(0deg); }
-    100% { transform: translateY(112vh) rotate(720deg); }
+    0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+    20%  { transform: translate(calc(var(--drift) * 0.25), 20vh) rotate(calc(var(--spin) * 0.25)); }
+    45%  { transform: translate(calc(var(--drift) * -0.4), 45vh) rotate(calc(var(--spin) * 0.5)); }
+    70%  { transform: translate(calc(var(--drift) * 0.65), 72vh) rotate(calc(var(--spin) * 0.75)); }
+    100% { transform: translate(var(--drift), 114vh) rotate(var(--spin)); opacity: 0.85; }
   }
 
   .countdown-overlay {
@@ -387,6 +396,28 @@
   .end-title { font-size: 18px; font-weight: 800; opacity: 0.7; }
   .end-score { font-size: clamp(60px, 20vw, 96px); font-weight: 900; color: var(--plum); line-height: 1; }
   .end-sub { font-size: 14px; font-weight: 700; opacity: 0.6; margin-bottom: 10px; }
+
+  .skipped-box {
+    background: white;
+    border: 4px solid var(--ink);
+    border-radius: 20px;
+    width: min(88vw, 420px);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+  }
+  .skipped-label { font-weight: 800; font-size: 13px; opacity: 0.75; }
+  .skipped-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    font-size: 28px;
+    line-height: 1;
+  }
 </style>
 </head>
 <body>
@@ -447,11 +478,11 @@
     </div>
     <div class="controls">
       <button id="btnFlag" title="Marquer cette image comme nulle">🚩</button>
-      <button id="btnSkip">⏭️ Passer</button>
+      <button id="btnSkip" title="Passer (non compté)">⏭️</button>
       <button id="btnNext">✅ Suivant</button>
     </div>
     <div class="timeup-bar hidden" id="timeupBar">
-      <div class="timeup-msg">⏰ Temps écoulé ! Regarde bien la dernière image.</div>
+      <div class="timeup-msg">⏰ Temps écoulé !</div>
       <button id="btnShowScore">🏁 Voir le score</button>
     </div>
   </div>
@@ -462,6 +493,10 @@
       <div class="end-title">⏰ Temps écoulé !</div>
       <div class="end-score" id="finalScore">0</div>
       <div class="end-sub" id="finalSub">images devinées</div>
+    </div>
+    <div class="skipped-box hidden" id="skippedBox">
+      <div class="skipped-label">⏭️ Passées (<span id="skippedCount">0</span>)</div>
+      <div class="skipped-list" id="skippedList"></div>
     </div>
     <div class="controls">
       <button id="btnReplay">🔁 Rejouer</button>
@@ -503,6 +538,7 @@ let countdownTimeoutId = null;
 let countdownOverlayEl = null;
 let countdownPendingAction = null;
 let countdownResumeClock = false;
+let skippedThisGame = [];
 
 const EXCLUDED_KEY = 'mime_excluded_v1';
 function loadExcluded() {
@@ -670,6 +706,7 @@ function updateHud() {
 function startGame() {
   timeLeft = selectedDuration;
   score = 0;
+  skippedThisGame = [];
   paused = false;
   pendingCatChange = false;
   document.getElementById('timePill').classList.remove('paused');
@@ -738,24 +775,32 @@ document.getElementById('btnShowScore').onclick = () => {
   endGame();
 };
 
-const confettiColors = ['#FFC93C', '#FF6B6B', '#4ECDC4', '#6BCB77', '#9D65C9'];
+const confettiColors = ['#FFC93C', '#FF6B6B', '#4ECDC4', '#6BCB77', '#9D65C9', '#FF9F1C', '#FF4D97'];
+const confettiEmojis = ['🎉', '✨', '🎊', '⭐', '💥'];
 function launchConfetti() {
   const container = document.getElementById('confettiContainer');
   container.innerHTML = '';
-  const count = 90;
+  const count = 160;
   for (let i = 0; i < count; i++) {
     const piece = document.createElement('div');
     piece.className = 'confetti-piece';
     piece.style.left = (Math.random() * 100) + 'vw';
-    piece.style.background = confettiColors[Math.floor(Math.random() * confettiColors.length)];
-    piece.style.width = (6 + Math.random() * 6) + 'px';
-    piece.style.height = (10 + Math.random() * 8) + 'px';
-    piece.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
-    piece.style.animationDuration = (2.6 + Math.random() * 1.8) + 's';
-    piece.style.animationDelay = (Math.random() * 0.6) + 's';
+    piece.style.setProperty('--drift', (Math.random() * 240 - 120) + 'px');
+    piece.style.setProperty('--spin', ((480 + Math.random() * 900) * (Math.random() < 0.5 ? 1 : -1)) + 'deg');
+    if (Math.random() < 0.15) {
+      piece.textContent = confettiEmojis[Math.floor(Math.random() * confettiEmojis.length)];
+      piece.style.fontSize = (16 + Math.random() * 14) + 'px';
+    } else {
+      piece.style.background = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+      piece.style.width = (6 + Math.random() * 7) + 'px';
+      piece.style.height = (10 + Math.random() * 10) + 'px';
+      piece.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
+    }
+    piece.style.animationDuration = (2.2 + Math.random() * 2.2) + 's';
+    piece.style.animationDelay = (Math.random() * 0.8) + 's';
     container.appendChild(piece);
   }
-  setTimeout(() => { container.innerHTML = ''; }, 4800);
+  setTimeout(() => { container.innerHTML = ''; }, 5400);
 }
 
 function endGame() {
@@ -763,6 +808,9 @@ function endGame() {
   launchConfetti();
   document.getElementById('finalScore').textContent = score;
   document.getElementById('finalSub').textContent = score <= 1 ? 'image devinée' : 'images devinées';
+  document.getElementById('skippedCount').textContent = skippedThisGame.length;
+  document.getElementById('skippedList').textContent = skippedThisGame.join(' ');
+  document.getElementById('skippedBox').classList.toggle('hidden', skippedThisGame.length === 0);
   showScreen('end');
 }
 
@@ -771,6 +819,8 @@ function advance(counted) {
   if (counted) {
     score++;
     updateHud();
+  } else {
+    skippedThisGame.push(deck[idx]);
   }
   runCountdownThen(() => {
     if (pendingCatChange) {
