@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Devine et Mime !</title>
+<title>Devine & Mime</title>
 <style>
   :root {
     --sun: #FFC93C;
@@ -13,6 +13,7 @@
     --plum: #9D65C9;
     --ink: #2E2A3D;
     --cream: #FFF8EC;
+    --flag: #FF9F1C;
   }
   * { box-sizing: border-box; }
   html, body {
@@ -40,11 +41,31 @@
     gap: 10px;
   }
   .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .brand-emoji {
+    font-size: clamp(24px, 6vw, 32px);
+    filter: drop-shadow(2px 3px 0 rgba(0,0,0,0.08));
+  }
+  .brand-text {
     font-weight: 900;
-    font-size: clamp(18px, 4vw, 26px);
-    letter-spacing: 0.5px;
-    color: var(--plum);
+    font-size: clamp(20px, 5.2vw, 30px);
+    letter-spacing: 0.2px;
+  }
+  .brand-text {
+    color: var(--ink);
     text-shadow: 2px 2px 0 rgba(0,0,0,0.06);
+  }
+  .brand-text .amp {
+    display: inline-block;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    font-weight: 400;
+    color: inherit;
+    font-size: 1.15em;
+    padding: 0 1px;
   }
   .cat-bar {
     display: flex;
@@ -129,6 +150,14 @@
     align-items: center;
     gap: 8px;
   }
+  .excluded-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    font-size: 18px;
+    line-height: 1;
+    opacity: 0.85;
+  }
   .custom-row input {
     flex: 1;
     min-width: 0;
@@ -160,7 +189,7 @@
     -webkit-user-select: none;
   }
   .emoji {
-    font-size: clamp(100px, 32vw, 230px);
+    font-size: clamp(120px, 38vw, 260px);
     line-height: 1;
     animation: pop 0.3s ease;
   }
@@ -257,6 +286,64 @@
   #btnNext { background: var(--grass); }
   #btnStart { background: var(--grass); }
   #btnReplay { background: var(--coral); }
+  #btnSkip { background: var(--sky); }
+  #btnFlag {
+    flex: 0 0 58px;
+    background: var(--flag);
+    font-size: 22px;
+    padding: 16px 4px;
+  }
+
+  .timeup-bar {
+    width: min(88vw, 420px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: white;
+    border: 4px solid var(--ink);
+    border-radius: 20px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .timeup-msg { font-weight: 800; font-size: 14px; }
+  #btnShowScore { background: var(--plum); flex: 0 0 auto; width: 100%; }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translate(-50%, 20px);
+    background: var(--ink);
+    color: white;
+    font-weight: 800;
+    font-size: 14px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 20;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  #confettiContainer {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 50;
+  }
+  .confetti-piece {
+    position: absolute;
+    top: -24px;
+    opacity: 0.95;
+    animation: confettiFall linear forwards;
+  }
+  @keyframes confettiFall {
+    0%   { transform: translateY(0) rotate(0deg); }
+    100% { transform: translateY(112vh) rotate(720deg); }
+  }
 
   .countdown-overlay {
     position: absolute;
@@ -303,8 +390,12 @@
 </style>
 </head>
 <body>
+<div id="confettiContainer"></div>
 <div class="header">
-  <div class="brand">🎭 Devine et Mime !</div>
+  <div class="brand">
+    <span class="brand-emoji">🎭</span>
+    <span class="brand-text">Devine <span class="amp">&amp;</span> Mime</span>
+  </div>
   <div class="cat-bar" id="catBar"></div>
 </div>
 
@@ -332,6 +423,14 @@
         </div>
       </div>
     </div>
+    <div class="setup-box" id="excludedBox">
+      <div class="setup-label">🚫 Images exclues (<span id="excludedCount">0</span>)</div>
+      <div class="excluded-list" id="excludedList"></div>
+      <div class="duration-row">
+        <button id="btnCopyExcluded" class="duration-btn" style="flex:1 1 auto;">📋 Copier</button>
+        <button id="btnClearExcluded" class="duration-btn" style="flex:1 1 auto;">♻️ Réinitialiser</button>
+      </div>
+    </div>
     <div class="controls">
       <button id="btnStart">▶️ Démarrer</button>
     </div>
@@ -347,7 +446,13 @@
       <div class="emoji" id="emoji">🦙</div>
     </div>
     <div class="controls">
+      <button id="btnFlag" title="Marquer cette image comme nulle">🚩</button>
+      <button id="btnSkip">⏭️ Passer</button>
       <button id="btnNext">✅ Suivant</button>
+    </div>
+    <div class="timeup-bar hidden" id="timeupBar">
+      <div class="timeup-msg">⏰ Temps écoulé ! Regarde bien la dernière image.</div>
+      <button id="btnShowScore">🏁 Voir le score</button>
     </div>
   </div>
 
@@ -399,6 +504,50 @@ let countdownOverlayEl = null;
 let countdownPendingAction = null;
 let countdownResumeClock = false;
 
+const EXCLUDED_KEY = 'mime_excluded_v1';
+function loadExcluded() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(EXCLUDED_KEY));
+    return new Set(Array.isArray(raw) ? raw : []);
+  } catch (e) { return new Set(); }
+}
+function saveExcluded() {
+  try { localStorage.setItem(EXCLUDED_KEY, JSON.stringify([...excluded])); } catch (e) {}
+}
+let excluded = loadExcluded();
+
+function addExcluded(emoji) {
+  excluded.add(emoji);
+  saveExcluded();
+  updateExcludedUI();
+}
+function getPool(cat) {
+  const pool = categories[cat].filter(e => !excluded.has(e));
+  return pool.length ? pool : categories[cat];
+}
+function updateExcludedUI() {
+  document.getElementById('excludedCount').textContent = excluded.size;
+  document.getElementById('excludedList').textContent = [...excluded].join(' ');
+  document.getElementById('btnCopyExcluded').disabled = excluded.size === 0;
+  const clearBtn = document.getElementById('btnClearExcluded');
+  clearBtn.disabled = excluded.size === 0;
+  clearTimeout(clearArmTimeout);
+  clearArmed = false;
+  clearBtn.textContent = '♻️ Réinitialiser';
+  document.getElementById('excludedBox').classList.toggle('hidden', excluded.size === 0);
+}
+function flashToast(text) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = text;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => {
+    t.classList.remove('show');
+    setTimeout(() => t.remove(), 300);
+  }, 1200);
+}
+
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -447,6 +596,41 @@ customSecs.addEventListener('input', () => {
 
 document.getElementById('btnStart').onclick = () => startGame();
 
+document.getElementById('btnCopyExcluded').onclick = async () => {
+  const list = [...excluded].join(' ');
+  const btn = document.getElementById('btnCopyExcluded');
+  const old = btn.textContent;
+  try {
+    await navigator.clipboard.writeText(list);
+    btn.textContent = '✅ Copié !';
+  } catch (e) {
+    btn.textContent = '⚠️ Échec copie';
+  }
+  setTimeout(() => { btn.textContent = old; }, 1500);
+};
+
+let clearArmed = false;
+let clearArmTimeout = null;
+document.getElementById('btnClearExcluded').onclick = () => {
+  if (excluded.size === 0) return;
+  const btn = document.getElementById('btnClearExcluded');
+  if (!clearArmed) {
+    clearArmed = true;
+    btn.textContent = '⚠️ Confirmer ?';
+    clearArmTimeout = setTimeout(() => {
+      clearArmed = false;
+      btn.textContent = '♻️ Réinitialiser';
+    }, 3000);
+    return;
+  }
+  clearTimeout(clearArmTimeout);
+  clearArmed = false;
+  btn.textContent = '♻️ Réinitialiser';
+  excluded = new Set();
+  saveExcluded();
+  updateExcludedUI();
+};
+
 /* ---------- GAME FLOW ---------- */
 function showScreen(name) {
   document.getElementById('screenSetup').classList.toggle('hidden', name !== 'setup');
@@ -455,14 +639,14 @@ function showScreen(name) {
 }
 
 function newDeck() {
-  deck = shuffle(categories[currentCat]);
+  deck = shuffle(getPool(currentCat));
   idx = 0;
 }
 
 function showCurrent() {
   const emojiEl = document.getElementById('emoji');
   if (idx >= deck.length) {
-    deck = shuffle(categories[currentCat]);
+    deck = shuffle(getPool(currentCat));
     idx = 0;
   }
   emojiEl.style.animation = 'none';
@@ -478,7 +662,7 @@ function formatTime(secs) {
 }
 
 function updateHud() {
-  document.getElementById('timeVal').textContent = formatTime(timeLeft);
+  document.getElementById('timeVal').textContent = formatTime(Math.max(timeLeft, 0));
   document.getElementById('scoreVal').textContent = score;
   document.getElementById('timePill').classList.toggle('low', timeLeft <= 10);
 }
@@ -490,6 +674,8 @@ function startGame() {
   pendingCatChange = false;
   document.getElementById('timePill').classList.remove('paused');
   document.getElementById('btnNext').disabled = false;
+  document.querySelector('#screenPlay .controls').classList.remove('hidden');
+  document.getElementById('timeupBar').classList.add('hidden');
   newDeck();
   showScreen('play');
   updateHud();
@@ -510,7 +696,7 @@ function beginTimer() {
     if (timeLeft <= 0) {
       clearInterval(timerHandle);
       clockActive = false;
-      endGame();
+      showTimeUp();
     }
   }, 1000);
 }
@@ -542,17 +728,50 @@ function playEndSound() {
   } catch (e) { /* audio not available, ignore */ }
 }
 
+function showTimeUp() {
+  document.querySelector('#screenPlay .controls').classList.add('hidden');
+  document.getElementById('timeupBar').classList.remove('hidden');
+}
+
+document.getElementById('btnShowScore').onclick = () => {
+  document.getElementById('timeupBar').classList.add('hidden');
+  endGame();
+};
+
+const confettiColors = ['#FFC93C', '#FF6B6B', '#4ECDC4', '#6BCB77', '#9D65C9'];
+function launchConfetti() {
+  const container = document.getElementById('confettiContainer');
+  container.innerHTML = '';
+  const count = 90;
+  for (let i = 0; i < count; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = (Math.random() * 100) + 'vw';
+    piece.style.background = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+    piece.style.width = (6 + Math.random() * 6) + 'px';
+    piece.style.height = (10 + Math.random() * 8) + 'px';
+    piece.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
+    piece.style.animationDuration = (2.6 + Math.random() * 1.8) + 's';
+    piece.style.animationDelay = (Math.random() * 0.6) + 's';
+    container.appendChild(piece);
+  }
+  setTimeout(() => { container.innerHTML = ''; }, 4800);
+}
+
 function endGame() {
   playEndSound();
+  launchConfetti();
   document.getElementById('finalScore').textContent = score;
   document.getElementById('finalSub').textContent = score <= 1 ? 'image devinée' : 'images devinées';
   showScreen('end');
 }
 
-document.getElementById('btnNext').onclick = () => {
+function advance(counted) {
   if (counting || paused) return;
-  score++;
-  updateHud();
+  if (counted) {
+    score++;
+    updateHud();
+  }
   runCountdownThen(() => {
     if (pendingCatChange) {
       pendingCatChange = false;
@@ -562,6 +781,17 @@ document.getElementById('btnNext').onclick = () => {
     }
     showCurrent();
   });
+}
+
+document.getElementById('btnNext').onclick = () => advance(true);
+
+document.getElementById('btnSkip').onclick = () => advance(false);
+
+document.getElementById('btnFlag').onclick = () => {
+  if (counting || paused) return;
+  addExcluded(deck[idx]);
+  flashToast('🚩 Exclue du jeu !');
+  advance(false);
 };
 
 document.getElementById('card').onclick = () => {
@@ -577,6 +807,8 @@ function resetToSetup() {
   paused = false;
   timePill.classList.remove('paused');
   document.getElementById('btnNext').disabled = false;
+  document.querySelector('#screenPlay .controls').classList.remove('hidden');
+  document.getElementById('timeupBar').classList.add('hidden');
   showScreen('setup');
 }
 
@@ -602,6 +834,7 @@ timePill.addEventListener('pointercancel', cancelLongPress);
 
 timePill.addEventListener('click', () => {
   if (longPressFired) { longPressFired = false; return; }
+  if (timeLeft <= 0) return;
   paused = !paused;
   timePill.classList.toggle('paused', paused);
   document.getElementById('btnNext').disabled = paused;
@@ -699,6 +932,7 @@ function abortCountdown() {
 }
 
 buildCatBar();
+updateExcludedUI();
 showScreen('setup');
 </script>
 </body>
