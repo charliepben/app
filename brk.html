@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRK.B — Projection patrimoniale</title>
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111318;
+    --border: #1e2229;
+    --accent: #c8f04a;
+    --muted: #4a5260;
+    --text: #e8eaf0;
+    --text-dim: #8892a0;
+    --positive: #4af0a0;
+    --invest: #4ab8f0;
+    --fm: 'Courier New', Courier, monospace;
+    --fs: 'Arial Black', 'Arial Bold', Arial, sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--fm);
+    min-height: 100vh;
+    padding: 20px 14px;
+    font-size: 12px;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    gap: 10px;
+  }
+  .ticker {
+    font-family: var(--fs);
+    font-weight: 900;
+    font-size: clamp(28px, 10vw, 56px);
+    color: var(--accent);
+    letter-spacing: -2px;
+    line-height: 1;
+  }
+  .subtitle {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+  .btn-refresh {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: var(--fm);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 7px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: background .15s, color .15s;
+  }
+  .btn-refresh:hover { background: var(--accent); color: #0a0c0f; }
+
+  /* CONTROLS: 2-column grid, sliders full width */
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 16px;
+    margin-bottom: 16px;
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .control-group label {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .control-group input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+  }
+  .control-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .control-value {
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* STATS */
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 10px 12px;
+  }
+  .stat-label {
+    font-size: 8px;
+    color: var(--text-dim);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .stat-value {
+    font-family: var(--fs);
+    font-size: clamp(15px, 5vw, 20px);
+    font-weight: 900;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .stat-sub {
+    font-size: 9px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* TABLE — compact, no horizontal scroll */
+  .table-wrap { width: 100%; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10px;
+    font-family: var(--fm);
+    table-layout: fixed;
+  }
+
+  thead th {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 6px 3px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  /* column widths */
+  th:nth-child(1) { width: 5%;  text-align: left; }  /* # */
+  th:nth-child(2) { width: 9%;  text-align: left; }  /* Année */
+  th:nth-child(3) { width: 10%; }                    /* Apport */
+  th:nth-child(4) { width: 10%; }                    /* Investi */
+  th:nth-child(5) { width: 11%; }                    /* Valeur */
+  th:nth-child(6) { width: 11%; }                    /* Gain/an */
+  th:nth-child(7) { width: 12%; }                    /* /mois */
+  th:nth-child(8) { width: 11%; }                    /* +val */
+  th:nth-child(9) { width: 7%;  }                    /* × */
+
+  tbody tr { border-bottom: 1px solid #13161b; }
+  tbody tr:hover { background: #12151a; }
+  tbody tr.inject { background: rgba(74,184,240,.04); }
+
+  td {
+    padding: 5px 3px;
+    text-align: right;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  td:nth-child(1) { text-align: left; color: var(--muted); font-size: 9px; }
+  td:nth-child(2) { text-align: left; color: var(--text); font-weight: 700; }
+
+  td.capital    { color: var(--text); font-weight: 600; }
+  td.gain       { color: var(--positive); }
+  td.invest-col { color: var(--invest); }
+  td.ratio      { color: var(--accent); font-weight: 700; }
+  td.zero       { color: var(--muted); }
+
+  tfoot tr { border-top: 2px solid var(--border); background: var(--surface); }
+  tfoot td { padding: 7px 3px; font-weight: 600; font-size: 10px; }
+  tfoot td:nth-child(2) { font-family: var(--fs); font-size: 10px; font-weight: 900; color: var(--text-dim); text-transform: uppercase; }
+
+  /* BARS */
+  .bar-wrap { margin-top: 16px; display: flex; flex-direction: column; gap: 4px; }
+  .bar-row  { display: flex; align-items: center; gap: 6px; font-size: 9px; }
+  .bar-label{ width: 32px; color: var(--text-dim); text-align: right; flex-shrink: 0; }
+  .bar-track{ flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; position: relative; }
+  .bar-fill-invest { position: absolute; left:0; top:0; bottom:0; background: var(--invest); border-radius: 2px; opacity: .55; transition: width .3s; }
+  .bar-fill-gains  { position: absolute; left:0; top:0; bottom:0; background: var(--positive); border-radius: 2px; transition: width .3s; }
+  .bar-val  { width: 60px; color: var(--text); font-size: 9px; flex-shrink: 0; text-align: right; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="ticker">BRK.B</div>
+    <div class="subtitle" id="subtitle">Projection · 15 ans · CTO Boursorama</div>
+  </div>
+  <button class="btn-refresh" onclick="location.reload()">↺ Refresh</button>
+</div>
+
+<div class="controls">
+  <div class="control-group">
+    <label>Rendement / an</label>
+    <input type="range" id="rate" min="4" max="15" step="0.5" value="8">
+    <div class="control-value" id="rate-val">8 %</div>
+  </div>
+  <div class="control-group">
+    <label>Capital initial</label>
+    <input type="range" id="init" min="10" max="500" step="5" value="225">
+    <div class="control-value" id="init-val">225k€</div>
+  </div>
+  <div class="control-group">
+    <label>Versement / an</label>
+    <input type="range" id="annual" min="0" max="300" step="10" value="100">
+    <div class="control-value" id="annual-val">100k€</div>
+  </div>
+  <div class="control-group">
+    <label>Durée versements</label>
+    <input type="range" id="years-inject" min="1" max="15" step="1" value="3">
+    <div class="control-value" id="inject-val">3 ans</div>
+  </div>
+  <div class="control-group">
+    <label>Durée totale</label>
+    <input type="range" id="duration" min="4" max="30" step="1" value="15">
+    <div class="control-value" id="duration-val">15 ans</div>
+  </div>
+  <div class="control-group">
+    <label>Année de départ</label>
+    <input type="range" id="startyear" min="2020" max="2035" step="1" value="2026">
+    <div class="control-value" id="startyear-val">2026</div>
+  </div>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Année</th>
+        <th>Apport</th>
+        <th>Investi</th>
+        <th>Valeur</th>
+        <th>Gain/an</th>
+        <th>Gain/mois</th>
+        <th>+val.</th>
+        <th>×</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+    <tfoot id="tfoot"></tfoot>
+  </table>
+</div>
+
+<div class="bar-wrap" id="bars"></div>
+
+<script>
+  const fmt  = n => new Intl.NumberFormat('fr-FR', {style:'currency', currency:'EUR', maximumFractionDigits:0}).format(n);
+  const fmtK = n => n >= 1e6 ? (n/1e6).toFixed(2)+' M€' : Math.round(n/1000)+' k€';
+  const fmtS = n => n >= 1e6 ? (n/1e6).toFixed(1)+'M€'  : Math.round(n/1000)+'k€';
+  const fmtM = n => n >= 1e6 ? (n/1e6).toFixed(2)+'M€'  : (n/1000).toFixed(1)+'k€';
+
+  function compute(rate, init, annual, injectYears, duration) {
+    const r = rate/100;
+    let rows=[], totalInvested=init, prev=init, port=init;
+    for (let y=1; y<=duration; y++) {
+      port = port*(1+r);
+      let inj=0;
+      if (y<=injectYears && annual>0) { inj=annual; port+=annual; totalInvested+=annual; }
+      const ag = port-prev-inj;
+      rows.push({y, inj, totalInvested, port, ag, cg: port-totalInvested, mult: port/totalInvested});
+      prev=port;
+    }
+    return rows;
+  }
+
+  function render() {
+    const rate      = parseFloat(document.getElementById('rate').value);
+    const init      = parseFloat(document.getElementById('init').value)*1000;
+    const annual    = parseFloat(document.getElementById('annual').value)*1000;
+    const duration  = parseInt(document.getElementById('duration').value);
+    const startYear = parseInt(document.getElementById('startyear').value);
+
+    const injectSlider = document.getElementById('years-inject');
+    injectSlider.max = duration;
+    let injectYears = parseInt(injectSlider.value);
+    if (injectYears>duration) { injectSlider.value=duration; injectYears=duration; }
+
+    document.getElementById('rate-val').textContent      = rate+' %';
+    document.getElementById('init-val').textContent      = fmtS(init);
+    document.getElementById('annual-val').textContent    = fmtS(annual);
+    document.getElementById('inject-val').textContent    = injectYears+' ans';
+    document.getElementById('duration-val').textContent  = duration+' ans';
+    document.getElementById('startyear-val').textContent = startYear;
+    document.getElementById('subtitle').textContent      = `Projection · ${duration} ans · CTO Boursorama`;
+
+    const rows = compute(rate, init, annual, injectYears, duration);
+    const last  = rows[rows.length-1];
+    const totalInvested = init + annual*injectYears;
+    const endYear = startYear+duration-1;
+
+    document.getElementById('stats').innerHTML = `
+      <div class="stat-card">
+        <div class="stat-label">Val. finale</div>
+        <div class="stat-value">${fmtK(last.port)}</div>
+        <div class="stat-sub">en ${endYear}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">+value tot.</div>
+        <div class="stat-value">${fmtK(last.cg)}</div>
+        <div class="stat-sub">vs ${fmtK(totalInvested)} investis</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Multiplicateur</div>
+        <div class="stat-value">${last.mult.toFixed(2)}×</div>
+        <div class="stat-sub">la mise totale</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Gain ${endYear}</div>
+        <div class="stat-value">${fmtK(rows[duration-1].ag)}</div>
+        <div class="stat-sub">cette année-là</div>
+      </div>
+    `;
+
+    document.getElementById('tbody').innerHTML = rows.map(r => {
+      const yr = startYear+r.y-1;
+      return `<tr class="${r.inj>0?'inject':''}">
+        <td>${r.y}</td>
+        <td>${yr}</td>
+        <td class="${r.inj>0?'invest-col':'zero'}">${r.inj>0?'+'+fmtS(r.inj):'—'}</td>
+        <td class="invest-col">${fmtS(r.totalInvested)}</td>
+        <td class="capital">${fmtS(r.port)}</td>
+        <td class="gain">+${fmtS(r.ag)}</td>
+        <td class="gain">+${fmtM(r.ag/12)}</td>
+        <td class="gain">+${fmtS(r.cg)}</td>
+        <td class="ratio">${r.mult.toFixed(1)}×</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('tfoot').innerHTML = `
+      <tr>
+        <td></td><td>TOTAL</td>
+        <td class="invest-col">${fmtS(totalInvested)}</td>
+        <td></td>
+        <td class="capital">${fmtS(last.port)}</td>
+        <td></td>
+        <td class="gain">+${fmtM(last.ag/12)}</td>
+        <td class="gain">+${fmtS(last.cg)}</td>
+        <td class="ratio">${last.mult.toFixed(1)}×</td>
+      </tr>`;
+
+    const maxVal = last.port;
+    document.getElementById('bars').innerHTML = rows.map(r => `
+      <div class="bar-row">
+        <div class="bar-label">${startYear+r.y-1}</div>
+        <div class="bar-track">
+          <div class="bar-fill-gains"  style="width:${(r.port/maxVal*100).toFixed(1)}%"></div>
+          <div class="bar-fill-invest" style="width:${(r.totalInvested/maxVal*100).toFixed(1)}%"></div>
+        </div>
+        <div class="bar-val">${fmtK(r.port)}</div>
+      </div>`).join('');
+  }
+
+  /* PERSISTANCE localStorage (fonctionne en local file://) */
+  const LS_KEY = 'brkb_v2';
+  function saveParams() {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        rate:      document.getElementById('rate').value,
+        init:      document.getElementById('init').value,
+        annual:    document.getElementById('annual').value,
+        inject:    document.getElementById('years-inject').value,
+        duration:  document.getElementById('duration').value,
+        startyear: document.getElementById('startyear').value
+      }));
+    } catch(e){}
+  }
+  function loadParams() {
+    try {
+      const v = JSON.parse(localStorage.getItem(LS_KEY));
+      if (!v) return;
+      if (v.rate)      document.getElementById('rate').value         = v.rate;
+      if (v.init)      document.getElementById('init').value         = v.init;
+      if (v.annual !== undefined) document.getElementById('annual').value = v.annual;
+      if (v.inject)    document.getElementById('years-inject').value = v.inject;
+      if (v.duration)  document.getElementById('duration').value     = v.duration;
+      if (v.startyear) document.getElementById('startyear').value    = v.startyear;
+    } catch(e){}
+  }
+
+  ['rate','init','annual','years-inject','duration','startyear'].forEach(id =>
+    document.getElementById(id).addEventListener('input', ()=>{ saveParams(); render(); })
+  );
+
+  loadParams();
+  render();
+</script>
+</body>
+</html>

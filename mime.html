@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Devine et Mime !</title>
+<style>
+  :root {
+    --sun: #FFC93C;
+    --coral: #FF6B6B;
+    --sky: #4ECDC4;
+    --grass: #6BCB77;
+    --plum: #9D65C9;
+    --ink: #2E2A3D;
+    --cream: #FFF8EC;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    font-family: 'Baloo', 'Comic Sans MS', 'Trebuchet MS', sans-serif;
+    background: var(--cream);
+    background-image:
+      radial-gradient(circle at 10% 15%, rgba(255,201,60,0.35) 0, transparent 40%),
+      radial-gradient(circle at 90% 85%, rgba(78,205,196,0.35) 0, transparent 40%);
+    color: var(--ink);
+  }
+  body {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .header {
+    flex: 0 0 auto;
+    padding: 14px 0 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand {
+    font-weight: 900;
+    font-size: clamp(18px, 4vw, 26px);
+    letter-spacing: 0.5px;
+    color: var(--plum);
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.06);
+  }
+  .cat-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: min(94vw, 460px);
+    justify-content: center;
+    padding: 2px 16px 6px;
+  }
+  .cat-btn {
+    box-shadow: none;
+    border-width: 3px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: clamp(12px, 3vw, 14px);
+    background: white;
+    color: var(--ink);
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .cat-btn.active {
+    background: var(--sky);
+    color: white;
+  }
+  .stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px 16px;
+    gap: 14px;
+  }
+  .screen {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .hidden { display: none !important; }
+
+  /* setup screen */
+  .setup-box {
+    background: white;
+    border: 6px solid var(--ink);
+    border-radius: 32px;
+    width: min(88vw, 420px);
+    padding: 26px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    box-shadow: 0 18px 0 rgba(46,42,61,0.08), 0 18px 40px rgba(46,42,61,0.15);
+  }
+  .setup-label {
+    font-weight: 800;
+    font-size: 15px;
+  }
+  .duration-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .duration-btn {
+    flex: 1 1 calc(33.333% - 6px);
+    background: var(--sun);
+    color: var(--ink);
+    border: 3px solid var(--ink);
+    border-radius: 16px;
+    padding: 10px 4px;
+    font-weight: 800;
+    font-size: clamp(13px, 3.4vw, 16px);
+    box-shadow: none;
+  }
+  .duration-btn.active {
+    background: var(--plum);
+    color: white;
+  }
+  .custom-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .custom-row input {
+    flex: 1;
+    min-width: 0;
+    font-family: inherit;
+    font-weight: 800;
+    font-size: 16px;
+    border: 3px solid var(--ink);
+    border-radius: 14px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+
+  /* card / play screen */
+  .card {
+    background: white;
+    border-radius: 40px;
+    width: min(88vw, 420px);
+    max-height: 46vh;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 18px 0 rgba(46,42,61,0.08), 0 18px 40px rgba(46,42,61,0.15);
+    border: 6px solid var(--ink);
+    position: relative;
+    overflow: hidden;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .emoji {
+    font-size: clamp(100px, 32vw, 230px);
+    line-height: 1;
+    animation: pop 0.3s ease;
+  }
+  @keyframes pop {
+    from { transform: scale(0.6) rotate(-6deg); opacity: 0; }
+    to { transform: scale(1) rotate(0deg); opacity: 1; }
+  }
+  .hud {
+    display: flex;
+    justify-content: space-between;
+    width: min(88vw, 420px);
+    gap: 12px;
+  }
+  .hud-pill {
+    flex: 1;
+    background: white;
+    border: 3px solid var(--ink);
+    border-radius: 16px;
+    padding: 8px 6px;
+    text-align: center;
+    font-weight: 900;
+  }
+  .hud-pill .val {
+    font-size: clamp(20px, 6vw, 28px);
+    display: block;
+    line-height: 1.1;
+  }
+  .hud-pill .lbl {
+    font-size: 11px;
+    opacity: 0.6;
+    font-weight: 700;
+  }
+  .hud-pill.time {
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .hud-pill.time::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 0%;
+    background: rgba(255,107,107,0.35);
+    z-index: 0;
+  }
+  .hud-pill.time.holding::before {
+    width: 100%;
+    transition: width 2s linear;
+  }
+  .hud-pill.time .val, .hud-pill.time .lbl {
+    position: relative;
+    z-index: 1;
+  }
+  .hud-pill.time .val {
+    font-variant-numeric: tabular-nums;
+  }
+  .hud-pill.time.paused {
+    background: var(--sun);
+  }
+  .hud-pill.time.paused .lbl::after {
+    content: " · TOUCHE POUR REPRENDRE";
+  }
+  .hud-pill.time:not(.paused) .lbl::after {
+    content: " · TOUCHE POUR PAUSE";
+  }
+  .hud-pill.time.low .val { color: var(--coral); }
+
+  .controls {
+    display: flex;
+    gap: 14px;
+    width: min(88vw, 420px);
+  }
+  button {
+    font-family: inherit;
+    font-weight: 900;
+    font-size: clamp(15px, 4vw, 19px);
+    border: 5px solid var(--ink);
+    border-radius: 22px;
+    padding: 16px 10px;
+    cursor: pointer;
+    flex: 1;
+    color: white;
+    box-shadow: 0 8px 0 var(--ink);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+  }
+  button:active {
+    transform: translateY(6px);
+    box-shadow: 0 2px 0 var(--ink);
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  #btnNext { background: var(--grass); }
+  #btnStart { background: var(--grass); }
+  #btnReplay { background: var(--coral); }
+
+  .countdown-overlay {
+    position: absolute;
+    inset: 0;
+    background: var(--plum);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+  }
+  .countdown-overlay.countdown-frozen {
+    opacity: 0.5;
+  }
+  .countdown-number {
+    font-size: clamp(110px, 40vw, 260px);
+    font-weight: 900;
+    color: white;
+    text-shadow: 0 8px 0 rgba(0,0,0,0.15);
+    animation: countPulse 0.6s ease;
+  }
+  @keyframes countPulse {
+    0% { transform: scale(0.3); opacity: 0; }
+    50% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* end screen */
+  .end-box {
+    background: white;
+    border: 6px solid var(--ink);
+    border-radius: 32px;
+    width: min(88vw, 420px);
+    padding: 30px 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 18px 0 rgba(46,42,61,0.08), 0 18px 40px rgba(46,42,61,0.15);
+    text-align: center;
+  }
+  .end-title { font-size: 18px; font-weight: 800; opacity: 0.7; }
+  .end-score { font-size: clamp(60px, 20vw, 96px); font-weight: 900; color: var(--plum); line-height: 1; }
+  .end-sub { font-size: 14px; font-weight: 700; opacity: 0.6; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="brand">🎭 Devine et Mime !</div>
+  <div class="cat-bar" id="catBar"></div>
+</div>
+
+<div class="stage">
+
+  <!-- SETUP -->
+  <div class="screen" id="screenSetup">
+    <div class="setup-box">
+      <div>
+        <div class="setup-label">⏱️ Durée de la partie</div>
+        <div class="duration-row" id="durationRow">
+          <button class="duration-btn" data-secs="15">15s</button>
+          <button class="duration-btn" data-secs="30">30s</button>
+          <button class="duration-btn active" data-secs="60">1 min</button>
+          <button class="duration-btn" data-secs="90">1min30</button>
+          <button class="duration-btn" data-secs="120">2 min</button>
+          <button class="duration-btn" data-secs="180">3 min</button>
+          <button class="duration-btn" data-secs="300">5 min</button>
+        </div>
+      </div>
+      <div>
+        <div class="setup-label">Ou une durée perso (secondes)</div>
+        <div class="custom-row">
+          <input type="number" id="customSecs" placeholder="ex: 45" min="5" max="900">
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="btnStart">▶️ Démarrer</button>
+    </div>
+  </div>
+
+  <!-- PLAY -->
+  <div class="screen hidden" id="screenPlay">
+    <div class="hud">
+      <div class="hud-pill time" id="timePill"><span class="val" id="timeVal">1:00</span><span class="lbl">TEMPS</span></div>
+      <div class="hud-pill"><span class="val" id="scoreVal">0</span><span class="lbl">DEVINÉES</span></div>
+    </div>
+    <div class="card" id="card">
+      <div class="emoji" id="emoji">🦙</div>
+    </div>
+    <div class="controls">
+      <button id="btnNext">✅ Suivant</button>
+    </div>
+  </div>
+
+  <!-- END -->
+  <div class="screen hidden" id="screenEnd">
+    <div class="end-box">
+      <div class="end-title">⏰ Temps écoulé !</div>
+      <div class="end-score" id="finalScore">0</div>
+      <div class="end-sub" id="finalSub">images devinées</div>
+    </div>
+    <div class="controls">
+      <button id="btnReplay">🔁 Rejouer</button>
+    </div>
+  </div>
+
+</div>
+
+<template id="countdownTemplate"><div class="countdown-overlay"><div class="countdown-number"></div></div></template>
+
+<script>
+const baseCategories = {
+  "Animaux": ["🦙","🐶","🐱","🐘","🦒","🦁","🐸","🐧","🦖","🐢","🦋","🐝","🐍","🦉","🐫","🦘","🐙","🦈","🐿️","🦔","🐔","🦆","🐷","🐴","🐨","🐮","🐰","🐻","🐺","🦓","🦛","🦏","🦥","🦦","🦩","🦚","🐊","🦂","🐳","🐬","🦭","🦡","🐑","🐗","🦃","🐿️","🦇","🐹","🦤"],
+  "Metiers": ["👨‍🚒","👩‍⚕️","👨‍🍳","👮","👩‍🚀","🧑‍🏫","👷","🧑‍🎨","👩‍🌾","🧑‍✈️","🕵️","🧑‍🔧","🧑‍🚀","🧙","👸","🦸","🧛","🧟","🧜","🧞","👨‍🎤","👩‍💻","🧑‍🚒","🤴","🧑‍⚖️","🧑‍🔬","🧑‍🎤","🧑‍🌾","🧑‍🎓","🧑‍🚀"],
+  "Sports": ["⚽","🏀","🎾","🏊","🚴","🥊","🏄","⛷️","🤸","🏋️","🏸","🎳","🧗","⛸️","🏹","🤺","🏓","🏒","🏈","⚾","🥋","🤾","🏇","🚣","🧘","🤼","🏂","🥌","🎿","🛹"],
+  "Objets": ["📱","🎸","☂️","🚗","✈️","🚀","⏰","🎁","🔑","💡","🪄","📸","🎈","🧸","🪑","🎺","🥁","🎻","🪀","🪁","🧦","👑","💍","🧴","🧹","🪥","🖍️","📚","🕯️","🎨"],
+  "Emotions": ["😂","😱","😴","🥳","😢","😡","🤔","😍","🤪","🥶","🤯","😇","🤢","😎","🙀","😳","🥱","😤","🤗","😵","🤩","😬","🥺","😜","😷","🤒","🤠","😈","👻","🤡"],
+  "Nourriture": ["🍕","🍔","🍟","🌭","🍦","🍩","🍫","🍿","🍎","🍌","🍇","🍉","🥑","🌽","🥕","🍰","🎂","🧁","🍪","🍭","🍬","🥨","🥯","🍗","🍖","🍳","🥞","🧀","🍜","🍣","🍙","🥗","🌮","🥐"],
+  "Nature": ["☀️","🌧️","⛈️","❄️","🌈","🌪️","🌊","🔥","🌋","⛰️","🌵","🌻","🌴","🍄","🍂","🌙","⭐","☄️","🌍","🏝️","🦋","🐌","🕷️","🌾","🍁"],
+  "Transports": ["🚗","🚕","🚌","🚓","🚑","🚒","🚜","🏎️","🚲","🛵","✈️","🚁","🚀","🛳️","⛵","🚂","🚋","🛺","🚡","🛼","🛴","⚓","🚦","🛶"],
+  "Fete": ["🎉","🎂","🎁","🎈","🎊","🥳","🎆","🎇","🍾","🥂","🎄","🎃","🐣","💍","👰","🤵","🎓","🕺","💃","🎤","🎶","🪅","🧨","🎗️"],
+  "Fantastique": ["🐉","🦄","🧙","🧚","🧛","🧟","🧞","👽","🤖","👑","⚔️","🛡️","🏰","🪄","🔮","💀","👹","👺","🕸️","⚡","🧝","🧌","🛸","🪦"]
+};
+const categories = { "🔀": [].concat(...Object.values(baseCategories)), ...baseCategories };
+
+let currentCat = "Animaux";
+let deck = [];
+let idx = 0;
+let score = 0;
+let timeLeft = 60;
+let selectedDuration = 60;
+let timerHandle = null;
+let counting = false;
+let paused = false;
+let longPressHandle = null;
+let longPressFired = false;
+let pendingCatChange = false;
+let countdownTimeoutId = null;
+let countdownOverlayEl = null;
+let countdownPendingAction = null;
+let countdownResumeClock = false;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildCatBar() {
+  const bar = document.getElementById('catBar');
+  bar.innerHTML = '';
+  Object.keys(categories).forEach(cat => {
+    const b = document.createElement('button');
+    b.textContent = cat;
+    b.className = 'cat-btn' + (cat === currentCat ? ' active' : '');
+    b.onclick = () => {
+      currentCat = cat;
+      buildCatBar();
+      pendingCatChange = true;
+    };
+    bar.appendChild(b);
+  });
+}
+
+/* ---------- SETUP SCREEN ---------- */
+const durationRow = document.getElementById('durationRow');
+const customSecs = document.getElementById('customSecs');
+
+durationRow.addEventListener('click', (e) => {
+  const btn = e.target.closest('.duration-btn');
+  if (!btn) return;
+  [...durationRow.children].forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedDuration = parseInt(btn.dataset.secs, 10);
+  customSecs.value = '';
+});
+
+customSecs.addEventListener('input', () => {
+  const v = parseInt(customSecs.value, 10);
+  if (v > 0) {
+    [...durationRow.children].forEach(b => b.classList.remove('active'));
+    selectedDuration = v;
+  }
+});
+
+document.getElementById('btnStart').onclick = () => startGame();
+
+/* ---------- GAME FLOW ---------- */
+function showScreen(name) {
+  document.getElementById('screenSetup').classList.toggle('hidden', name !== 'setup');
+  document.getElementById('screenPlay').classList.toggle('hidden', name !== 'play');
+  document.getElementById('screenEnd').classList.toggle('hidden', name !== 'end');
+}
+
+function newDeck() {
+  deck = shuffle(categories[currentCat]);
+  idx = 0;
+}
+
+function showCurrent() {
+  const emojiEl = document.getElementById('emoji');
+  if (idx >= deck.length) {
+    deck = shuffle(categories[currentCat]);
+    idx = 0;
+  }
+  emojiEl.style.animation = 'none';
+  void emojiEl.offsetWidth;
+  emojiEl.style.animation = 'pop 0.3s ease';
+  emojiEl.textContent = deck[idx];
+}
+
+function formatTime(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function updateHud() {
+  document.getElementById('timeVal').textContent = formatTime(timeLeft);
+  document.getElementById('scoreVal').textContent = score;
+  document.getElementById('timePill').classList.toggle('low', timeLeft <= 10);
+}
+
+function startGame() {
+  timeLeft = selectedDuration;
+  score = 0;
+  paused = false;
+  pendingCatChange = false;
+  document.getElementById('timePill').classList.remove('paused');
+  document.getElementById('btnNext').disabled = false;
+  newDeck();
+  showScreen('play');
+  updateHud();
+  document.getElementById('emoji').textContent = deck[0];
+  runCountdownThen(() => {
+    beginTimer();
+  });
+}
+
+let clockActive = false;
+
+function beginTimer() {
+  clearInterval(timerHandle);
+  clockActive = true;
+  timerHandle = setInterval(() => {
+    timeLeft--;
+    updateHud();
+    if (timeLeft <= 0) {
+      clearInterval(timerHandle);
+      clockActive = false;
+      endGame();
+    }
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(timerHandle);
+  clockActive = false;
+}
+
+function playEndSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      const start = ctx.currentTime + i * 0.13;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.3, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.4);
+    });
+    setTimeout(() => ctx.close(), 1200);
+  } catch (e) { /* audio not available, ignore */ }
+}
+
+function endGame() {
+  playEndSound();
+  document.getElementById('finalScore').textContent = score;
+  document.getElementById('finalSub').textContent = score <= 1 ? 'image devinée' : 'images devinées';
+  showScreen('end');
+}
+
+document.getElementById('btnNext').onclick = () => {
+  if (counting || paused) return;
+  score++;
+  updateHud();
+  runCountdownThen(() => {
+    if (pendingCatChange) {
+      pendingCatChange = false;
+      newDeck();
+    } else {
+      idx++;
+    }
+    showCurrent();
+  });
+};
+
+document.getElementById('card').onclick = () => {
+  if (paused) return;
+  document.getElementById('btnNext').click();
+};
+
+const timePill = document.getElementById('timePill');
+
+function resetToSetup() {
+  stopTimer();
+  abortCountdown();
+  paused = false;
+  timePill.classList.remove('paused');
+  document.getElementById('btnNext').disabled = false;
+  showScreen('setup');
+}
+
+function startLongPress() {
+  longPressFired = false;
+  timePill.classList.add('holding');
+  longPressHandle = setTimeout(() => {
+    longPressFired = true;
+    timePill.classList.remove('holding');
+    resetToSetup();
+  }, 2000);
+}
+
+function cancelLongPress() {
+  clearTimeout(longPressHandle);
+  timePill.classList.remove('holding');
+}
+
+timePill.addEventListener('pointerdown', startLongPress);
+timePill.addEventListener('pointerup', cancelLongPress);
+timePill.addEventListener('pointerleave', cancelLongPress);
+timePill.addEventListener('pointercancel', cancelLongPress);
+
+timePill.addEventListener('click', () => {
+  if (longPressFired) { longPressFired = false; return; }
+  paused = !paused;
+  timePill.classList.toggle('paused', paused);
+  document.getElementById('btnNext').disabled = paused;
+  if (paused) {
+    stopTimer();
+    if (counting) pauseCountdown();
+  } else if (counting) {
+    resumeCountdown();
+  } else {
+    beginTimer();
+  }
+});
+
+document.getElementById('btnReplay').onclick = () => {
+  showScreen('setup');
+};
+
+const countdownSteps = ['3', '2', '1'];
+let countdownStep = 0;
+let countdownNumberEl = null;
+
+function runCountdownThen(action) {
+  counting = true;
+  countdownPendingAction = action;
+  countdownStep = 0;
+  countdownResumeClock = clockActive;
+  if (clockActive) stopTimer();
+  const card = document.getElementById('card');
+  const emojiEl = document.getElementById('emoji');
+  emojiEl.style.visibility = 'hidden';
+
+  const overlay = document.getElementById('countdownTemplate').content.firstElementChild.cloneNode(true);
+  card.appendChild(overlay);
+  countdownOverlayEl = overlay;
+  countdownNumberEl = overlay.querySelector('.countdown-number');
+
+  advanceCountdown();
+}
+
+function advanceCountdown() {
+  countdownNumberEl.style.animation = 'none';
+  void countdownNumberEl.offsetWidth;
+  countdownNumberEl.style.animation = 'countPulse 0.6s ease';
+  countdownNumberEl.textContent = countdownSteps[countdownStep];
+  countdownStep++;
+  if (countdownStep < countdownSteps.length) {
+    countdownTimeoutId = setTimeout(advanceCountdown, 600);
+  } else {
+    countdownTimeoutId = setTimeout(finishCountdown, 600);
+  }
+}
+
+function finishCountdown() {
+  const card = document.getElementById('card');
+  if (countdownOverlayEl && countdownOverlayEl.parentNode === card) card.removeChild(countdownOverlayEl);
+  countdownOverlayEl = null;
+  countdownTimeoutId = null;
+  countdownNumberEl = null;
+  countdownStep = 0;
+  document.getElementById('emoji').style.visibility = 'visible';
+  counting = false;
+  if (countdownResumeClock && !paused) beginTimer();
+  countdownResumeClock = false;
+  const action = countdownPendingAction;
+  countdownPendingAction = null;
+  if (action) action();
+}
+
+// Freezes the countdown exactly where it is — the number stays visible, just stops advancing.
+function pauseCountdown() {
+  clearTimeout(countdownTimeoutId);
+  countdownTimeoutId = null;
+  if (countdownOverlayEl) countdownOverlayEl.classList.add('countdown-frozen');
+}
+
+// Continues the countdown from the step it was frozen at.
+function resumeCountdown() {
+  if (countdownOverlayEl) countdownOverlayEl.classList.remove('countdown-frozen');
+  countdownTimeoutId = setTimeout(advanceCountdown, 600);
+}
+
+// Fully aborts any countdown, discarding its action — used when resetting the game.
+function abortCountdown() {
+  clearTimeout(countdownTimeoutId);
+  countdownTimeoutId = null;
+  const card = document.getElementById('card');
+  if (countdownOverlayEl && countdownOverlayEl.parentNode === card) card.removeChild(countdownOverlayEl);
+  countdownOverlayEl = null;
+  countdownNumberEl = null;
+  countdownStep = 0;
+  countdownPendingAction = null;
+  countdownResumeClock = false;
+  counting = false;
+  document.getElementById('emoji').style.visibility = 'visible';
+}
+
+buildCatBar();
+showScreen('setup');
+</script>
+</body>
+</html>
