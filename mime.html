@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Devine & Mime</title>
+<link rel="manifest" href="manifest-mime.json">
+<meta name="theme-color" content="#9D65C9">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mime">
 <style>
   :root {
     --sun: #FFC93C;
@@ -785,31 +791,33 @@ function launchConfetti() {
   const container = document.getElementById('confettiContainer');
   container.innerHTML = '';
   const sessionList = [...sessionEmojiSet];
-  const count = 160;
+  const count = 140;
   for (let i = 0; i < count; i++) {
     const piece = document.createElement('div');
     piece.className = 'confetti-piece';
     piece.style.left = (Math.random() * 100) + 'vw';
-    piece.style.setProperty('--drift', (Math.random() * 240 - 120) + 'px');
-    piece.style.setProperty('--spin', ((480 + Math.random() * 900) * (Math.random() < 0.5 ? 1 : -1)) + 'deg');
-    const roll = Math.random();
-    if (sessionList.length && roll < 0.25) {
-      piece.textContent = sessionList[Math.floor(Math.random() * sessionList.length)];
-      piece.style.fontSize = (18 + Math.random() * 16) + 'px';
-    } else if (roll < 0.4) {
-      piece.textContent = confettiEmojis[Math.floor(Math.random() * confettiEmojis.length)];
-      piece.style.fontSize = (16 + Math.random() * 14) + 'px';
+    const isEmojiPiece = Math.random() < (sessionList.length ? 0.35 : 0.2);
+    if (isEmojiPiece) {
+      const useSession = sessionList.length && Math.random() < 0.6;
+      piece.textContent = useSession
+        ? sessionList[Math.floor(Math.random() * sessionList.length)]
+        : confettiEmojis[Math.floor(Math.random() * confettiEmojis.length)];
+      piece.style.fontSize = (18 + Math.random() * 14) + 'px';
+      piece.style.setProperty('--drift', (Math.random() * 60 - 30) + 'px');
+      piece.style.setProperty('--spin', (Math.random() * 30 - 15) + 'deg');
     } else {
       piece.style.background = confettiColors[Math.floor(Math.random() * confettiColors.length)];
       piece.style.width = (6 + Math.random() * 7) + 'px';
       piece.style.height = (10 + Math.random() * 10) + 'px';
       piece.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
+      piece.style.setProperty('--drift', (Math.random() * 140 - 70) + 'px');
+      piece.style.setProperty('--spin', ((360 + Math.random() * 360) * (Math.random() < 0.5 ? 1 : -1)) + 'deg');
     }
-    piece.style.animationDuration = (2.2 + Math.random() * 2.2) + 's';
-    piece.style.animationDelay = (Math.random() * 0.8) + 's';
+    piece.style.animationDuration = (2.4 + Math.random() * 1.8) + 's';
+    piece.style.animationDelay = (Math.random() * 0.7) + 's';
     container.appendChild(piece);
   }
-  setTimeout(() => { container.innerHTML = ''; }, 5400);
+  setTimeout(() => { container.innerHTML = ''; }, 5200);
 }
 
 function endGame() {
@@ -993,6 +1001,10 @@ function abortCountdown() {
 buildCatBar();
 updateExcludedUI();
 showScreen('setup');
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js').catch(() => {});
+}
 </script>
 </body>
 </html>

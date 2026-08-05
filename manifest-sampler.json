@@ -1,0 +1,14 @@
+{
+  "name": "Sampler",
+  "short_name": "Sampler",
+  "description": "Sampler de sons",
+  "start_url": "./sampler.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "sampler-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

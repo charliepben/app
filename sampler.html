@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAMPLER</title>
+<link rel="manifest" href="manifest-sampler.json">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sampler">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --text: #e8e8f0;
+    --muted: #555570;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 12px 80px;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(80,40,140,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(20,80,120,0.12) 0%, transparent 50%);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    width: 100%;
+    max-width: 900px;
+  }
+
+  @media (max-width: 700px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .logo { font-size: 36px; }
+  }
+
+  /* ---------- PAD ---------- */
+  .pad {
+    position: relative;
+    aspect-ratio: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    cursor: pointer;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 0.08s ease, box-shadow 0.25s ease, border-color 0.25s;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+
+  .pad-stripe {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--c);
+    border-radius: 14px 14px 0 0;
+    opacity: 0.3;
+    transition: opacity 0.3s;
+  }
+
+  .pad.has-sound { border-color: var(--c); }
+  .pad.has-sound .pad-stripe { opacity: 1; }
+  .pad.has-sound { box-shadow: inset 0 0 40px color-mix(in srgb, var(--c) 20%, transparent), 0 0 12px color-mix(in srgb, var(--c) 18%, transparent); }
+
+  /* Lecture */
+  .pad.playing {
+    transform: scale(0.96);
+    box-shadow: 0 0 0 2px var(--c), 0 0 50px color-mix(in srgb, var(--c) 55%, transparent), inset 0 0 40px color-mix(in srgb, var(--c) 30%, transparent);
+  }
+
+  /* Enregistrement */
+  .pad.recording {
+    border-color: #ff2244 !important;
+    animation: rec-glow 0.7s ease-in-out infinite alternate;
+  }
+  @keyframes rec-glow {
+    from { box-shadow: 0 0 0 2px #ff2244, 0 0 10px rgba(255,34,68,0.3); }
+    to   { box-shadow: 0 0 0 3px #ff2244, 0 0 50px rgba(255,34,68,0.5); }
+  }
+
+  /* Numéro */
+  .pad-num {
+    position: absolute;
+    top: 8px; left: 10px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    color: var(--muted);
+    opacity: 0.35;
+    letter-spacing: 1px;
+  }
+
+  /* Point REC */
+  .rec-dot {
+    position: absolute;
+    top: 10px; right: 10px;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: #ff2244;
+    box-shadow: 0 0 6px #ff2244;
+    display: none;
+  }
+  .pad.recording .rec-dot { display: block; animation: blink 0.5s ease-in-out infinite alternate; }
+  @keyframes blink { from { opacity: 1; } to { opacity: 0.1; } }
+
+  /* Icone — cliquable */
+  .pad-icon {
+    font-size: 26px;
+    opacity: 0.35;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 1;
+    cursor: pointer;
+    border-radius: 8px;
+    padding: 2px 4px;
+  }
+  .pad-icon:hover { opacity: 0.7; transform: scale(1.15); }
+  .pad.has-sound .pad-icon { opacity: 0.65; font-size: 20px; }
+  .pad.playing .pad-icon { display: none; }
+
+  /* Picker emoji */
+  .emoji-picker {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    z-index: 20;
+    border-radius: inherit;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+  }
+  .emoji-picker.active { opacity: 1; pointer-events: all; }
+  .emoji-opt {
+    font-size: 22px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: background 0.1s, transform 0.1s;
+    line-height: 1;
+  }
+  .emoji-opt:hover { background: rgba(255,255,255,0.1); transform: scale(1.2); }
+
+  /* Waveform */
+  .waveform {
+    display: none;
+    align-items: center;
+    gap: 3px;
+    height: 28px;
+    z-index: 1;
+  }
+  .pad.playing .waveform { display: flex; }
+  .waveform .bar {
+    width: 3px;
+    background: var(--c);
+    border-radius: 2px;
+    height: 5px;
+  }
+  .pad.playing .waveform .bar { animation: wave 0.5s ease-in-out infinite alternate; }
+  .bar:nth-child(1){animation-delay:0s}
+  .bar:nth-child(2){animation-delay:.08s}
+  .bar:nth-child(3){animation-delay:.16s}
+  .bar:nth-child(4){animation-delay:.04s}
+  .bar:nth-child(5){animation-delay:.12s}
+  .bar:nth-child(6){animation-delay:.2s}
+  .bar:nth-child(7){animation-delay:.06s}
+  @keyframes wave {
+    from { height: 4px; opacity: 0.6; }
+    to   { height: 26px; opacity: 1; }
+  }
+
+  /* Label */
+  .pad-label {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--text);
+    opacity: 0.4;
+    text-transform: uppercase;
+    z-index: 1;
+    text-align: center;
+    padding: 0 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    cursor: text;
+  }
+  .pad.has-sound .pad-label { opacity: 0.85; }
+
+  .pad-label[contenteditable="true"] {
+    opacity: 1;
+    border-bottom: 1px solid var(--c);
+    outline: none;
+    min-width: 40px;
+    cursor: text;
+  }
+
+  /* Overlay appui long */
+  .hold-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.78);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+    border-radius: inherit;
+    z-index: 10;
+  }
+  .hold-overlay.active { opacity: 1; }
+
+  .hold-ring-wrap {
+    position: relative;
+    width: 72px; height: 72px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .hold-ring {
+    position: absolute;
+    inset: 0;
+    transform: rotate(-90deg);
+  }
+  .ring-bg  { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 3; }
+  .ring-arc {
+    fill: none;
+    stroke: var(--c);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 201;
+    stroke-dashoffset: 201;
+  }
+  .hold-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    color: var(--c);
+    line-height: 1;
+    z-index: 1;
+  }
+  .hold-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  /* Ripple */
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: var(--c);
+    opacity: 0.25;
+    transform: scale(0);
+    animation: ripple-anim 0.45s ease-out forwards;
+    pointer-events: none;
+    z-index: 3;
+  }
+  @keyframes ripple-anim { to { transform: scale(5); opacity: 0; } }
+
+  /* Status bar fixe en bas */
+  .status-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    padding: 10px 16px;
+    background: rgba(10,10,15,0.95);
+    backdrop-filter: blur(10px);
+    display: flex; align-items: center; gap: 12px;
+    font-size: 10px; color: var(--muted);
+    letter-spacing: 1px; text-transform: uppercase;
+    border-top: 1px solid var(--border);
+    z-index: 100;
+  }
+  .status-led {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #52b26b; box-shadow: 0 0 7px #52b26b;
+    flex-shrink: 0;
+  }
+  .status-led.rec  { background: #ff2244; box-shadow: 0 0 7px #ff2244; animation: blink 0.5s infinite alternate; }
+  .status-led.warn { background: #e07a30; box-shadow: 0 0 7px #e07a30; }
+
+  .settings-btn {
+    margin-left: auto;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 15px;
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.2s, color 0.2s;
+    flex-shrink: 0;
+  }
+  .settings-btn:hover, .settings-btn.active { border-color: var(--text); color: var(--text); }
+
+  /* Drawer paramètres */
+  .drawer-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 200;
+  }
+  .drawer-overlay.open { display: block; }
+
+  .drawer {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #16161f;
+    border-top: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 12px 20px 40px;
+    z-index: 201;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  .drawer.open { transform: translateY(0); }
+
+  .drawer-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+  .drawer-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 4px;
+    color: var(--text);
+    margin-bottom: 20px;
+  }
+  .drawer-row {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 16px;
+  }
+  .drawer-label {
+    font-size: 10px; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--muted);
+    width: 90px; flex-shrink: 0;
+  }
+  .drawer-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  .clear-btn {
+    background: none;
+    border: 1px solid #ff2244;
+    color: #ff2244;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px; letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 10px 18px;
+    border-radius: 8px; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .clear-btn:hover { background: rgba(255,34,68,0.1); }
+
+  /* Modale édition pad */
+  .edit-modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 300;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .edit-modal-overlay.open { display: flex; }
+
+  .edit-modal {
+    background: #16161f;
+    border-top: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 14px 20px 44px;
+    width: 100%;
+    max-width: 500px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  .edit-modal-overlay.open .edit-modal { transform: translateY(0); }
+
+  .edit-modal-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  .edit-modal-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 18px;
+  }
+  .edit-pad-preview {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    border: 2px solid var(--preview-color, #fff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    background: var(--surface);
+  }
+  .edit-modal-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px; letter-spacing: 3px; color: var(--text);
+  }
+
+  .edit-name-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 1px;
+    padding: 12px 14px;
+    outline: none;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    transition: border-color 0.2s;
+  }
+  .edit-name-input:focus { border-color: var(--preview-color, #fff); }
+
+  .edit-emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .edit-emoji-btn {
+    aspect-ratio: 1;
+    font-size: 22px;
+    background: var(--surface);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s, transform 0.1s;
+    line-height: 1;
+  }
+  .edit-emoji-btn:hover { transform: scale(1.15); }
+  .edit-emoji-btn.selected { border-color: var(--preview-color, #fff); }
+
+  .edit-actions {
+    display: flex; gap: 10px;
+  }
+  .edit-save-btn {
+    flex: 1;
+    background: var(--preview-color, #4a82e0);
+    border: none; border-radius: 10px;
+    color: #000; font-family: 'Space Mono', monospace;
+    font-size: 11px; letter-spacing: 1.5px;
+    text-transform: uppercase; font-weight: 700;
+    padding: 13px; cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .edit-save-btn:hover { opacity: 0.85; }
+  .edit-cancel-btn {
+    background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px;
+    color: var(--muted); font-family: 'Space Mono', monospace;
+    font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    padding: 13px 18px; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="grid" id="grid"></div>
+
+<!-- Status bar fixe -->
+<div class="status-bar">
+  <div class="status-led" id="led"></div>
+  <span id="status">INITIALISATION…</span>
+  <button class="settings-btn" id="settings-btn" title="Paramètres">⚙️</button>
+</div>
+
+<!-- Drawer paramètres -->
+<div class="drawer-overlay" id="drawer-overlay"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-title">Paramètres</div>
+  <hr class="drawer-divider">
+  <div class="drawer-row">
+    <span class="drawer-label">Tout effacer</span>
+    <button class="clear-btn" id="clear-btn">🗑 Supprimer tous les sons</button>
+  </div>
+</div>
+
+<!-- Modale édition pad -->
+<div class="edit-modal-overlay" id="edit-overlay">
+  <div class="edit-modal" id="edit-modal">
+    <div class="edit-modal-handle"></div>
+    <div class="edit-modal-header">
+      <div class="edit-pad-preview" id="edit-preview">🎵</div>
+      <div class="edit-modal-title">MODIFIER LE PAD</div>
+    </div>
+    <input type="text" class="edit-name-input" id="edit-name" placeholder="NOM DU SON" maxlength="14">
+    <div class="edit-emoji-grid" id="edit-emoji-grid"></div>
+    <div class="edit-actions">
+      <button class="edit-cancel-btn" id="edit-cancel">Annuler</button>
+      <button class="edit-save-btn" id="edit-save">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PAD_COUNT = 8;
+const HOLD_MS   = 3000;
+const CIRC      = 2 * Math.PI * 32; // ≈ 201
+
+const PALETTE = [
+  '#ff3b3b','#ff8c00','#f0d000','#2ecc71',
+  '#00d4e0','#3d8eff','#b44fff','#ff3d9a'
+];
+const ICONS = ['🎵','🥁','🎙️','🎸','🔊','🎹','🎤','🪘'];
+
+let globalGain = 4.0; // contrôlé par le slider
+let audioCtx = null;
+function getCtx() {
+  if (!audioCtx || audioCtx.state === 'closed') {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// ── Micro ───────────────────────────────────────────────
+let micStream = null;
+async function getMic() {
+  if (micStream && micStream.active) return micStream;
+  micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  return micStream;
+}
+
+// ── Enregistrement global (1 seul à la fois) ────────────
+let recPadIdx  = null;
+let recorder   = null;
+let recChunks  = [];
+
+// ── localStorage ────────────────────────────────────────
+function loadPad(i)               { try { const r = localStorage.getItem(`smp_${i}`); return r ? JSON.parse(r) : null; } catch { return null; } }
+function savePad(i, label, b64, mime, icon) { try { localStorage.setItem(`smp_${i}`, JSON.stringify({ label, b64, mime, icon })); } catch { setStatus('STOCKAGE PLEIN', 'warn'); } }
+
+function b64ToAB(b64) {
+  const bin = atob(b64), ab = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) ab[i] = bin.charCodeAt(i);
+  return ab.buffer;
+}
+function blobToB64(blob) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
+}
+
+// ── Status ───────────────────────────────────────────────
+function setStatus(msg, mode = 'ok') {
+  document.getElementById('status').textContent = msg;
+  document.getElementById('led').className = 'status-led' + (mode === 'rec' ? ' rec' : mode === 'warn' ? ' warn' : '');
+}
+
+// ── Créer un pad ─────────────────────────────────────────
+function makePad(i) {
+  const color = PALETTE[i];
+
+  const pad = document.createElement('div');
+  pad.className = 'pad';
+  pad.style.setProperty('--c', color);
+
+  pad.innerHTML = `
+    <div class="pad-stripe"></div>
+    <div class="rec-dot"></div>
+    <div class="pad-num">${String(i+1).padStart(2,'0')}</div>
+    <div class="hold-overlay">
+      <div class="hold-ring-wrap">
+        <svg class="hold-ring" viewBox="0 0 68 68">
+          <circle class="ring-bg"  cx="34" cy="34" r="32"/>
+          <circle class="ring-arc" cx="34" cy="34" r="32"/>
+        </svg>
+        <div class="hold-num">3</div>
+      </div>
+      <div class="hold-label">Maintenir pour enregistrer</div>
+    </div>
+    <div class="waveform">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div>
+    </div>
+    <div class="pad-icon">${ICONS[i]}</div>
+    <div class="pad-label">PAD ${i+1}</div>
+  `;
+
+  const overlay  = pad.querySelector('.hold-overlay');
+  const holdNum  = pad.querySelector('.hold-num');
+  const ringArc  = pad.querySelector('.ring-arc');
+  const labelEl  = pad.querySelector('.pad-label');
+  const iconEl   = pad.querySelector('.pad-icon');
+
+  // État local
+  let audioBlobUrl = null;
+  let playNode     = null;
+  let holdTimer    = null;
+  let editTimer    = null;
+  let holdRafId    = null;
+  let holdTs       = null;
+  let didHold      = false;
+  let didEdit      = false;
+
+  // Restaurer depuis storage
+  (function() {
+    const s = loadPad(i);
+    if (!s) {
+      const savedIcon = localStorage.getItem(`smp_icon_${i}`);
+      if (savedIcon) iconEl.textContent = savedIcon;
+      return;
+    }
+    labelEl.textContent = s.label || `PAD ${i+1}`;
+    if (s.icon) iconEl.textContent = s.icon;
+    // Reconstruire le blob URL depuis le b64 stocké
+    try {
+      const bin = atob(s.b64);
+      const arr = new Uint8Array(bin.length);
+      for (let j = 0; j < bin.length; j++) arr[j] = bin.charCodeAt(j);
+      const blob = new Blob([arr], { type: s.mime || 'audio/webm' });
+      audioBlobUrl = URL.createObjectURL(blob);
+      pad.classList.add('has-sound');
+    } catch(e) { console.warn(`Pad ${i} restore error`, e); }
+  })();
+
+  // ── Play via Audio natif → haut-parleur du téléphone ──
+  function play() {
+    if (!audioBlobUrl) { setStatus('MAINTENIR 3s POUR ENREGISTRER', 'warn'); return; }
+
+    if (playNode) { playNode.pause(); playNode.currentTime = 0; }
+
+    const audio = new Audio(audioBlobUrl);
+    audio.volume = 1.0;
+    playNode = audio;
+
+    pad.classList.add('playing');
+    setStatus(`▶  PAD ${i+1} · ${labelEl.textContent}`);
+
+    audio.play().catch(e => {
+      console.error('Play error', e);
+      setStatus('ERREUR LECTURE', 'warn');
+      pad.classList.remove('playing');
+      playNode = null;
+    });
+
+    audio.onended = () => {
+      pad.classList.remove('playing');
+      playNode = null;
+      setStatus('PRÊT');
+    };
+  }
+
+  function stopPlay() {
+    if (playNode) { playNode.pause(); playNode = null; }
+    pad.classList.remove('playing');
+  }
+
+  // ── Enregistrement ────────────────────────────────────
+  async function startRec() {
+    if (recPadIdx !== null && recPadIdx !== i) {
+      setStatus('UN AUTRE PAD EST EN COURS D\'ENREGISTREMENT', 'warn');
+      return;
+    }
+    stopPlay();
+
+    let stream;
+    try { stream = await getMic(); }
+    catch(e) { setStatus('MICRO NON AUTORISÉ', 'warn'); return; }
+
+    recChunks = [];
+    recPadIdx = i;
+
+    const mime = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4','']
+      .find(m => m === '' || MediaRecorder.isTypeSupported(m));
+
+    try {
+      recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
+    } catch(e) {
+      recorder = new MediaRecorder(stream); // fallback sans options
+    }
+
+    recorder.addEventListener('dataavailable', e => {
+      if (e.data && e.data.size > 0) recChunks.push(e.data);
+    });
+
+    recorder.addEventListener('stop', async () => {
+      const usedMime = recorder.mimeType || 'audio/webm';
+      const blob = new Blob(recChunks, { type: usedMime });
+
+      if (blob.size < 100) {
+        setStatus('SON VIDE — RÉESSAYEZ', 'warn');
+        pad.classList.remove('recording');
+        recPadIdx = null;
+        return;
+      }
+
+      // Libérer l'ancienne URL si elle existe
+      if (audioBlobUrl) URL.revokeObjectURL(audioBlobUrl);
+      audioBlobUrl = URL.createObjectURL(blob);
+
+      // Vérifier que le son est lisible via un Audio test
+      const testAudio = new Audio(audioBlobUrl);
+      testAudio.oncanplay = async () => {
+        pad.classList.add('has-sound');
+        pad.classList.remove('recording');
+        recPadIdx = null;
+        const dur = testAudio.duration;
+        setStatus(`✓ ENREGISTRÉ · PAD ${i+1}${isFinite(dur) ? ' · ' + dur.toFixed(1) + 's' : ''}`);
+
+        // Sauvegarder en b64
+        const b64 = await blobToB64(blob);
+        savePad(i, labelEl.textContent, b64, usedMime, iconEl.textContent);
+      };
+      testAudio.onerror = () => {
+        setStatus('ERREUR LECTURE — RÉESSAYEZ', 'warn');
+        pad.classList.remove('recording');
+        recPadIdx = null;
+      };
+      testAudio.load();
+    });
+
+    recorder.start(50); // chunks fréquents pour fiabilité
+    pad.classList.add('recording');
+    setStatus(`● ENREGISTREMENT · PAD ${i+1} — RELÂCHEZ POUR STOPPER`, 'rec');
+  }
+
+  function stopRec() {
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.stop();
+    }
+    pad.classList.remove('recording');
+  }
+
+  // ── Countdown UI ──────────────────────────────────────
+  function startHoldUI() {
+    holdTs = performance.now();
+    overlay.classList.add('active');
+    ringArc.style.strokeDashoffset = CIRC;
+    holdNum.textContent = '3';
+
+    function tick() {
+      const p = Math.min((performance.now() - holdTs) / HOLD_MS, 1);
+      ringArc.style.strokeDashoffset = CIRC * (1 - p);
+      holdNum.textContent = p >= 1 ? '🎙️' : Math.ceil((1 - p) * 3);
+      if (p < 1) holdRafId = requestAnimationFrame(tick);
+    }
+    holdRafId = requestAnimationFrame(tick);
+  }
+
+  function stopHoldUI() {
+    overlay.classList.remove('active');
+    cancelAnimationFrame(holdRafId);
+  }
+
+  // ── Ripple ────────────────────────────────────────────
+  function ripple(e) {
+    const rect = pad.getBoundingClientRect();
+    const x = (e.clientX ?? rect.left + rect.width/2)  - rect.left;
+    const y = (e.clientY ?? rect.top  + rect.height/2) - rect.top;
+    const el = document.createElement('div');
+    el.className = 'ripple';
+    el.style.cssText = `left:${x}px;top:${y}px;width:28px;height:28px;margin:-14px`;
+    pad.appendChild(el);
+    setTimeout(() => el.remove(), 500);
+  }
+
+  // ── Pointer events ────────────────────────────────────
+  let pointerLeft = false;
+
+  pad.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    pad.setPointerCapture(e.pointerId);
+    didHold   = false;
+    didEdit   = false;
+    pointerLeft = false;
+
+    // Timer 0.6s → ouvrir modale édition (si sur icône ou label)
+    const onIconOrLabel = iconEl.contains(e.target) || labelEl.contains(e.target);
+    if (onIconOrLabel) {
+      editTimer = setTimeout(() => {
+        didEdit = true;
+        clearTimeout(holdTimer);
+        stopHoldUI();
+        openEditModal(i, iconEl, labelEl, color);
+      }, 600);
+    }
+
+    // Timer 3s → enregistrer
+    startHoldUI();
+    holdTimer = setTimeout(async () => {
+      clearTimeout(editTimer);
+      didHold = true;
+      didEdit = false;
+      stopHoldUI();
+      await startRec();
+    }, HOLD_MS);
+  });
+
+  pad.addEventListener('pointerup', e => {
+    clearTimeout(holdTimer);
+    clearTimeout(editTimer);
+    stopHoldUI();
+
+    if (didHold) {
+      stopRec();
+    } else if (!didEdit && !pointerLeft) {
+      ripple(e);
+      if (recPadIdx === i) stopRec();
+      else play();
+    }
+    didHold = false;
+    didEdit = false;
+    pointerLeft = false;
+  });
+
+  pad.addEventListener('pointermove', e => {
+    const rect = pad.getBoundingClientRect();
+    const outside = e.clientX < rect.left || e.clientX > rect.right ||
+                    e.clientY < rect.top  || e.clientY > rect.bottom;
+    if (outside && !didHold) {
+      pointerLeft = true;
+      clearTimeout(holdTimer);
+      clearTimeout(editTimer);
+      stopHoldUI();
+    }
+  });
+
+  pad.addEventListener('pointerleave', () => {
+    if (!didHold) {
+      pointerLeft = true;
+      clearTimeout(holdTimer);
+      clearTimeout(editTimer);
+      stopHoldUI();
+    }
+  });
+
+  pad.addEventListener('pointercancel', () => {
+    clearTimeout(holdTimer);
+    clearTimeout(editTimer);
+    stopHoldUI();
+    didHold = false;
+    didEdit = false;
+    pointerLeft = false;
+  });
+
+  return pad;
+}
+
+// ── Boot ─────────────────────────────────────────────────
+const grid = document.getElementById('grid');
+for (let i = 0; i < PAD_COUNT; i++) grid.appendChild(makePad(i));
+
+let loaded = 0;
+for (let i = 0; i < PAD_COUNT; i++) if (loadPad(i)) loaded++;
+setStatus(loaded ? `PRÊT · ${loaded}/${PAD_COUNT} SONS CHARGÉS` : 'MAINTENIR UN PAD 3s POUR ENREGISTRER');
+
+// ── Drawer paramètres ────────────────────────────────────
+const drawerOverlay = document.getElementById('drawer-overlay');
+const drawer        = document.getElementById('drawer');
+
+function openDrawer()  { drawer.classList.add('open'); drawerOverlay.classList.add('open'); document.getElementById('settings-btn').classList.add('active'); }
+function closeDrawer() { drawer.classList.remove('open'); drawerOverlay.classList.remove('open'); document.getElementById('settings-btn').classList.remove('active'); }
+
+document.getElementById('settings-btn').addEventListener('click', () => {
+  drawer.classList.contains('open') ? closeDrawer() : openDrawer();
+});
+drawerOverlay.addEventListener('click', closeDrawer);
+
+document.getElementById('clear-btn').addEventListener('click', () => {
+  if (!confirm('Supprimer tous les sons enregistrés ?')) return;
+  for (let i = 0; i < PAD_COUNT; i++) {
+    localStorage.removeItem(`smp_${i}`);
+    localStorage.removeItem(`smp_icon_${i}`);
+  }
+  location.reload();
+});
+
+// ── Modale édition pad ────────────────────────────────────
+const EMOJI_LIST = [
+  '🎵','🥁','🎙️','🎸','🔊','🎹','🎤','🪘',
+  '🎺','🎻','🪗','🎷','🔔','🪇','🎚️','🎛️',
+  '🐸','🔥','⚡','💥','🌊','🎯','👾','🤖',
+  '🦁','🐯','🦊','🐺','🦋','👻','💀','🎃',
+];
+
+const editOverlay  = document.getElementById('edit-overlay');
+const editPreview  = document.getElementById('edit-preview');
+const editNameInp  = document.getElementById('edit-name');
+const editGrid     = document.getElementById('edit-emoji-grid');
+const editSaveBtn  = document.getElementById('edit-save');
+const editCancelBtn= document.getElementById('edit-cancel');
+
+let editTarget = null; // { iconEl, labelEl, idx, color }
+let selectedEmoji = null;
+
+// Remplir la grille emoji une fois
+EMOJI_LIST.forEach(em => {
+  const btn = document.createElement('button');
+  btn.className = 'edit-emoji-btn';
+  btn.textContent = em;
+  btn.addEventListener('click', () => {
+    selectedEmoji = em;
+    editPreview.textContent = em;
+    editGrid.querySelectorAll('.edit-emoji-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+  editGrid.appendChild(btn);
+});
+
+function openEditModal(idx, iconEl, labelEl, color) {
+  editTarget = { idx, iconEl, labelEl };
+  selectedEmoji = iconEl.textContent;
+
+  editPreview.textContent = selectedEmoji;
+  editPreview.style.setProperty('--preview-color', color);
+  editNameInp.style.setProperty('--preview-color', color);
+  editSaveBtn.style.background = color;
+  document.getElementById('edit-modal').style.setProperty('--preview-color', color);
+
+  editNameInp.value = labelEl.textContent.replace(/^PAD \d+$/, '') ;
+
+  // Marquer emoji sélectionné
+  editGrid.querySelectorAll('.edit-emoji-btn').forEach(b => {
+    b.classList.toggle('selected', b.textContent === selectedEmoji);
+  });
+
+  editOverlay.classList.add('open');
+  setTimeout(() => editNameInp.focus(), 350);
+}
+
+function closeEditModal() {
+  editOverlay.classList.remove('open');
+  editTarget = null;
+}
+
+editCancelBtn.addEventListener('click', closeEditModal);
+editOverlay.addEventListener('click', e => { if (e.target === editOverlay) closeEditModal(); });
+
+editSaveBtn.addEventListener('click', () => {
+  if (!editTarget) return;
+  const { idx, iconEl, labelEl } = editTarget;
+  const name = editNameInp.value.trim().toUpperCase() || `PAD ${idx+1}`;
+
+  iconEl.textContent  = selectedEmoji;
+  labelEl.textContent = name;
+
+  const s = loadPad(idx);
+  if (s) savePad(idx, name, s.b64, s.mime, selectedEmoji);
+  else   { try { localStorage.setItem(`smp_icon_${idx}`, selectedEmoji); } catch{} }
+
+  closeEditModal();
+});
+
+// Unlock AudioContext iOS au 1er geste
+document.addEventListener('pointerdown', () => getCtx(), { once: true });
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js').catch(() => {});
+}
+</script>
+</body>
+</html>

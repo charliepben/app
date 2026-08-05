@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BRK.B — Projection patrimoniale</title>
+<link rel="manifest" href="manifest-brk.json">
+<meta name="theme-color" content="#0a0c0f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BRK.B">
 <style>
   :root {
     --bg: #0a0c0f;
@@ -52,22 +58,6 @@
     text-transform: uppercase;
     margin-top: 3px;
   }
-  .btn-refresh {
-    background: var(--surface);
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    font-family: var(--fm);
-    font-size: 10px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    padding: 7px 12px;
-    cursor: pointer;
-    border-radius: 4px;
-    flex-shrink: 0;
-    transition: background .15s, color .15s;
-  }
-  .btn-refresh:hover { background: var(--accent); color: #0a0c0f; }
-
   /* CONTROLS: 2-column grid, sliders full width */
   .controls {
     display: grid;
@@ -221,7 +211,6 @@
     <div class="ticker">BRK.B</div>
     <div class="subtitle" id="subtitle">Projection · 15 ans · CTO Boursorama</div>
   </div>
-  <button class="btn-refresh" onclick="location.reload()">↺ Refresh</button>
 </div>
 
 <div class="controls">
@@ -421,6 +410,10 @@
 
   loadParams();
   render();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  }
 </script>
 </body>
 </html>

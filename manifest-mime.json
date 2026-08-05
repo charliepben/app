@@ -1,0 +1,14 @@
+{
+  "name": "Devine & Mime",
+  "short_name": "Mime",
+  "description": "Jeu de mime avec emojis à deviner",
+  "start_url": "./mime.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFF8EC",
+  "theme_color": "#9D65C9",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "mime-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "BRK.B — Projection patrimoniale",
+  "short_name": "BRK.B",
+  "description": "Simulateur de projection patrimoniale BRK.B",
+  "start_url": "./brk.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a0c0f",
+  "theme_color": "#0a0c0f",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "brk-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
