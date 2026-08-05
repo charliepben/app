@@ -539,6 +539,7 @@ let countdownOverlayEl = null;
 let countdownPendingAction = null;
 let countdownResumeClock = false;
 let skippedThisGame = [];
+let sessionEmojiSet = new Set();
 
 const EXCLUDED_KEY = 'mime_excluded_v1';
 function loadExcluded() {
@@ -689,6 +690,7 @@ function showCurrent() {
   void emojiEl.offsetWidth;
   emojiEl.style.animation = 'pop 0.3s ease';
   emojiEl.textContent = deck[idx];
+  sessionEmojiSet.add(deck[idx]);
 }
 
 function formatTime(secs) {
@@ -707,6 +709,7 @@ function startGame() {
   timeLeft = selectedDuration;
   score = 0;
   skippedThisGame = [];
+  sessionEmojiSet = new Set();
   paused = false;
   pendingCatChange = false;
   document.getElementById('timePill').classList.remove('paused');
@@ -717,6 +720,7 @@ function startGame() {
   showScreen('play');
   updateHud();
   document.getElementById('emoji').textContent = deck[0];
+  sessionEmojiSet.add(deck[0]);
   runCountdownThen(() => {
     beginTimer();
   });
@@ -780,6 +784,7 @@ const confettiEmojis = ['🎉', '✨', '🎊', '⭐', '💥'];
 function launchConfetti() {
   const container = document.getElementById('confettiContainer');
   container.innerHTML = '';
+  const sessionList = [...sessionEmojiSet];
   const count = 160;
   for (let i = 0; i < count; i++) {
     const piece = document.createElement('div');
@@ -787,7 +792,11 @@ function launchConfetti() {
     piece.style.left = (Math.random() * 100) + 'vw';
     piece.style.setProperty('--drift', (Math.random() * 240 - 120) + 'px');
     piece.style.setProperty('--spin', ((480 + Math.random() * 900) * (Math.random() < 0.5 ? 1 : -1)) + 'deg');
-    if (Math.random() < 0.15) {
+    const roll = Math.random();
+    if (sessionList.length && roll < 0.25) {
+      piece.textContent = sessionList[Math.floor(Math.random() * sessionList.length)];
+      piece.style.fontSize = (18 + Math.random() * 16) + 'px';
+    } else if (roll < 0.4) {
       piece.textContent = confettiEmojis[Math.floor(Math.random() * confettiEmojis.length)];
       piece.style.fontSize = (16 + Math.random() * 14) + 'px';
     } else {
