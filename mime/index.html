@@ -298,12 +298,6 @@
     font-size: 22px;
     padding: 16px 4px;
   }
-  #btnFlag {
-    flex: 0 0 58px;
-    background: var(--flag);
-    font-size: 22px;
-    padding: 16px 4px;
-  }
 
   .timeup-bar {
     width: min(88vw, 420px);
@@ -319,24 +313,6 @@
   }
   .timeup-msg { font-weight: 800; font-size: 14px; }
   #btnShowScore { background: var(--plum); flex: 0 0 auto; width: 100%; }
-
-  .toast {
-    position: fixed;
-    left: 50%;
-    bottom: 24px;
-    transform: translate(-50%, 20px);
-    background: var(--ink);
-    color: white;
-    font-weight: 800;
-    font-size: 14px;
-    padding: 10px 18px;
-    border-radius: 999px;
-    opacity: 0;
-    transition: opacity 0.25s ease, transform 0.25s ease;
-    z-index: 20;
-    pointer-events: none;
-  }
-  .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
   #confettiContainer {
     position: fixed;
@@ -416,6 +392,7 @@
     text-align: center;
   }
   .skipped-label { font-weight: 800; font-size: 13px; opacity: 0.75; }
+  .skipped-hint { font-size: 11px; opacity: 0.55; font-weight: 700; }
   .skipped-list {
     display: flex;
     flex-wrap: wrap;
@@ -423,6 +400,28 @@
     gap: 6px;
     font-size: 28px;
     line-height: 1;
+  }
+  .skipped-item {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 28px;
+    line-height: 1;
+    padding: 4px;
+    border-radius: 10px;
+    position: relative;
+  }
+  .skipped-item:active { transform: scale(0.9); }
+  .skipped-item.excluded {
+    opacity: 0.35;
+    filter: grayscale(1);
+  }
+  .skipped-item.excluded::after {
+    content: '🚫';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    font-size: 13px;
   }
 </style>
 </head>
@@ -477,13 +476,11 @@
   <div class="screen hidden" id="screenPlay">
     <div class="hud">
       <div class="hud-pill time" id="timePill"><span class="val" id="timeVal">1:00</span><span class="lbl">TEMPS</span></div>
-      <div class="hud-pill"><span class="val" id="scoreVal">0</span><span class="lbl">DEVINÉES</span></div>
     </div>
     <div class="card" id="card">
       <div class="emoji" id="emoji">🦙</div>
     </div>
     <div class="controls">
-      <button id="btnFlag" title="Marquer cette image comme nulle">🚩</button>
       <button id="btnSkip" title="Passer (non compté)">⏭️</button>
       <button id="btnNext">✅ Suivant</button>
     </div>
@@ -502,6 +499,7 @@
     </div>
     <div class="skipped-box hidden" id="skippedBox">
       <div class="skipped-label">⏭️ Passées (<span id="skippedCount">0</span>)</div>
+      <div class="skipped-hint">Touche une image pour l'exclure du jeu</div>
       <div class="skipped-list" id="skippedList"></div>
     </div>
     <div class="controls">
@@ -564,6 +562,11 @@ function addExcluded(emoji) {
   saveExcluded();
   updateExcludedUI();
 }
+function removeExcluded(emoji) {
+  excluded.delete(emoji);
+  saveExcluded();
+  updateExcludedUI();
+}
 function getPool(cat) {
   const pool = categories[cat].filter(e => !excluded.has(e));
   return pool.length ? pool : categories[cat];
@@ -579,18 +582,6 @@ function updateExcludedUI() {
   clearBtn.textContent = '♻️ Réinitialiser';
   document.getElementById('excludedBox').classList.toggle('hidden', excluded.size === 0);
 }
-function flashToast(text) {
-  const t = document.createElement('div');
-  t.className = 'toast';
-  t.textContent = text;
-  document.body.appendChild(t);
-  requestAnimationFrame(() => t.classList.add('show'));
-  setTimeout(() => {
-    t.classList.remove('show');
-    setTimeout(() => t.remove(), 300);
-  }, 1200);
-}
-
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -679,6 +670,7 @@ function showScreen(name) {
   document.getElementById('screenSetup').classList.toggle('hidden', name !== 'setup');
   document.getElementById('screenPlay').classList.toggle('hidden', name !== 'play');
   document.getElementById('screenEnd').classList.toggle('hidden', name !== 'end');
+  document.getElementById('catBar').classList.toggle('hidden', name !== 'setup');
 }
 
 function newDeck() {
@@ -707,7 +699,6 @@ function formatTime(secs) {
 
 function updateHud() {
   document.getElementById('timeVal').textContent = formatTime(Math.max(timeLeft, 0));
-  document.getElementById('scoreVal').textContent = score;
   document.getElementById('timePill').classList.toggle('low', timeLeft <= 10);
 }
 
@@ -753,31 +744,138 @@ function stopTimer() {
   clockActive = false;
 }
 
-function playEndSound() {
+function playBuzzer(ctx) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(120, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.6);
+  gain.gain.setValueAtTime(0.25, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.6);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.65);
+}
+
+function playAirHorn(ctx) {
+  [220, 233].forEach((freq) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.22, ctx.currentTime + 0.05);
+    gain.gain.setValueAtTime(0.22, ctx.currentTime + 0.5);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.8);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.85);
+  });
+}
+
+function playBoatHorn(ctx) {
+  [110, 114].forEach((freq) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime + 1.1);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.6);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 1.7);
+  });
+}
+
+function playWhistle(ctx) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(1600, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(500, ctx.currentTime + 0.5);
+  gain.gain.setValueAtTime(0.2, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.55);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.6);
+}
+
+function playBell(ctx) {
+  [660, 990, 1320].forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.2 / (i + 1), ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.0);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 1.0);
+  });
+}
+
+const timeUpSounds = [playBuzzer, playAirHorn, playBoatHorn, playWhistle, playBell];
+function playRandomTimeUpSound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
+    const fn = timeUpSounds[Math.floor(Math.random() * timeUpSounds.length)];
+    fn(ctx);
+    setTimeout(() => ctx.close(), 2000);
+  } catch (e) { /* audio not available, ignore */ }
+}
+
+function playApplause() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const master = ctx.createGain();
+    master.gain.value = 0.5;
+    master.connect(ctx.destination);
+
+    const duration = 2.2;
+    const clapCount = 90;
+
+    const clapBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.06, ctx.sampleRate);
+    const cdata = clapBuffer.getChannelData(0);
+    for (let i = 0; i < cdata.length; i++) {
+      cdata[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / cdata.length, 2);
+    }
+
+    for (let i = 0; i < clapCount; i++) {
+      const t = Math.random() * duration;
+      let env;
+      if (t < 0.3) env = t / 0.3;
+      else if (t > duration - 0.7) env = (duration - t) / 0.7;
+      else env = 1;
+
+      const src = ctx.createBufferSource();
+      src.buffer = clapBuffer;
+      const bandpass = ctx.createBiquadFilter();
+      bandpass.type = 'bandpass';
+      bandpass.frequency.value = 1500 + Math.random() * 2500;
+      bandpass.Q.value = 0.8;
       const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.value = freq;
-      const start = ctx.currentTime + i * 0.13;
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.3, start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.35);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(start);
-      osc.stop(start + 0.4);
-    });
-    setTimeout(() => ctx.close(), 1200);
+      gain.gain.value = (0.4 + Math.random() * 0.6) * env;
+      src.connect(bandpass);
+      bandpass.connect(gain);
+      gain.connect(master);
+      src.start(ctx.currentTime + t);
+    }
+
+    setTimeout(() => ctx.close(), (duration + 0.5) * 1000);
   } catch (e) { /* audio not available, ignore */ }
 }
 
 function showTimeUp() {
   document.querySelector('#screenPlay .controls').classList.add('hidden');
   document.getElementById('timeupBar').classList.remove('hidden');
+  playRandomTimeUpSound();
 }
 
 document.getElementById('btnShowScore').onclick = () => {
@@ -820,13 +918,32 @@ function launchConfetti() {
   setTimeout(() => { container.innerHTML = ''; }, 5200);
 }
 
+function renderSkippedList() {
+  const container = document.getElementById('skippedList');
+  container.innerHTML = '';
+  skippedThisGame.forEach((emoji) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'skipped-item' + (excluded.has(emoji) ? ' excluded' : '');
+    item.textContent = emoji;
+    item.title = excluded.has(emoji) ? "Toucher pour ré-inclure" : "Toucher pour exclure";
+    item.onclick = () => {
+      if (excluded.has(emoji)) removeExcluded(emoji);
+      else addExcluded(emoji);
+      item.classList.toggle('excluded', excluded.has(emoji));
+      item.title = excluded.has(emoji) ? "Toucher pour ré-inclure" : "Toucher pour exclure";
+    };
+    container.appendChild(item);
+  });
+}
+
 function endGame() {
-  playEndSound();
+  playApplause();
   launchConfetti();
   document.getElementById('finalScore').textContent = score;
   document.getElementById('finalSub').textContent = score <= 1 ? 'image devinée' : 'images devinées';
   document.getElementById('skippedCount').textContent = skippedThisGame.length;
-  document.getElementById('skippedList').textContent = skippedThisGame.join(' ');
+  renderSkippedList();
   document.getElementById('skippedBox').classList.toggle('hidden', skippedThisGame.length === 0);
   showScreen('end');
 }
@@ -853,13 +970,6 @@ function advance(counted) {
 document.getElementById('btnNext').onclick = () => advance(true);
 
 document.getElementById('btnSkip').onclick = () => advance(false);
-
-document.getElementById('btnFlag').onclick = () => {
-  if (counting || paused) return;
-  addExcluded(deck[idx]);
-  flashToast('🚩 Exclue du jeu !');
-  advance(false);
-};
 
 document.getElementById('card').onclick = () => {
   if (paused) return;
