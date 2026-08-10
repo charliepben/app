@@ -423,6 +423,13 @@
     right: -2px;
     font-size: 13px;
   }
+  .skipped-item.was-skipped::before {
+    content: '⏭️';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    font-size: 11px;
+  }
 </style>
 </head>
 <body>
@@ -498,8 +505,8 @@
       <div class="end-sub" id="finalSub">images devinées</div>
     </div>
     <div class="skipped-box hidden" id="skippedBox">
-      <div class="skipped-label">⏭️ Passées (<span id="skippedCount">0</span>)</div>
-      <div class="skipped-hint">Touche une image pour l'exclure du jeu</div>
+      <div class="skipped-label">🖼️ Cartes de la partie (<span id="skippedCount">0</span>)</div>
+      <div class="skipped-hint">Touche une image pour l'exclure du jeu · ⏭️ = passée</div>
       <div class="skipped-list" id="skippedList"></div>
     </div>
     <div class="controls">
@@ -910,10 +917,13 @@ function launchConfetti() {
 function renderSkippedList() {
   const container = document.getElementById('skippedList');
   container.innerHTML = '';
-  skippedThisGame.forEach((emoji) => {
+  const skippedSet = new Set(skippedThisGame);
+  [...sessionEmojiSet].forEach((emoji) => {
     const item = document.createElement('button');
     item.type = 'button';
-    item.className = 'skipped-item' + (excluded.has(emoji) ? ' excluded' : '');
+    item.className = 'skipped-item'
+      + (excluded.has(emoji) ? ' excluded' : '')
+      + (skippedSet.has(emoji) ? ' was-skipped' : '');
     item.textContent = emoji;
     item.title = excluded.has(emoji) ? "Toucher pour ré-inclure" : "Toucher pour exclure";
     item.onclick = () => {
@@ -931,9 +941,9 @@ function endGame() {
   launchConfetti();
   document.getElementById('finalScore').textContent = score;
   document.getElementById('finalSub').textContent = score <= 1 ? 'image devinée' : 'images devinées';
-  document.getElementById('skippedCount').textContent = skippedThisGame.length;
+  document.getElementById('skippedCount').textContent = sessionEmojiSet.size;
   renderSkippedList();
-  document.getElementById('skippedBox').classList.toggle('hidden', skippedThisGame.length === 0);
+  document.getElementById('skippedBox').classList.toggle('hidden', sessionEmojiSet.size === 0);
   showScreen('end');
 }
 
