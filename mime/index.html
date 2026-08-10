@@ -833,42 +833,19 @@ function playRandomTimeUpSound() {
 
 function playApplause() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const master = ctx.createGain();
-    master.gain.value = 0.5;
-    master.connect(ctx.destination);
-
-    const duration = 2.2;
-    const clapCount = 90;
-
-    const clapBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.06, ctx.sampleRate);
-    const cdata = clapBuffer.getChannelData(0);
-    for (let i = 0; i < cdata.length; i++) {
-      cdata[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / cdata.length, 2);
-    }
-
-    for (let i = 0; i < clapCount; i++) {
-      const t = Math.random() * duration;
-      let env;
-      if (t < 0.3) env = t / 0.3;
-      else if (t > duration - 0.7) env = (duration - t) / 0.7;
-      else env = 1;
-
-      const src = ctx.createBufferSource();
-      src.buffer = clapBuffer;
-      const bandpass = ctx.createBiquadFilter();
-      bandpass.type = 'bandpass';
-      bandpass.frequency.value = 1500 + Math.random() * 2500;
-      bandpass.Q.value = 0.8;
-      const gain = ctx.createGain();
-      gain.gain.value = (0.4 + Math.random() * 0.6) * env;
-      src.connect(bandpass);
-      bandpass.connect(gain);
-      gain.connect(master);
-      src.start(ctx.currentTime + t);
-    }
-
-    setTimeout(() => ctx.close(), (duration + 0.5) * 1000);
+    const audio = new Audio('applause.ogg');
+    audio.volume = 0.9;
+    audio.play().catch(() => {});
+    setTimeout(() => {
+      const fade = setInterval(() => {
+        if (audio.volume > 0.08) {
+          audio.volume -= 0.08;
+        } else {
+          clearInterval(fade);
+          audio.pause();
+        }
+      }, 40);
+    }, 3200);
   } catch (e) { /* audio not available, ignore */ }
 }
 
