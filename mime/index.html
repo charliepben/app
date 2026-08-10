@@ -763,96 +763,9 @@ function stopTimer() {
   clockActive = false;
 }
 
-function playBuzzer(ctx) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(120, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.6);
-  gain.gain.setValueAtTime(0.25, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.6);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.65);
-}
-
-function playAirHorn(ctx) {
-  [220, 233].forEach((freq) => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.22, ctx.currentTime + 0.05);
-    gain.gain.setValueAtTime(0.22, ctx.currentTime + 0.5);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.8);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.85);
-  });
-}
-
-function playBoatHorn(ctx) {
-  [110, 114].forEach((freq) => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.15);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime + 1.1);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.6);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 1.7);
-  });
-}
-
-function playWhistle(ctx) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(1600, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(500, ctx.currentTime + 0.5);
-  gain.gain.setValueAtTime(0.2, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.55);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.6);
-}
-
-function playBell(ctx) {
-  [660, 990, 1320].forEach((freq, i) => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.2 / (i + 1), ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.0);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 1.0);
-  });
-}
-
-const timeUpSounds = [playBuzzer, playAirHorn, playBoatHorn, playWhistle, playBell];
-function playRandomTimeUpSound() {
+function playFadingAudio(src, holdMs) {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const fn = timeUpSounds[Math.floor(Math.random() * timeUpSounds.length)];
-    fn(ctx);
-    setTimeout(() => ctx.close(), 2000);
-  } catch (e) { /* audio not available, ignore */ }
-}
-
-function playApplause() {
-  try {
-    const audio = new Audio('applause.ogg');
+    const audio = new Audio(src);
     audio.volume = 0.9;
     audio.play().catch(() => {});
     setTimeout(() => {
@@ -864,8 +777,24 @@ function playApplause() {
           audio.pause();
         }
       }, 40);
-    }, 3200);
+    }, holdMs);
   } catch (e) { /* audio not available, ignore */ }
+}
+
+const timeUpSounds = [
+  { src: 'buzzer.ogg', hold: 900 },
+  { src: 'klaxon.ogg', hold: 2800 },
+  { src: 'boathorn.ogg', hold: 2600 },
+  { src: 'whistle.ogg', hold: 2200 },
+  { src: 'bell.ogg', hold: 2200 },
+];
+function playRandomTimeUpSound() {
+  const pick = timeUpSounds[Math.floor(Math.random() * timeUpSounds.length)];
+  playFadingAudio(pick.src, pick.hold);
+}
+
+function playApplause() {
+  playFadingAudio('applause.ogg', 3200);
 }
 
 function showTimeUp() {
