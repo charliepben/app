@@ -16,9 +16,10 @@
     --surface: #111318;
     --border: #1e2229;
     --accent: #c8f04a;
-    --muted: #4a5260;
+    --muted: #6f7a8a;
     --text: #e8eaf0;
-    --text-dim: #8892a0;
+    --text-dim: #98a2b2;
+    --label: #c2ccdb;
     --positive: #4af0a0;
     --invest: #4ab8f0;
     --fm: 'Courier New', Courier, monospace;
@@ -75,9 +76,10 @@
     gap: 5px;
   }
   .control-group label {
-    font-size: 9px;
-    color: var(--text-dim);
-    letter-spacing: 1.5px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--label);
+    letter-spacing: 1.2px;
     text-transform: uppercase;
   }
   .control-group input[type="range"] {
@@ -116,9 +118,10 @@
     padding: 10px 12px;
   }
   .stat-label {
-    font-size: 8px;
-    color: var(--text-dim);
-    letter-spacing: 1.5px;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--label);
+    letter-spacing: 1.2px;
     text-transform: uppercase;
     margin-bottom: 4px;
   }
@@ -131,9 +134,37 @@
   }
   .stat-sub {
     font-size: 9px;
-    color: var(--muted);
+    color: var(--text-dim);
     margin-top: 2px;
   }
+
+  /* TABLE TOOLBAR */
+  .table-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .table-hint {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: .8px;
+    text-transform: uppercase;
+  }
+  .btn-reset {
+    font-family: var(--fm);
+    font-size: 9px;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    color: var(--invest);
+    background: transparent;
+    border: 1px solid var(--invest);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+  }
+  .btn-reset[hidden] { display: none; }
 
   /* TABLE — compact, no horizontal scroll */
   .table-wrap { width: 100%; }
@@ -147,11 +178,11 @@
   }
 
   thead th {
-    font-size: 8px;
+    font-size: 9px;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
     text-transform: uppercase;
-    color: var(--text-dim);
+    color: var(--label);
     padding: 6px 3px;
     text-align: right;
     border-bottom: 1px solid var(--border);
@@ -159,9 +190,9 @@
     overflow: hidden;
   }
   /* column widths */
-  th:nth-child(1) { width: 5%;  text-align: left; }  /* # */
+  th:nth-child(1) { width: 4%;  text-align: left; }  /* # */
   th:nth-child(2) { width: 9%;  text-align: left; }  /* Année */
-  th:nth-child(3) { width: 10%; }                    /* Apport */
+  th:nth-child(3) { width: 12%; }                    /* Apport (éditable) */
   th:nth-child(4) { width: 10%; }                    /* Investi */
   th:nth-child(5) { width: 11%; }                    /* Valeur */
   th:nth-child(6) { width: 11%; }                    /* Gain/an */
@@ -184,6 +215,28 @@
   td:nth-child(1) { text-align: left; color: var(--muted); font-size: 9px; }
   td:nth-child(2) { text-align: left; color: var(--text); font-weight: 700; }
 
+  /* APPORT ÉDITABLE */
+  td.apport { padding: 3px 2px; }
+  .inj-input {
+    width: 100%;
+    font-family: var(--fm);
+    font-size: 10px;
+    text-align: right;
+    color: var(--invest);
+    background: rgba(74,184,240,.07);
+    border: 1px solid transparent;
+    border-radius: 3px;
+    padding: 3px 4px;
+    outline: none;
+    -moz-appearance: textfield;
+  }
+  .inj-input::-webkit-outer-spin-button,
+  .inj-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .inj-input::placeholder { color: var(--muted); }
+  .inj-input:hover  { border-color: var(--border); }
+  .inj-input:focus  { border-color: var(--invest); background: rgba(74,184,240,.14); color: var(--text); }
+  .inj-input.custom { border-color: var(--accent); color: var(--accent); background: rgba(200,240,74,.09); font-weight: 700; }
+
   td.capital    { color: var(--text); font-weight: 600; }
   td.gain       { color: var(--positive); }
   td.invest-col { color: var(--invest); }
@@ -192,12 +245,12 @@
 
   tfoot tr { border-top: 2px solid var(--border); background: var(--surface); }
   tfoot td { padding: 7px 3px; font-weight: 600; font-size: 10px; }
-  tfoot td:nth-child(2) { font-family: var(--fs); font-size: 10px; font-weight: 900; color: var(--text-dim); text-transform: uppercase; }
+  tfoot td:nth-child(2) { font-family: var(--fs); font-size: 10px; font-weight: 900; color: var(--label); text-transform: uppercase; }
 
   /* BARS */
   .bar-wrap { margin-top: 16px; display: flex; flex-direction: column; gap: 4px; }
   .bar-row  { display: flex; align-items: center; gap: 6px; font-size: 9px; }
-  .bar-label{ width: 32px; color: var(--text-dim); text-align: right; flex-shrink: 0; }
+  .bar-label{ width: 32px; color: var(--label); font-weight: 700; text-align: right; flex-shrink: 0; }
   .bar-track{ flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; position: relative; }
   .bar-fill-invest { position: absolute; left:0; top:0; bottom:0; background: var(--invest); border-radius: 2px; opacity: .55; transition: width .3s; }
   .bar-fill-gains  { position: absolute; left:0; top:0; bottom:0; background: var(--positive); border-radius: 2px; transition: width .3s; }
@@ -248,6 +301,11 @@
 
 <div class="stats" id="stats"></div>
 
+<div class="table-head">
+  <div class="table-hint">Apport modifiable ligne par ligne (k€)</div>
+  <button class="btn-reset" id="reset-overrides" hidden>↺ Réinit. apports</button>
+</div>
+
 <div class="table-wrap">
   <table>
     <thead>
@@ -258,7 +316,7 @@
         <th>Investi</th>
         <th>Valeur</th>
         <th>Gain/an</th>
-        <th>Gain/mois</th>
+        <th>€ / mois</th>
         <th>+val.</th>
         <th>×</th>
       </tr>
@@ -276,15 +334,26 @@
   const fmtS = n => n >= 1e6 ? (n/1e6).toFixed(1)+'M€'  : Math.round(n/1000)+'k€';
   const fmtM = n => n >= 1e6 ? (n/1e6).toFixed(2)+'M€'  : (n/1000).toFixed(1)+'k€';
 
+  /* Surcharges d'apport par ligne : { "3": 50000 } — en euros */
+  let overrides = {};
+  const defaultInj = (y, annual, injectYears) => (y<=injectYears && annual>0) ? annual : 0;
+  const injFor = (y, annual, injectYears) =>
+    Object.prototype.hasOwnProperty.call(overrides, y) ? overrides[y] : defaultInj(y, annual, injectYears);
+
   function compute(rate, init, annual, injectYears, duration) {
     const r = rate/100;
     let rows=[], totalInvested=init, prev=init, port=init;
     for (let y=1; y<=duration; y++) {
       port = port*(1+r);
-      let inj=0;
-      if (y<=injectYears && annual>0) { inj=annual; port+=annual; totalInvested+=annual; }
+      const inj = injFor(y, annual, injectYears);
+      if (inj) { port+=inj; totalInvested+=inj; }
       const ag = port-prev-inj;
-      rows.push({y, inj, totalInvested, port, ag, cg: port-totalInvested, mult: port/totalInvested});
+      rows.push({
+        y, inj, totalInvested, port, ag,
+        cg: port-totalInvested,
+        mult: port/totalInvested,
+        custom: Object.prototype.hasOwnProperty.call(overrides, y) && inj !== defaultInj(y, annual, injectYears)
+      });
       prev=port;
     }
     return rows;
@@ -312,8 +381,10 @@
 
     const rows = compute(rate, init, annual, injectYears, duration);
     const last  = rows[rows.length-1];
-    const totalInvested = init + annual*injectYears;
+    const totalInvested = last.totalInvested;
     const endYear = startYear+duration-1;
+
+    document.getElementById('reset-overrides').hidden = Object.keys(overrides).length === 0;
 
     document.getElementById('stats').innerHTML = `
       <div class="stat-card">
@@ -340,10 +411,13 @@
 
     document.getElementById('tbody').innerHTML = rows.map(r => {
       const yr = startYear+r.y-1;
+      const injK = r.inj ? +(r.inj/1000).toFixed(2) : '';
       return `<tr class="${r.inj>0?'inject':''}">
         <td>${r.y}</td>
         <td>${yr}</td>
-        <td class="${r.inj>0?'invest-col':'zero'}">${r.inj>0?'+'+fmtS(r.inj):'—'}</td>
+        <td class="apport"><input class="inj-input${r.custom?' custom':''}" type="number" inputmode="decimal"
+             step="1" min="0" data-year="${r.y}" value="${injK}" placeholder="—"
+             title="Apport de l'année ${yr} en k€ — vide pour aucun apport"></td>
         <td class="invest-col">${fmtS(r.totalInvested)}</td>
         <td class="capital">${fmtS(r.port)}</td>
         <td class="gain">+${fmtS(r.ag)}</td>
@@ -356,8 +430,8 @@
     document.getElementById('tfoot').innerHTML = `
       <tr>
         <td></td><td>TOTAL</td>
+        <td class="invest-col">${fmtS(rows.reduce((s,r)=>s+r.inj,0))}</td>
         <td class="invest-col">${fmtS(totalInvested)}</td>
-        <td></td>
         <td class="capital">${fmtS(last.port)}</td>
         <td></td>
         <td class="gain">+${fmtM(last.ag/12)}</td>
@@ -387,7 +461,8 @@
         annual:    document.getElementById('annual').value,
         inject:    document.getElementById('years-inject').value,
         duration:  document.getElementById('duration').value,
-        startyear: document.getElementById('startyear').value
+        startyear: document.getElementById('startyear').value,
+        overrides: overrides
       }));
     } catch(e){}
   }
@@ -401,12 +476,39 @@
       if (v.inject)    document.getElementById('years-inject').value = v.inject;
       if (v.duration)  document.getElementById('duration').value     = v.duration;
       if (v.startyear) document.getElementById('startyear').value    = v.startyear;
+      if (v.overrides && typeof v.overrides === 'object') overrides   = v.overrides;
     } catch(e){}
   }
 
   ['rate','init','annual','years-inject','duration','startyear'].forEach(id =>
     document.getElementById(id).addEventListener('input', ()=>{ saveParams(); render(); })
   );
+
+  /* Saisie d'un apport spécifique sur une ligne */
+  document.getElementById('tbody').addEventListener('change', e => {
+    const input = e.target.closest('.inj-input');
+    if (!input) return;
+    const y   = input.dataset.year;
+    const raw = input.value.trim().replace(',', '.');
+    if (raw === '') {
+      overrides[y] = 0;                        // apport explicitement nul
+    } else {
+      const v = parseFloat(raw);
+      if (isNaN(v) || v < 0) { render(); return; }
+      overrides[y] = Math.round(v*1000);
+    }
+    saveParams(); render();
+    const back = document.querySelector(`.inj-input[data-year="${y}"]`);
+    if (back) back.focus();
+  });
+  document.getElementById('tbody').addEventListener('focusin', e => {
+    if (e.target.closest('.inj-input')) e.target.select();
+  });
+
+  document.getElementById('reset-overrides').addEventListener('click', () => {
+    overrides = {};
+    saveParams(); render();
+  });
 
   loadParams();
   render();
