@@ -36,6 +36,8 @@
       radial-gradient(ellipse at 80% 100%, rgba(20,80,120,0.12) 0%, transparent 50%);
   }
 
+  #app-root { display: contents; }
+
   .grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -132,8 +134,14 @@
     cursor: pointer;
     border-radius: 8px;
     padding: 2px 4px;
+    min-width: 20px;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .pad-icon:hover { opacity: 0.7; transform: scale(1.15); }
+  .pad-icon:empty::before { content: '+'; opacity: 0.6; font-size: 18px; }
   .pad.has-sound .pad-icon { opacity: 0.65; font-size: 20px; }
   .pad.playing .pad-icon { display: none; }
 
@@ -195,17 +203,20 @@
 
   /* Label */
   .pad-label {
-    font-size: 10px;
-    letter-spacing: 1.5px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 1px;
     color: var(--text);
     opacity: 0.4;
     text-transform: uppercase;
     z-index: 1;
     text-align: center;
-    padding: 0 10px;
+    padding: 0 8px;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.2;
     max-width: 100%;
     cursor: text;
   }
@@ -441,11 +452,30 @@
   }
   .edit-name-input:focus { border-color: var(--preview-color, #fff); }
 
+  .edit-emoji-search {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    padding: 10px 12px;
+    outline: none;
+    margin-bottom: 10px;
+    transition: border-color 0.2s;
+  }
+  .edit-emoji-search:focus { border-color: var(--preview-color, #fff); }
+  .edit-emoji-search::placeholder { color: var(--muted); }
+
   .edit-emoji-grid {
     display: grid;
     grid-template-columns: repeat(8, 1fr);
     gap: 6px;
     margin-bottom: 16px;
+    max-height: 220px;
+    overflow-y: auto;
   }
   .edit-emoji-btn {
     aspect-ratio: 1;
@@ -460,6 +490,18 @@
   }
   .edit-emoji-btn:hover { transform: scale(1.15); }
   .edit-emoji-btn.selected { border-color: var(--preview-color, #fff); }
+  .edit-emoji-btn.hidden { display: none; }
+  .edit-emoji-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 14px 0;
+    display: none;
+  }
+  .edit-emoji-empty.show { display: block; }
 
   .edit-actions {
     display: flex; gap: 10px;
@@ -482,9 +524,36 @@
     font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
     padding: 13px 18px; cursor: pointer;
   }
+
+  /* Placeholder affiché dans l'onglet quand le sampler est en PiP */
+  .pip-placeholder {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 60vh;
+    color: var(--muted);
+    text-align: center;
+    padding: 20px;
+  }
+  .pip-placeholder.show { display: flex; }
+  .pip-placeholder-icon { font-size: 40px; opacity: 0.6; }
+  .pip-placeholder-text {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
 </style>
 </head>
 <body>
+
+<div class="pip-placeholder" id="pip-placeholder">
+  <div class="pip-placeholder-icon">🪟</div>
+  <div class="pip-placeholder-text">Ouvert en fenêtre flottante</div>
+</div>
+
+<div id="app-root">
 
 <div class="grid" id="grid"></div>
 
@@ -492,6 +561,7 @@
 <div class="status-bar">
   <div class="status-led" id="led"></div>
   <span id="status">INITIALISATION…</span>
+  <button class="settings-btn" id="pip-btn" title="Mode fenêtre flottante (PiP)">⧉</button>
   <button class="settings-btn" id="settings-btn" title="Paramètres">⚙️</button>
 </div>
 
@@ -513,10 +583,12 @@
     <div class="edit-modal-handle"></div>
     <div class="edit-modal-header">
       <div class="edit-pad-preview" id="edit-preview">🎵</div>
-      <div class="edit-modal-title">MODIFIER LE PAD</div>
+      <div class="edit-modal-title" id="edit-modal-title">MODIFIER LE PAD</div>
     </div>
     <input type="text" class="edit-name-input" id="edit-name" placeholder="NOM DU SON" maxlength="14">
+    <input type="text" class="edit-emoji-search" id="edit-emoji-search" placeholder="🔍 Rechercher un emoji…">
     <div class="edit-emoji-grid" id="edit-emoji-grid"></div>
+    <div class="edit-emoji-empty" id="edit-emoji-empty">Aucun résultat</div>
     <div class="edit-actions">
       <button class="edit-cancel-btn" id="edit-cancel">Annuler</button>
       <button class="edit-save-btn" id="edit-save">Enregistrer</button>
@@ -524,16 +596,19 @@
   </div>
 </div>
 
+</div>
+
 <script>
 const PAD_COUNT = 8;
-const HOLD_MS   = 3000;
+const HOLD_MS   = 1500;
+const HOLD_SEC  = HOLD_MS / 1000;
+const HOLD_LABEL = HOLD_SEC.toString().replace('.', ',') + 's';
 const CIRC      = 2 * Math.PI * 32; // ≈ 201
 
 const PALETTE = [
   '#ff3b3b','#ff8c00','#f0d000','#2ecc71',
   '#00d4e0','#3d8eff','#b44fff','#ff3d9a'
 ];
-const ICONS = ['🎵','🥁','🎙️','🎸','🔊','🎹','🎤','🪘'];
 
 let globalGain = 4.0; // contrôlé par le slider
 let audioCtx = null;
@@ -546,11 +621,17 @@ function getCtx() {
 }
 
 // ── Micro ───────────────────────────────────────────────
+// On redemande le micro à chaque enregistrement et on coupe les pistes juste
+// après : sinon le téléphone/l'OS considère le micro actif en permanence
+// (pastille d'enregistrement visible même hors enregistrement).
 let micStream = null;
 async function getMic() {
   if (micStream && micStream.active) return micStream;
   micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
   return micStream;
+}
+function releaseMic() {
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
 }
 
 // ── Enregistrement global (1 seul à la fois) ────────────
@@ -560,7 +641,19 @@ let recChunks  = [];
 
 // ── localStorage ────────────────────────────────────────
 function loadPad(i)               { try { const r = localStorage.getItem(`smp_${i}`); return r ? JSON.parse(r) : null; } catch { return null; } }
-function savePad(i, label, b64, mime, icon) { try { localStorage.setItem(`smp_${i}`, JSON.stringify({ label, b64, mime, icon })); } catch { setStatus('STOCKAGE PLEIN', 'warn'); } }
+// Renvoie true/false : on relit après écriture pour être sûr que ça a vraiment
+// été persisté (certains navigateurs mobiles échouent silencieusement en
+// mode privé / quota atteint, sans lever d'exception).
+function savePad(i, label, b64, mime, icon) {
+  const key = `smp_${i}`;
+  const payload = JSON.stringify({ label, b64, mime, icon });
+  try {
+    localStorage.setItem(key, payload);
+    return localStorage.getItem(key) === payload;
+  } catch {
+    return false;
+  }
+}
 
 function b64ToAB(b64) {
   const bin = atob(b64), ab = new Uint8Array(bin.length);
@@ -595,16 +688,16 @@ function makePad(i) {
           <circle class="ring-bg"  cx="34" cy="34" r="32"/>
           <circle class="ring-arc" cx="34" cy="34" r="32"/>
         </svg>
-        <div class="hold-num">3</div>
+        <div class="hold-num">${HOLD_LABEL}</div>
       </div>
-      <div class="hold-label">Maintenir pour enregistrer</div>
+      <div class="hold-label">Maintenir ${HOLD_LABEL} pour enregistrer</div>
     </div>
     <div class="waveform">
       <div class="bar"></div><div class="bar"></div><div class="bar"></div>
       <div class="bar"></div><div class="bar"></div><div class="bar"></div>
       <div class="bar"></div>
     </div>
-    <div class="pad-icon">${ICONS[i]}</div>
+    <div class="pad-icon"></div>
     <div class="pad-label">PAD ${i+1}</div>
   `;
 
@@ -647,7 +740,7 @@ function makePad(i) {
 
   // ── Play via Audio natif → haut-parleur du téléphone ──
   function play() {
-    if (!audioBlobUrl) { setStatus('MAINTENIR 3s POUR ENREGISTRER', 'warn'); return; }
+    if (!audioBlobUrl) { setStatus(`MAINTENIR ${HOLD_LABEL} POUR ENREGISTRER`, 'warn'); return; }
 
     if (playNode) { playNode.pause(); playNode.currentTime = 0; }
 
@@ -706,6 +799,10 @@ function makePad(i) {
     });
 
     recorder.addEventListener('stop', async () => {
+      // Coupe le micro tout de suite : évite que le téléphone continue
+      // d'afficher son indicateur "micro actif" une fois l'enregistrement fini.
+      releaseMic();
+
       const usedMime = recorder.mimeType || 'audio/webm';
       const blob = new Blob(recChunks, { type: usedMime });
 
@@ -731,7 +828,18 @@ function makePad(i) {
 
         // Sauvegarder en b64
         const b64 = await blobToB64(blob);
-        savePad(i, labelEl.textContent, b64, usedMime, iconEl.textContent);
+        const ok = savePad(i, labelEl.textContent, b64, usedMime, iconEl.textContent);
+
+        if (!ok) {
+          // Écriture non persistée (quota atteint, navigation privée…) : le son
+          // reste jouable pour cette session mais sera perdu à la fermeture.
+          // On le signale de façon bloquante pour que ça ne passe pas inaperçu.
+          setStatus('STOCKAGE PLEIN — SON NON SAUVEGARDÉ', 'warn');
+          alert(`⚠️ Le son du PAD ${i+1} n'a pas pu être sauvegardé (stockage plein ou navigation privée). Il fonctionnera jusqu'à la fermeture de l'appli, puis sera perdu. Supprimez d'autres sons ou libérez de l'espace pour le garder.`);
+        } else if (!iconEl.textContent.trim()) {
+          // Pas encore d'icône sur ce pad : on demande d'en choisir une.
+          openEditModal(i, iconEl, labelEl, color, { focusEmoji: true });
+        }
       };
       testAudio.onerror = () => {
         setStatus('ERREUR LECTURE — RÉESSAYEZ', 'warn');
@@ -758,12 +866,13 @@ function makePad(i) {
     holdTs = performance.now();
     overlay.classList.add('active');
     ringArc.style.strokeDashoffset = CIRC;
-    holdNum.textContent = '3';
+    holdNum.textContent = HOLD_LABEL;
 
     function tick() {
       const p = Math.min((performance.now() - holdTs) / HOLD_MS, 1);
       ringArc.style.strokeDashoffset = CIRC * (1 - p);
-      holdNum.textContent = p >= 1 ? '🎙️' : Math.ceil((1 - p) * 3);
+      const remaining = (1 - p) * HOLD_SEC;
+      holdNum.textContent = p >= 1 ? '🎙️' : remaining.toFixed(1).replace('.', ',');
       if (p < 1) holdRafId = requestAnimationFrame(tick);
     }
     holdRafId = requestAnimationFrame(tick);
@@ -807,7 +916,7 @@ function makePad(i) {
       }, 600);
     }
 
-    // Timer 3s → enregistrer
+    // Timer HOLD_MS → enregistrer
     startHoldUI();
     holdTimer = setTimeout(async () => {
       clearTimeout(editTimer);
@@ -874,7 +983,7 @@ for (let i = 0; i < PAD_COUNT; i++) grid.appendChild(makePad(i));
 
 let loaded = 0;
 for (let i = 0; i < PAD_COUNT; i++) if (loadPad(i)) loaded++;
-setStatus(loaded ? `PRÊT · ${loaded}/${PAD_COUNT} SONS CHARGÉS` : 'MAINTENIR UN PAD 3s POUR ENREGISTRER');
+setStatus(loaded ? `PRÊT · ${loaded}/${PAD_COUNT} SONS CHARGÉS` : `MAINTENIR UN PAD ${HOLD_LABEL} POUR ENREGISTRER`);
 
 // ── Drawer paramètres ────────────────────────────────────
 const drawerOverlay = document.getElementById('drawer-overlay');
@@ -898,42 +1007,118 @@ document.getElementById('clear-btn').addEventListener('click', () => {
 });
 
 // ── Modale édition pad ────────────────────────────────────
+// { e: emoji, k: mots-clés (français) pour la recherche textuelle }
 const EMOJI_LIST = [
-  '🎵','🥁','🎙️','🎸','🔊','🎹','🎤','🪘',
-  '🎺','🎻','🪗','🎷','🔔','🪇','🎚️','🎛️',
-  '🐸','🔥','⚡','💥','🌊','🎯','👾','🤖',
-  '🦁','🐯','🦊','🐺','🦋','👻','💀','🎃',
+  { e: '🎵', k: 'note musique son melodie' },
+  { e: '🥁', k: 'tambour batterie percussion drum' },
+  { e: '🎙️', k: 'micro microphone studio' },
+  { e: '🎸', k: 'guitare musique rock' },
+  { e: '🔊', k: 'haut-parleur son volume speaker' },
+  { e: '🎹', k: 'piano clavier keyboard' },
+  { e: '🎤', k: 'micro chant karaoke voix' },
+  { e: '🪘', k: 'djembe tambour percussion afrique' },
+  { e: '🎺', k: 'trompette cuivre' },
+  { e: '🎻', k: 'violon' },
+  { e: '🪗', k: 'accordeon' },
+  { e: '🎷', k: 'saxophone sax' },
+  { e: '🔔', k: 'cloche sonnette' },
+  { e: '🪇', k: 'maracas percussion' },
+  { e: '🎚️', k: 'mixage fader console volume' },
+  { e: '🎛️', k: 'boutons synthe synthetiseur reglage' },
+  { e: '🐸', k: 'grenouille animal' },
+  { e: '🔥', k: 'feu flamme chaud' },
+  { e: '⚡', k: 'eclair electricite choc' },
+  { e: '💥', k: 'explosion boom impact' },
+  { e: '🌊', k: 'vague eau mer' },
+  { e: '🎯', k: 'cible precision' },
+  { e: '👾', k: 'alien jeu robot arcade' },
+  { e: '🤖', k: 'robot machine' },
+  { e: '🦁', k: 'lion animal roi' },
+  { e: '🐯', k: 'tigre animal' },
+  { e: '🦊', k: 'renard animal' },
+  { e: '🐺', k: 'loup animal' },
+  { e: '🦋', k: 'papillon animal' },
+  { e: '👻', k: 'fantome peur horreur' },
+  { e: '💀', k: 'crane mort danger' },
+  { e: '🎃', k: 'citrouille halloween peur' },
+  { e: '😂', k: 'rire drole lol' },
+  { e: '🤣', k: 'rire mdr' },
+  { e: '😭', k: 'pleurs triste' },
+  { e: '😱', k: 'peur cri effroi' },
+  { e: '👏', k: 'applaudissement bravo clap' },
+  { e: '🎉', k: 'fete confettis celebration' },
+  { e: '✨', k: 'etincelle magie sparkle' },
+  { e: '🌟', k: 'etoile brillant' },
+  { e: '💯', k: 'cent parfait top' },
+  { e: '🚨', k: 'alarme sirene urgence police' },
+  { e: '📢', k: 'annonce haut-parleur megaphone' },
+  { e: '🔫', k: 'pistolet arme tir gun bang' },
+  { e: '💣', k: 'bombe explosion' },
+  { e: '🧨', k: 'petard feu artifice explosion' },
+  { e: '🐶', k: 'chien animal aboiement' },
+  { e: '🐱', k: 'chat animal miaulement' },
+  { e: '🐔', k: 'poule coq animal' },
+  { e: '🦆', k: 'canard animal' },
+  { e: '🐄', k: 'vache animal meuh' },
+  { e: '🐷', k: 'cochon animal' },
+  { e: '🚗', k: 'voiture moteur klaxon' },
+  { e: '🚀', k: 'fusee decollage espace' },
+  { e: '⏰', k: 'reveil alarme horloge' },
+  { e: '🎬', k: 'clap cinema action' },
+  { e: '🏆', k: 'trophee victoire gagne' },
+  { e: '👽', k: 'alien extraterrestre' },
 ];
 
-const editOverlay  = document.getElementById('edit-overlay');
-const editPreview  = document.getElementById('edit-preview');
-const editNameInp  = document.getElementById('edit-name');
-const editGrid     = document.getElementById('edit-emoji-grid');
-const editSaveBtn  = document.getElementById('edit-save');
-const editCancelBtn= document.getElementById('edit-cancel');
+function normalizeSearch(s) {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+const editOverlay    = document.getElementById('edit-overlay');
+const editPreview    = document.getElementById('edit-preview');
+const editNameInp    = document.getElementById('edit-name');
+const editEmojiSearch= document.getElementById('edit-emoji-search');
+const editGrid       = document.getElementById('edit-emoji-grid');
+const editEmojiEmpty = document.getElementById('edit-emoji-empty');
+const editSaveBtn    = document.getElementById('edit-save');
+const editCancelBtn  = document.getElementById('edit-cancel');
+const editModalTitle = document.getElementById('edit-modal-title');
 
 let editTarget = null; // { iconEl, labelEl, idx, color }
 let selectedEmoji = null;
 
 // Remplir la grille emoji une fois
-EMOJI_LIST.forEach(em => {
+EMOJI_LIST.forEach(({ e, k }) => {
   const btn = document.createElement('button');
   btn.className = 'edit-emoji-btn';
-  btn.textContent = em;
+  btn.textContent = e;
+  btn.dataset.kw = normalizeSearch(`${e} ${k}`);
   btn.addEventListener('click', () => {
-    selectedEmoji = em;
-    editPreview.textContent = em;
+    selectedEmoji = e;
+    editPreview.textContent = e;
     editGrid.querySelectorAll('.edit-emoji-btn').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
   });
   editGrid.appendChild(btn);
 });
 
-function openEditModal(idx, iconEl, labelEl, color) {
+// Recherche textuelle dans la grille d'emojis
+editEmojiSearch.addEventListener('input', () => {
+  const q = normalizeSearch(editEmojiSearch.value.trim());
+  let visible = 0;
+  editGrid.querySelectorAll('.edit-emoji-btn').forEach(b => {
+    const match = !q || b.dataset.kw.includes(q);
+    b.classList.toggle('hidden', !match);
+    if (match) visible++;
+  });
+  editEmojiEmpty.classList.toggle('show', visible === 0);
+});
+
+function openEditModal(idx, iconEl, labelEl, color, { focusEmoji = false } = {}) {
   editTarget = { idx, iconEl, labelEl };
   selectedEmoji = iconEl.textContent;
 
-  editPreview.textContent = selectedEmoji;
+  editModalTitle.textContent = focusEmoji ? 'CHOISIR UNE ICÔNE' : 'MODIFIER LE PAD';
+  editPreview.textContent = selectedEmoji || '❓';
   editPreview.style.setProperty('--preview-color', color);
   editNameInp.style.setProperty('--preview-color', color);
   editSaveBtn.style.background = color;
@@ -941,13 +1126,16 @@ function openEditModal(idx, iconEl, labelEl, color) {
 
   editNameInp.value = labelEl.textContent.replace(/^PAD \d+$/, '') ;
 
-  // Marquer emoji sélectionné
+  // Réinitialiser la recherche et montrer tous les emojis
+  editEmojiSearch.value = '';
   editGrid.querySelectorAll('.edit-emoji-btn').forEach(b => {
+    b.classList.remove('hidden');
     b.classList.toggle('selected', b.textContent === selectedEmoji);
   });
+  editEmojiEmpty.classList.remove('show');
 
   editOverlay.classList.add('open');
-  setTimeout(() => editNameInp.focus(), 350);
+  setTimeout(() => (focusEmoji ? editEmojiSearch : editNameInp).focus(), 350);
 }
 
 function closeEditModal() {
@@ -967,11 +1155,69 @@ editSaveBtn.addEventListener('click', () => {
   labelEl.textContent = name;
 
   const s = loadPad(idx);
-  if (s) savePad(idx, name, s.b64, s.mime, selectedEmoji);
-  else   { try { localStorage.setItem(`smp_icon_${idx}`, selectedEmoji); } catch{} }
+  let ok = true;
+  if (s) ok = savePad(idx, name, s.b64, s.mime, selectedEmoji);
+  else   { try { localStorage.setItem(`smp_icon_${idx}`, selectedEmoji); } catch { ok = false; } }
+
+  if (!ok) alert(`⚠️ Impossible de sauvegarder ces changements pour le PAD ${idx+1} (stockage plein). Ils seront perdus à la fermeture de l'appli.`);
 
   closeEditModal();
 });
+
+// ── PiP (fenêtre flottante, toujours au-dessus) ───────────
+// S'appuie sur la Document Picture-in-Picture API (Chrome/Edge desktop,
+// Chrome Android récent). Non supportée sur Safari/iOS.
+const pipBtn         = document.getElementById('pip-btn');
+const appRoot        = document.getElementById('app-root');
+const pipPlaceholder = document.getElementById('pip-placeholder');
+let pipWindow = null;
+
+async function togglePiP() {
+  if (pipWindow) { pipWindow.close(); return; }
+
+  if (!('documentPictureInPicture' in window)) {
+    alert("Le mode fenêtre flottante (Picture-in-Picture) n'est pas pris en charge par ce navigateur. Il fonctionne sur Chrome ou Edge (ordinateur, ou Android récent).");
+    return;
+  }
+
+  try {
+    pipWindow = await documentPictureInPicture.requestWindow({ width: 380, height: 620 });
+  } catch (e) {
+    console.warn('PiP refusé/annulé', e);
+    return;
+  }
+
+  // Copier les styles de la page dans la fenêtre PiP (feuille inline + polices externes)
+  [...document.styleSheets].forEach(sheet => {
+    try {
+      const css = [...sheet.cssRules].map(r => r.cssText).join('\n');
+      const style = document.createElement('style');
+      style.textContent = css;
+      pipWindow.document.head.appendChild(style);
+    } catch {
+      if (sheet.href) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = sheet.href;
+        pipWindow.document.head.appendChild(link);
+      }
+    }
+  });
+
+  pipWindow.document.title = 'Sampler';
+  pipWindow.document.body.appendChild(appRoot);
+  pipPlaceholder.classList.add('show');
+  pipBtn.classList.add('active');
+
+  pipWindow.addEventListener('pagehide', () => {
+    document.body.insertBefore(appRoot, pipPlaceholder);
+    pipPlaceholder.classList.remove('show');
+    pipBtn.classList.remove('active');
+    pipWindow = null;
+  }, { once: true });
+}
+
+pipBtn.addEventListener('click', togglePiP);
 
 // Unlock AudioContext iOS au 1er geste
 document.addEventListener('pointerdown', () => getCtx(), { once: true });
