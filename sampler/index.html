@@ -127,22 +127,22 @@
 
   /* Icone — cliquable */
   .pad-icon {
-    font-size: 26px;
+    font-size: 52px;
     opacity: 0.35;
     transition: opacity 0.2s, transform 0.2s;
     z-index: 1;
     cursor: pointer;
     border-radius: 8px;
     padding: 2px 4px;
-    min-width: 20px;
-    min-height: 24px;
+    min-width: 40px;
+    min-height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
   .pad-icon:hover { opacity: 0.7; transform: scale(1.15); }
-  .pad-icon:empty::before { content: '+'; opacity: 0.6; font-size: 18px; }
-  .pad.has-sound .pad-icon { opacity: 0.65; font-size: 20px; }
+  .pad-icon:empty::before { content: '+'; opacity: 0.6; font-size: 36px; }
+  .pad.has-sound .pad-icon { opacity: 0.65; font-size: 40px; }
   .pad.playing .pad-icon { display: none; }
 
   /* Picker emoji */
@@ -258,21 +258,19 @@
     inset: 0;
     transform: rotate(-90deg);
   }
+  /* Simple rond de chargement qui tourne pendant l'appui — pas de décompte */
+  .hold-overlay.active .hold-ring { animation: hold-spin 0.9s linear infinite; }
+  @keyframes hold-spin {
+    from { transform: rotate(-90deg); }
+    to   { transform: rotate(270deg); }
+  }
   .ring-bg  { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 3; }
   .ring-arc {
     fill: none;
     stroke: var(--c);
     stroke-width: 3;
     stroke-linecap: round;
-    stroke-dasharray: 201;
-    stroke-dashoffset: 201;
-  }
-  .hold-num {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 36px;
-    color: var(--c);
-    line-height: 1;
-    z-index: 1;
+    stroke-dasharray: 50 151;
   }
   .hold-label {
     font-size: 9px;
@@ -602,7 +600,6 @@ const PAD_COUNT = 8;
 const HOLD_MS   = 1500;
 const HOLD_SEC  = HOLD_MS / 1000;
 const HOLD_LABEL = HOLD_SEC.toString().replace('.', ',') + 's';
-const CIRC      = 2 * Math.PI * 32; // ≈ 201
 
 const PALETTE = [
   '#ff3b3b','#ff8c00','#f0d000','#2ecc71',
@@ -620,17 +617,35 @@ function getCtx() {
 }
 
 // ── Micro ───────────────────────────────────────────────
-// On redemande le micro à chaque enregistrement et on coupe les pistes juste
-// après : sinon le téléphone/l'OS considère le micro actif en permanence
-// (pastille d'enregistrement visible même hors enregistrement).
-let micStream = null;
-async function getMic() {
-  if (micStream && micStream.active) return micStream;
-  micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-  return micStream;
+// On coupe les pistes juste après chaque enregistrement : sinon le
+// téléphone/l'OS considère le micro actif en permanence (pastille
+// d'enregistrement visible même hors enregistrement).
+//
+// getMic() est "pré-chauffé" dès qu'un doigt se pose sur un pad (avant même
+// que l'appui de 1,5s soit validé) : sur le tout premier enregistrement,
+// c'est la demande de permission au navigateur qui est lente, pas le
+// MediaRecorder — en la lançant dès le pointerdown, elle a le temps de se
+// résoudre pendant que l'utilisateur maintient déjà le pad, au lieu de
+// manger le début du son au moment où l'enregistrement démarre vraiment.
+let micStream  = null;
+let micPromise = null;
+function getMic() {
+  if (micStream && micStream.active) return Promise.resolve(micStream);
+  if (micPromise) return micPromise; // déjà en cours de négociation
+  micPromise = navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    .then(s => { micStream = s; micPromise = null; return s; })
+    .catch(e => { micPromise = null; throw e; });
+  return micPromise;
 }
 function releaseMic() {
   if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+}
+// Annule un pré-chauffage qui n'a pas débouché sur un enregistrement
+// (simple tap plutôt qu'un appui long) : on relâche le micro dès qu'il est prêt.
+function cancelMicWarmup() {
+  if (recPadIdx !== null) return; // un enregistrement est en cours ailleurs : ne pas y toucher
+  if (micPromise) micPromise.then(releaseMic).catch(() => {});
+  else releaseMic();
 }
 
 // ── Enregistrement global (1 seul à la fois) ────────────
@@ -687,7 +702,6 @@ function makePad(i) {
           <circle class="ring-bg"  cx="34" cy="34" r="32"/>
           <circle class="ring-arc" cx="34" cy="34" r="32"/>
         </svg>
-        <div class="hold-num">${HOLD_LABEL}</div>
       </div>
       <div class="hold-label">Maintenir ${HOLD_LABEL} pour enregistrer</div>
     </div>
@@ -701,8 +715,6 @@ function makePad(i) {
   `;
 
   const overlay  = pad.querySelector('.hold-overlay');
-  const holdNum  = pad.querySelector('.hold-num');
-  const ringArc  = pad.querySelector('.ring-arc');
   const labelEl  = pad.querySelector('.pad-label');
   const iconEl   = pad.querySelector('.pad-icon');
 
@@ -711,8 +723,6 @@ function makePad(i) {
   let playNode     = null;
   let holdTimer    = null;
   let editTimer    = null;
-  let holdRafId    = null;
-  let holdTs       = null;
   let didHold      = false;
   let didEdit      = false;
 
@@ -861,25 +871,13 @@ function makePad(i) {
   }
 
   // ── Countdown UI ──────────────────────────────────────
+  // Juste un rond qui tourne pendant l'appui, géré en pur CSS (voir .hold-spin) — pas de décompte.
   function startHoldUI() {
-    holdTs = performance.now();
     overlay.classList.add('active');
-    ringArc.style.strokeDashoffset = CIRC;
-    holdNum.textContent = HOLD_LABEL;
-
-    function tick() {
-      const p = Math.min((performance.now() - holdTs) / HOLD_MS, 1);
-      ringArc.style.strokeDashoffset = CIRC * (1 - p);
-      const remaining = (1 - p) * HOLD_SEC;
-      holdNum.textContent = p >= 1 ? '🎙️' : remaining.toFixed(1).replace('.', ',');
-      if (p < 1) holdRafId = requestAnimationFrame(tick);
-    }
-    holdRafId = requestAnimationFrame(tick);
   }
 
   function stopHoldUI() {
     overlay.classList.remove('active');
-    cancelAnimationFrame(holdRafId);
   }
 
   // ── Ripple ────────────────────────────────────────────
@@ -903,6 +901,12 @@ function makePad(i) {
     didHold   = false;
     didEdit   = false;
     pointerLeft = false;
+
+    // Pré-chauffe le micro dès le contact : la permission navigateur (lente,
+    // surtout la toute première fois) a ainsi le temps de se résoudre pendant
+    // les 1,5s de maintien, au lieu d'être demandée seulement une fois
+    // l'enregistrement lancé.
+    getMic().catch(() => {});
 
     // Timer 0.6s → ouvrir modale édition (si sur icône ou label)
     const onIconOrLabel = iconEl.contains(e.target) || labelEl.contains(e.target);
@@ -933,10 +937,13 @@ function makePad(i) {
 
     if (didHold) {
       stopRec();
-    } else if (!didEdit && !pointerLeft) {
-      ripple(e);
-      if (recPadIdx === i) stopRec();
-      else play();
+    } else {
+      cancelMicWarmup(); // simple tap : pas d'enregistrement, on relâche le micro pré-chauffé
+      if (!didEdit && !pointerLeft) {
+        ripple(e);
+        if (recPadIdx === i) stopRec();
+        else play();
+      }
     }
     didHold = false;
     didEdit = false;
@@ -952,6 +959,7 @@ function makePad(i) {
       clearTimeout(holdTimer);
       clearTimeout(editTimer);
       stopHoldUI();
+      cancelMicWarmup();
     }
   });
 
@@ -961,6 +969,7 @@ function makePad(i) {
       clearTimeout(holdTimer);
       clearTimeout(editTimer);
       stopHoldUI();
+      cancelMicWarmup();
     }
   });
 
@@ -968,6 +977,7 @@ function makePad(i) {
     clearTimeout(holdTimer);
     clearTimeout(editTimer);
     stopHoldUI();
+    cancelMicWarmup();
     didHold = false;
     didEdit = false;
     pointerLeft = false;
