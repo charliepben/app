@@ -77,7 +77,8 @@
 
   .tabpanel{ display:none; flex:1; min-height:0; padding: 12px 16px; }
   .tabpanel.active{ display:flex; flex-direction:column; gap:9px; }
-  #tab-mission{ overflow-y:auto; }
+  #tab-mission{ overflow:hidden; padding-bottom:10px; }
+  .mission-scroll{ flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:9px; }
 
   /* ===== MISSION TAB ===== */
   .timer-block{
@@ -85,7 +86,7 @@
     border-radius:16px; padding:10px 8px 8px; position:relative; overflow:hidden; flex-shrink:0;
   }
   .timer-block::before{ content:""; position:absolute; inset:0; background:radial-gradient(200px 100px at 50% 0%, rgba(53,242,163,0.16), transparent 70%); }
-  .status-row{ display:flex; flex-direction:column; align-items:center; gap:5px; position:relative; z-index:1; }
+  .status-row{ display:flex; flex-direction:row; flex-wrap:wrap; align-items:center; justify-content:center; gap:7px; position:relative; z-index:1; }
   .status-badge{
     display:inline-flex; align-items:center; gap:6px; font-family:'JetBrains Mono'; font-size:10px; letter-spacing:1.3px;
     color:var(--green); background:rgba(53,242,163,0.1); border:1px solid rgba(53,242,163,0.4);
@@ -103,50 +104,49 @@
     text-shadow:0 0 26px rgba(53,242,163,0.4); letter-spacing:1px; position:relative; z-index:1;
     display:flex; align-items:baseline; justify-content:center; gap:2px;
   }
-  .timer-display .main{ font-size:42px; }
-  .timer-display .ms{ font-size:20px; color:var(--dim); }
+  .timer-display .main{ font-size:60px; }
+  .timer-display .ms{ font-size:60px; }
 
   .players-now{
     background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:9px 12px; flex-shrink:0;
   }
   .now-row{ display:flex; align-items:center; gap:10px; }
-  .now-lbl{ font-size:9px; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.3px; flex-shrink:0; }
-  .now-players{ flex:1; display:flex; align-items:center; justify-content:center; gap:10px; min-width:0; }
-  .player-chip{ display:flex; align-items:center; gap:8px; min-width:0; }
+  .now-lbl{ font-size:11.5px; font-weight:700; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.3px; flex-shrink:0; }
+  .now-players{ flex:1; display:flex; align-items:center; justify-content:center; gap:12px; min-width:0; }
+  .player-chip{ display:flex; align-items:center; gap:10px; min-width:0; }
   .avatar{
-    width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center;
-    font-family:'Orbitron'; font-weight:700; font-size:12px; color:#05070a; flex-shrink:0;
+    width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center;
+    font-family:'Orbitron'; font-weight:700; font-size:16px; color:#05070a; flex-shrink:0;
   }
   .avatar.mini{ width:20px; height:20px; border-radius:6px; font-size:9.5px; }
-  .player-chip .pname{ font-size:15px; font-weight:700; line-height:1.15; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:110px; }
-  .player-chip .prole{ font-size:9.5px; color:var(--dim); font-family:'JetBrains Mono'; }
-  .vs{ font-family:'Orbitron'; font-size:11px; color:var(--dim); flex-shrink:0; }
-  .next-row{ display:flex; align-items:center; gap:7px; margin-top:7px; padding-top:7px; border-top:1px dashed var(--line); }
-  .next-lbl{ font-size:9px; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.3px; flex-shrink:0; }
-  .next-arrow{ color:var(--dim); font-size:11px; flex-shrink:0; }
-  .next-names{ font-size:12.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .player-chip .pname{ font-size:20px; font-weight:700; line-height:1.15; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px; }
+  .player-chip .prole{ font-size:10.5px; color:var(--dim); font-family:'JetBrains Mono'; }
+  .vs{ font-family:'Orbitron'; font-size:13px; color:var(--dim); flex-shrink:0; }
+  .next-row{ display:flex; align-items:center; gap:8px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--line); }
+  .next-lbl{ font-size:11.5px; font-weight:700; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.3px; flex-shrink:0; }
+  .next-arrow{ color:var(--dim); font-size:13px; flex-shrink:0; }
+  .next-names{ font-size:16px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   .beam-grid{
     display:grid; grid-template-columns:repeat(6,1fr); gap:5px; flex-shrink:0;
   }
   .beam{
-    aspect-ratio:1/1; border-radius:10px; background:var(--panel); border:1px solid var(--line);
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:4px 2px;
+    position:relative; aspect-ratio:1/1; border-radius:10px; background:var(--panel); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; overflow:hidden; padding:14px 4px 10px;
   }
-  .beam .led{ width:7px; height:7px; border-radius:50%; }
-  .beam.on.g .led{ background:var(--green); box-shadow:0 0 9px var(--green); }
-  .beam.on.r .led{ background:var(--red); box-shadow:0 0 9px var(--red); }
-  .beam.on.b .led{ background:var(--blue); box-shadow:0 0 9px var(--blue); }
+  .beam span.name{ position:absolute; top:5px; left:2px; right:2px; text-align:center; font-size:8.5px; font-family:'JetBrains Mono'; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .beam.off span.name{ color: var(--dim); }
+  .beam .led{ width:24px; height:24px; border-radius:50%; }
+  .beam.on.g .led{ background:var(--green); box-shadow:0 0 14px var(--green); }
+  .beam.on.r .led{ background:var(--red); box-shadow:0 0 14px var(--red); }
+  .beam.on.b .led{ background:var(--blue); box-shadow:0 0 14px var(--blue); }
   .beam.off.g{ border-color:#164a35; } .beam.off.g .led{ background:#0e2c20; box-shadow:inset 0 0 0 1px #2a6b4c; }
   .beam.off.r{ border-color:#521f26; } .beam.off.r .led{ background:#331319; box-shadow:inset 0 0 0 1px #7a2f39; }
   .beam.off.b{ border-color:#1a3a52; } .beam.off.b .led{ background:#0f2333; box-shadow:inset 0 0 0 1px #2f5c7e; }
-  .beam span.name{ font-size:8.5px; font-family:'JetBrains Mono'; color:var(--text); white-space:nowrap; }
-  .beam.off span.name{ color: var(--dim); }
-  .beam .battery{ width:82%; height:3px; border-radius:2px; background:#1c2836; overflow:hidden; margin-top:1px; }
+  .beam .battery{ position:absolute; left:10%; right:10%; bottom:6px; height:4px; border-radius:2px; background:#1c2836; overflow:hidden; }
   .beam .battery i{ display:block; height:100%; border-radius:2px; }
   .beam.on.g .battery i{ background:var(--green); } .beam.on.r .battery i{ background:var(--red); } .beam.on.b .battery i{ background:var(--blue); }
   .beam.off .battery i{ background:#3a4552; }
-  .beam .pct{ font-size:7px; color:var(--dim); font-family:'JetBrains Mono'; }
 
   .live-scores{
     background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px 12px; flex-shrink:0;
@@ -171,10 +171,9 @@
   .team-bar i{ display:block; height:100%; border-radius:4px; transition:width .4s ease; }
   .team-val{ width:20px; text-align:right; font-family:'JetBrains Mono'; font-weight:700; flex-shrink:0; }
 
-  .bottom-row{ display:flex; gap:8px; flex-shrink:0; }
   .music-bar{
-    flex:1; display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line);
-    border-radius:12px; padding:8px 10px;
+    display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:8px 10px; flex-shrink:0;
   }
   .waveform{ display:flex; align-items:flex-end; gap:2px; height:16px; }
   .waveform i{ width:2.5px; background:var(--violet); border-radius:2px; animation:bounce 1s infinite ease-in-out; }
@@ -184,8 +183,8 @@
   @keyframes bounce{ 0%,100%{transform:scaleY(0.4);} 50%{transform:scaleY(1);} }
   .music-bar .t1{ font-size:11.5px; font-weight:600; }
   .btn-toggle{
-    border:none; border-radius:12px; color:#fff;
-    font-family:'Orbitron'; font-weight:700; font-size:12px; letter-spacing:1.5px; padding:0 20px; cursor:pointer;
+    border:none; border-radius:14px; color:#fff; flex-shrink:0;
+    font-family:'Orbitron'; font-weight:700; font-size:15px; letter-spacing:1.8px; padding:15px 0; width:100%; cursor:pointer;
   }
   .btn-toggle.go{ background: linear-gradient(180deg,#3ef2a8,#1fae72); box-shadow: 0 8px 22px -8px rgba(53,242,163,0.55); }
   .btn-toggle.stop{ background: linear-gradient(180deg,#ff5b6a,#d8283b); box-shadow: 0 8px 22px -8px rgba(255,77,94,0.55); }
@@ -249,6 +248,7 @@
 
     <!-- ===================== TAB MISSION (par défaut) ===================== -->
     <div class="tabpanel active" id="tab-mission">
+      <div class="mission-scroll">
 
       <div class="timer-block">
         <div class="status-row">
@@ -271,12 +271,12 @@
       </div>
 
       <div class="beam-grid">
-        <div class="beam on g"><div class="led"></div><span class="name">Laser 1</span><div class="battery"><i style="width:91%"></i></div><span class="pct">91%</span></div>
-        <div class="beam off r"><div class="led"></div><span class="name">Laser 2</span><div class="battery"><i style="width:64%"></i></div><span class="pct">64%</span></div>
-        <div class="beam on b"><div class="led"></div><span class="name">Laser 3</span><div class="battery"><i style="width:78%"></i></div><span class="pct">78%</span></div>
-        <div class="beam on r"><div class="led"></div><span class="name">Laser 4</span><div class="battery"><i style="width:55%"></i></div><span class="pct">55%</span></div>
-        <div class="beam on g"><div class="led"></div><span class="name">Laser 5</span><div class="battery"><i style="width:83%"></i></div><span class="pct">83%</span></div>
-        <div class="beam on b"><div class="led"></div><span class="name">Laser 6</span><div class="battery"><i style="width:47%"></i></div><span class="pct">47%</span></div>
+        <div class="beam on g"><span class="name">Laser 1</span><div class="led"></div><div class="battery"><i style="width:91%"></i></div></div>
+        <div class="beam off r"><span class="name">Laser 2</span><div class="led"></div><div class="battery"><i style="width:64%"></i></div></div>
+        <div class="beam on b"><span class="name">Laser 3</span><div class="led"></div><div class="battery"><i style="width:78%"></i></div></div>
+        <div class="beam on r"><span class="name">Laser 4</span><div class="led"></div><div class="battery"><i style="width:55%"></i></div></div>
+        <div class="beam on g"><span class="name">Laser 5</span><div class="led"></div><div class="battery"><i style="width:83%"></i></div></div>
+        <div class="beam on b"><span class="name">Laser 6</span><div class="led"></div><div class="battery"><i style="width:47%"></i></div></div>
       </div>
 
       <div class="live-scores">
@@ -298,13 +298,13 @@
         </div>
       </div>
 
-      <div class="bottom-row">
-        <div class="music-bar">
-          <div class="waveform"><i></i><i></i><i></i><i></i><i></i></div>
-          <div class="t1">Thème de mission</div>
-        </div>
-        <button class="btn-toggle go" id="mission-btn">▶ DÉMARRER</button>
+      <div class="music-bar">
+        <div class="waveform"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="t1">Thème de mission</div>
       </div>
+
+      </div>
+      <button class="btn-toggle go" id="mission-btn">▶ DÉMARRER LA MISSION</button>
 
     </div>
 
@@ -507,7 +507,7 @@ function startMission(){
   startTime = performance.now();
   setStatus(true);
   const btn = document.getElementById('mission-btn');
-  btn.textContent = '■ STOP';
+  btn.textContent = '■ ARRÊTER LA MISSION';
   btn.classList.replace('go', 'stop');
   tick();
   tickId = setInterval(tick, 30);
@@ -526,7 +526,7 @@ function stopMission(){
   renderTeamScores();
   setStatus(false);
   const btn = document.getElementById('mission-btn');
-  btn.textContent = '▶ DÉMARRER';
+  btn.textContent = '▶ DÉMARRER LA MISSION';
   btn.classList.replace('stop', 'go');
 }
 
