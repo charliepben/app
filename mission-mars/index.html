@@ -66,29 +66,40 @@
   .app-header h1{ font-family:'Orbitron'; font-size:13.5px; letter-spacing:1.3px; color:#fff; }
   .dot-live{ width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 1.6s infinite; flex-shrink:0; }
   @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
-  .header-mode{
+  .header-battery{
     margin-left:auto; display:flex; align-items:center; gap:6px;
-    font-family:'JetBrains Mono'; font-size:10.5px; color:var(--amber);
-    background: rgba(255,179,71,0.1); border:1px solid rgba(255,179,71,0.4);
+    font-family:'JetBrains Mono'; font-size:10.5px; color:var(--green);
+    background: rgba(53,242,163,0.1); border:1px solid rgba(53,242,163,0.4);
     padding:5px 10px; border-radius:20px; white-space:nowrap;
   }
+  .header-battery.batt-mid{ color:var(--amber); background:rgba(255,179,71,0.1); border-color:rgba(255,179,71,0.4); }
+  .header-battery.batt-low{ color:var(--red); background:rgba(255,77,94,0.1); border-color:rgba(255,77,94,0.4); }
 
   .tabpanel{ display:none; flex:1; min-height:0; padding: 12px 16px; }
   .tabpanel.active{ display:flex; flex-direction:column; gap:9px; }
+  #tab-mission{ overflow-y:auto; }
 
-  /* ===== MISSION TAB (compact, no scroll) ===== */
+  /* ===== MISSION TAB ===== */
   .timer-block{
     text-align:center; background:var(--panel); border:1px solid var(--line);
     border-radius:16px; padding:10px 8px 8px; position:relative; overflow:hidden; flex-shrink:0;
   }
   .timer-block::before{ content:""; position:absolute; inset:0; background:radial-gradient(200px 100px at 50% 0%, rgba(53,242,163,0.16), transparent 70%); }
+  .status-row{ display:flex; flex-direction:column; align-items:center; gap:5px; position:relative; z-index:1; }
   .status-badge{
     display:inline-flex; align-items:center; gap:6px; font-family:'JetBrains Mono'; font-size:10px; letter-spacing:1.3px;
     color:var(--green); background:rgba(53,242,163,0.1); border:1px solid rgba(53,242,163,0.4);
-    padding:3px 10px; border-radius:20px; position:relative; z-index:1;
+    padding:3px 10px; border-radius:20px;
+  }
+  .status-badge.idle{ color:var(--dim); background:rgba(107,124,146,0.1); border-color:rgba(107,124,146,0.35); }
+  .status-badge.idle .dot-live{ background:var(--dim); box-shadow:none; animation:none; }
+  .mode-chip{
+    font-family:'JetBrains Mono'; font-size:10px; letter-spacing:1px; text-transform:uppercase;
+    color:var(--amber); background:rgba(255,179,71,0.1); border:1px solid rgba(255,179,71,0.4);
+    padding:3px 10px; border-radius:20px; white-space:nowrap;
   }
   .timer-display{
-    font-family:'JetBrains Mono'; font-weight:700; color:#fff; margin:4px 0 0;
+    font-family:'JetBrains Mono'; font-weight:700; color:#fff; margin:6px 0 0;
     text-shadow:0 0 26px rgba(53,242,163,0.4); letter-spacing:1px; position:relative; z-index:1;
     display:flex; align-items:baseline; justify-content:center; gap:2px;
   }
@@ -96,49 +107,69 @@
   .timer-display .ms{ font-size:20px; color:var(--dim); }
 
   .players-now{
-    display:flex; align-items:center; justify-content:center; gap:12px;
-    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:8px 12px; flex-shrink:0;
+    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:9px 12px; flex-shrink:0;
   }
-  .player-chip{ display:flex; align-items:center; gap:8px; }
+  .now-row{ display:flex; align-items:center; gap:10px; }
+  .now-lbl{ font-size:9px; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.3px; flex-shrink:0; }
+  .now-players{ flex:1; display:flex; align-items:center; justify-content:center; gap:10px; min-width:0; }
+  .player-chip{ display:flex; align-items:center; gap:8px; min-width:0; }
   .avatar{
     width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center;
     font-family:'Orbitron'; font-weight:700; font-size:12px; color:#05070a; flex-shrink:0;
   }
-  .player-chip .pname{ font-size:14px; font-weight:700; line-height:1.1; }
+  .avatar.mini{ width:20px; height:20px; border-radius:6px; font-size:9.5px; }
+  .player-chip .pname{ font-size:15px; font-weight:700; line-height:1.15; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:110px; }
   .player-chip .prole{ font-size:9.5px; color:var(--dim); font-family:'JetBrains Mono'; }
-  .vs{ font-family:'Orbitron'; font-size:11px; color:var(--dim); }
+  .vs{ font-family:'Orbitron'; font-size:11px; color:var(--dim); flex-shrink:0; }
+  .next-row{ display:flex; align-items:center; gap:7px; margin-top:7px; padding-top:7px; border-top:1px dashed var(--line); }
+  .next-lbl{ font-size:9px; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.3px; flex-shrink:0; }
+  .next-arrow{ color:var(--dim); font-size:11px; flex-shrink:0; }
+  .next-names{ font-size:12.5px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   .beam-grid{
-    display:grid; grid-template-columns:repeat(3,1fr); gap:7px; flex:1; min-height:0;
+    display:grid; grid-template-columns:repeat(6,1fr); gap:5px; flex-shrink:0;
   }
   .beam{
-    border-radius:12px; background:var(--panel); border:1px solid var(--line);
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:6px 4px;
+    aspect-ratio:1/1; border-radius:10px; background:var(--panel); border:1px solid var(--line);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:4px 2px;
   }
-  .beam .led{ width:9px; height:9px; border-radius:50%; }
+  .beam .led{ width:7px; height:7px; border-radius:50%; }
   .beam.on.g .led{ background:var(--green); box-shadow:0 0 9px var(--green); }
   .beam.on.r .led{ background:var(--red); box-shadow:0 0 9px var(--red); }
   .beam.on.b .led{ background:var(--blue); box-shadow:0 0 9px var(--blue); }
   .beam.off.g{ border-color:#164a35; } .beam.off.g .led{ background:#0e2c20; box-shadow:inset 0 0 0 1px #2a6b4c; }
   .beam.off.r{ border-color:#521f26; } .beam.off.r .led{ background:#331319; box-shadow:inset 0 0 0 1px #7a2f39; }
   .beam.off.b{ border-color:#1a3a52; } .beam.off.b .led{ background:#0f2333; box-shadow:inset 0 0 0 1px #2f5c7e; }
-  .beam span.name{ font-size:10.5px; font-family:'JetBrains Mono'; color:var(--text); }
+  .beam span.name{ font-size:8.5px; font-family:'JetBrains Mono'; color:var(--text); white-space:nowrap; }
   .beam.off span.name{ color: var(--dim); }
-  .beam .battery{ width:80%; height:3px; border-radius:2px; background:#1c2836; overflow:hidden; margin-top:1px; }
+  .beam .battery{ width:82%; height:3px; border-radius:2px; background:#1c2836; overflow:hidden; margin-top:1px; }
   .beam .battery i{ display:block; height:100%; border-radius:2px; }
   .beam.on.g .battery i{ background:var(--green); } .beam.on.r .battery i{ background:var(--red); } .beam.on.b .battery i{ background:var(--blue); }
   .beam.off .battery i{ background:#3a4552; }
-  .beam .pct{ font-size:8px; color:var(--dim); font-family:'JetBrains Mono'; }
+  .beam .pct{ font-size:7px; color:var(--dim); font-family:'JetBrains Mono'; }
 
   .live-scores{
-    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:7px 12px; flex-shrink:0;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px 12px; flex-shrink:0;
   }
-  .live-scores .lbl{ font-size:9px; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.5px; margin-bottom:4px; }
-  .live-row{ display:flex; align-items:center; font-size:12px; padding:2px 0; }
-  .live-row .r{ width:16px; color:var(--dim); font-family:'JetBrains Mono'; font-size:11px; }
-  .live-row .n{ flex:1; font-weight:600; }
-  .live-row .t{ font-family:'JetBrains Mono'; color:var(--green); font-size:11.5px; }
+  .live-scores .lbl{ font-size:9px; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.5px; margin-bottom:5px; }
+  .live-row{ display:flex; align-items:center; gap:8px; font-size:13.5px; padding:4px 0; }
+  .live-row .r{ width:16px; color:var(--dim); font-family:'JetBrains Mono'; font-size:11.5px; flex-shrink:0; }
+  .live-row .n{ flex:1; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .live-row .gap{ font-size:10px; color:var(--dim); font-family:'JetBrains Mono'; flex-shrink:0; }
+  .live-row .t{ font-family:'JetBrains Mono'; color:var(--green); font-size:12.5px; flex-shrink:0; }
   .live-row.top .r{ color:#ffd54a; }
+  .live-row + .live-row{ border-top:1px solid var(--line); }
+
+  .team-scores{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px 12px; flex-shrink:0;
+    display:flex; flex-direction:column;
+  }
+  .team-scores .lbl{ font-size:9px; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.5px; margin-bottom:6px; }
+  .team-row{ display:flex; align-items:center; gap:9px; font-size:12px; padding:3px 0; }
+  .team-row .team-name{ width:78px; font-weight:700; font-family:'JetBrains Mono'; font-size:10.5px; flex-shrink:0; }
+  .team-bar{ flex:1; height:7px; border-radius:4px; background:#1c2836; overflow:hidden; }
+  .team-bar i{ display:block; height:100%; border-radius:4px; transition:width .4s ease; }
+  .team-val{ width:20px; text-align:right; font-family:'JetBrains Mono'; font-weight:700; flex-shrink:0; }
 
   .bottom-row{ display:flex; gap:8px; flex-shrink:0; }
   .music-bar{
@@ -152,11 +183,12 @@
   .waveform i:nth-child(5){height:35%;animation-delay:0.4s;}
   @keyframes bounce{ 0%,100%{transform:scaleY(0.4);} 50%{transform:scaleY(1);} }
   .music-bar .t1{ font-size:11.5px; font-weight:600; }
-  .btn-stop{
-    background: linear-gradient(180deg,#ff5b6a,#d8283b); border:none; border-radius:12px; color:#fff;
+  .btn-toggle{
+    border:none; border-radius:12px; color:#fff;
     font-family:'Orbitron'; font-weight:700; font-size:12px; letter-spacing:1.5px; padding:0 20px; cursor:pointer;
-    box-shadow: 0 8px 22px -8px rgba(255,77,94,0.55);
   }
+  .btn-toggle.go{ background: linear-gradient(180deg,#3ef2a8,#1fae72); box-shadow: 0 8px 22px -8px rgba(53,242,163,0.55); }
+  .btn-toggle.stop{ background: linear-gradient(180deg,#ff5b6a,#d8283b); box-shadow: 0 8px 22px -8px rgba(255,77,94,0.55); }
 
   /* ===== CONFIG TAB ===== */
   #tab-config{ overflow-y:auto; }
@@ -212,26 +244,29 @@
       <div class="brand-badge">🛰️</div>
       <div class="dot-live"></div>
       <h1>MISSION MARS</h1>
-      <div class="header-mode" id="header-mode">⚡ TEMPÊTE DE MÉTÉORES</div>
+      <div class="header-battery" id="header-battery">🔋 <span id="batt-pct">82%</span></div>
     </div>
 
     <!-- ===================== TAB MISSION (par défaut) ===================== -->
     <div class="tabpanel active" id="tab-mission">
 
       <div class="timer-block">
-        <div class="status-badge"><span class="dot-live"></span> MISSION EN COURS</div>
-        <div class="timer-display"><span class="main">00:14</span><span class="ms">.372</span></div>
+        <div class="status-row">
+          <div class="status-badge idle" id="status-badge"><span class="dot-live"></span> EN ATTENTE</div>
+          <div class="mode-chip" id="mode-chip">⚡ Tempête de météores</div>
+        </div>
+        <div class="timer-display"><span class="main" id="timer-main">00:00</span><span class="ms" id="timer-cs">.00</span></div>
       </div>
 
       <div class="players-now">
-        <div class="player-chip">
-          <div class="avatar" style="background:var(--red);">M</div>
-          <div><div class="pname">Marty</div><div class="prole">Équipe Rouge</div></div>
+        <div class="now-row">
+          <span class="now-lbl">EN&nbsp;PISTE</span>
+          <div class="now-players" id="now-players"></div>
         </div>
-        <div class="vs">VS</div>
-        <div class="player-chip">
-          <div class="avatar" style="background:var(--blue);">L</div>
-          <div><div class="pname">Léo</div><div class="prole">Équipe Bleue</div></div>
+        <div class="next-row">
+          <span class="next-lbl">SUIVANT</span>
+          <span class="next-arrow">→</span>
+          <span class="next-names" id="next-players"></span>
         </div>
       </div>
 
@@ -246,9 +281,21 @@
 
       <div class="live-scores">
         <div class="lbl">CLASSEMENT EN DIRECT</div>
-        <div class="live-row top"><span class="r">1</span><span class="n">Nina</span><span class="t">00:22.108</span></div>
-        <div class="live-row"><span class="r">2</span><span class="n">Sacha</span><span class="t">00:31.554</span></div>
-        <div class="live-row"><span class="r">3</span><span class="n">Léo</span><span class="t">00:28.019</span></div>
+        <div id="live-scores-body"></div>
+      </div>
+
+      <div class="team-scores" id="team-scores">
+        <div class="lbl">CLASSEMENT PAR ÉQUIPE</div>
+        <div class="team-row">
+          <span class="team-name" style="color:var(--red);">🔴 ROUGE</span>
+          <div class="team-bar"><i id="team-bar-red" style="background:var(--red);"></i></div>
+          <span class="team-val" id="team-val-red">0</span>
+        </div>
+        <div class="team-row">
+          <span class="team-name" style="color:var(--blue);">🔵 BLEUE</span>
+          <div class="team-bar"><i id="team-bar-blue" style="background:var(--blue);"></i></div>
+          <span class="team-val" id="team-val-blue">0</span>
+        </div>
       </div>
 
       <div class="bottom-row">
@@ -256,7 +303,7 @@
           <div class="waveform"><i></i><i></i><i></i><i></i><i></i></div>
           <div class="t1">Thème de mission</div>
         </div>
-        <button class="btn-stop">■ STOP</button>
+        <button class="btn-toggle go" id="mission-btn">▶ DÉMARRER</button>
       </div>
 
     </div>
@@ -267,7 +314,7 @@
       <div class="section-label">Mode équipe</div>
       <div class="team-toggle">
         <div><div class="lbl">Jouer en équipes</div><div class="sub">désactivé = chacun pour soi</div></div>
-        <div class="switch on" onclick="this.classList.toggle('on')"><i></i></div>
+        <div class="switch on" onclick="toggleTeamMode(this)"><i></i></div>
       </div>
 
       <div class="section-label">Agents en mission</div>
@@ -325,22 +372,22 @@
       <div class="score-row top1">
         <div class="rank">1</div>
         <div class="score-info"><div class="name">Nina 🏆</div><div class="meta">Équipe Rouge · Tempête de météores</div></div>
-        <div class="score-time"><div class="t">00:22.108</div><div class="h">0 avarie</div></div>
+        <div class="score-time"><div class="t">00:22.10</div><div class="h">0 avarie</div></div>
       </div>
       <div class="score-row">
         <div class="rank">2</div>
         <div class="score-info"><div class="name">Sacha</div><div class="meta">Équipe Bleue · Champ d'astéroïdes</div></div>
-        <div class="score-time"><div class="t">00:31.554</div><div class="h">0 avarie</div></div>
+        <div class="score-time"><div class="t">00:31.55</div><div class="h">0 avarie</div></div>
       </div>
       <div class="score-row">
         <div class="rank">3</div>
         <div class="score-info"><div class="name">Léo</div><div class="meta">Équipe Bleue · Tempête de météores</div></div>
-        <div class="score-time"><div class="t">00:28.019</div><div class="h">2 avaries</div></div>
+        <div class="score-time"><div class="t">00:28.01</div><div class="h">2 avaries</div></div>
       </div>
       <div class="score-row">
         <div class="rank">4</div>
         <div class="score-info"><div class="name">Marty</div><div class="meta">Équipe Rouge · Duel orbital</div></div>
-        <div class="score-time"><div class="t">00:14.372</div><div class="h">en cours…</div></div>
+        <div class="score-time"><div class="t">00:14.37</div><div class="h">en cours…</div></div>
       </div>
 
     </div>
@@ -365,9 +412,132 @@ document.querySelectorAll('.mode-card').forEach(card => {
   card.addEventListener('click', () => {
     document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
     card.classList.add('selected');
-    document.getElementById('header-mode').textContent = '⚡ ' + card.querySelector('h3').textContent.toUpperCase();
+    document.getElementById('mode-chip').textContent = '⚡ ' + card.querySelector('h3').textContent;
   });
 });
+function toggleTeamMode(el){
+  el.classList.toggle('on');
+  document.getElementById('team-scores').style.display = el.classList.contains('on') ? 'flex' : 'none';
+}
+
+/* ===== Mission en direct : file d'agents, chrono, classements ===== */
+const TEAM_LABEL = { red:'Rouge', blue:'Bleue' };
+const PLAYERS = [
+  { name:'Marty', initial:'M', team:'red'  },
+  { name:'Léo',   initial:'L', team:'blue' },
+  { name:'Nina',  initial:'N', team:'red'  },
+  { name:'Sacha', initial:'S', team:'blue' }
+];
+let queueIndex = 0;
+let running = false;
+let startTime = 0;
+let tickId = null;
+let liveScores = [
+  { name:'Nina',  team:'red',  ms:22100 },
+  { name:'Sacha', team:'blue', ms:31550 },
+  { name:'Léo',   team:'blue', ms:28010 }
+];
+let teamTally = { red:0, blue:0 };
+
+function fmtTime(ms){
+  const totalCs = Math.max(0, Math.floor(ms / 10));
+  const cs = totalCs % 100;
+  const totalSec = Math.floor(totalCs / 100);
+  const s = totalSec % 60;
+  const m = Math.floor(totalSec / 60);
+  return {
+    main: String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0'),
+    cs: '.' + String(cs).padStart(2,'0')
+  };
+}
+
+function pairAt(i){
+  return [PLAYERS[i % PLAYERS.length], PLAYERS[(i+1) % PLAYERS.length]];
+}
+
+function renderPlayers(){
+  const [p1, p2] = pairAt(queueIndex);
+  const [n1, n2] = pairAt(queueIndex + 2);
+  document.getElementById('now-players').innerHTML = `
+    <div class="player-chip"><div class="avatar" style="background:var(--${p1.team});">${p1.initial}</div><div><div class="pname">${p1.name}</div><div class="prole">Équipe ${TEAM_LABEL[p1.team]}</div></div></div>
+    <div class="vs">VS</div>
+    <div class="player-chip"><div class="avatar" style="background:var(--${p2.team});">${p2.initial}</div><div><div class="pname">${p2.name}</div><div class="prole">Équipe ${TEAM_LABEL[p2.team]}</div></div></div>
+  `;
+  document.getElementById('next-players').textContent = `${n1.name} & ${n2.name}`;
+}
+
+function renderLiveScores(){
+  const sorted = [...liveScores].sort((a,b) => a.ms - b.ms).slice(0, 4);
+  const best = sorted.length ? sorted[0].ms : 0;
+  document.getElementById('live-scores-body').innerHTML = sorted.map((s, i) => {
+    const t = fmtTime(s.ms);
+    const gap = i === 0 ? '' : '+' + ((s.ms - best) / 1000).toFixed(2) + 's';
+    return `<div class="live-row ${i === 0 ? 'top' : ''}">
+      <span class="r">${i + 1}</span>
+      <div class="avatar mini" style="background:var(--${s.team});">${s.name[0]}</div>
+      <span class="n">${s.name}</span>
+      <span class="gap">${gap}</span>
+      <span class="t">${t.main}${t.cs}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderTeamScores(){
+  const total = (teamTally.red + teamTally.blue) || 1;
+  document.getElementById('team-val-red').textContent = teamTally.red;
+  document.getElementById('team-val-blue').textContent = teamTally.blue;
+  document.getElementById('team-bar-red').style.width = (teamTally.red / total * 100) + '%';
+  document.getElementById('team-bar-blue').style.width = (teamTally.blue / total * 100) + '%';
+}
+
+function setStatus(isRunning){
+  const badge = document.getElementById('status-badge');
+  badge.classList.toggle('idle', !isRunning);
+  badge.innerHTML = '<span class="dot-live"></span> ' + (isRunning ? 'MISSION EN COURS' : 'EN ATTENTE');
+}
+
+function tick(){
+  const t = fmtTime(performance.now() - startTime);
+  document.getElementById('timer-main').textContent = t.main;
+  document.getElementById('timer-cs').textContent = t.cs;
+}
+
+function startMission(){
+  running = true;
+  startTime = performance.now();
+  setStatus(true);
+  const btn = document.getElementById('mission-btn');
+  btn.textContent = '■ STOP';
+  btn.classList.replace('go', 'stop');
+  tick();
+  tickId = setInterval(tick, 30);
+}
+
+function stopMission(){
+  running = false;
+  clearInterval(tickId);
+  const elapsed = performance.now() - startTime;
+  const [p1] = pairAt(queueIndex);
+  liveScores.push({ name:p1.name, team:p1.team, ms:Math.round(elapsed) });
+  teamTally[p1.team]++;
+  queueIndex = (queueIndex + 2) % PLAYERS.length;
+  renderPlayers();
+  renderLiveScores();
+  renderTeamScores();
+  setStatus(false);
+  const btn = document.getElementById('mission-btn');
+  btn.textContent = '▶ DÉMARRER';
+  btn.classList.replace('stop', 'go');
+}
+
+document.getElementById('mission-btn').addEventListener('click', () => {
+  if (running) stopMission(); else startMission();
+});
+
+renderPlayers();
+renderLiveScores();
+renderTeamScores();
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
