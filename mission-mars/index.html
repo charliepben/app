@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<title>Mission Mars</title>
+<meta name="theme-color" content="#05070a">
+<meta name="description" content="Console de mission pour le jeu laser Mission Mars">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MIM">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;500;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #05070a;
+    --panel: #0d131c;
+    --line: #1c2836;
+    --green: #35f2a3;
+    --red: #ff4d5e;
+    --blue: #4dc3ff;
+    --amber: #ffb347;
+    --violet: #9d7bff;
+    --text: #e7edf5;
+    --dim: #6b7c92;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{
+    background: radial-gradient(1200px 800px at 50% -10%, #101c2b 0%, #05070a 55%), var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+    height:100%;
+    width:100%;
+    overflow:hidden;
+  }
+  body{ display:flex; justify-content:center; }
+  .backdrop-grid{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(rgba(53,242,163,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(53,242,163,0.03) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+  .device{ position:relative; z-index:1; width:100%; max-width:480px; height:100dvh; background:var(--bg); }
+  @media (min-width:481px){
+    .device{ margin:18px 0; height:calc(100dvh - 36px); border-radius:26px; overflow:hidden;
+      box-shadow: 0 0 0 1px #1a232f, 0 40px 100px -30px rgba(0,0,0,0.85), 0 0 120px -40px rgba(53,242,163,0.2); }
+  }
+  .screen{ height:100%; display:flex; flex-direction:column; overflow:hidden; }
+
+  .app-header{
+    display:flex; align-items:center; gap:9px;
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink:0;
+  }
+  .brand-badge{
+    width:32px; height:32px; border-radius:9px;
+    background: linear-gradient(135deg, #ff4d5e, #ff8a3d);
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; flex-shrink:0;
+    box-shadow: 0 0 14px rgba(255,77,94,0.45);
+  }
+  .app-header h1{ font-family:'Orbitron'; font-size:13.5px; letter-spacing:1.3px; color:#fff; }
+  .dot-live{ width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 1.6s infinite; flex-shrink:0; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+  .header-mode{
+    margin-left:auto; display:flex; align-items:center; gap:6px;
+    font-family:'JetBrains Mono'; font-size:10.5px; color:var(--amber);
+    background: rgba(255,179,71,0.1); border:1px solid rgba(255,179,71,0.4);
+    padding:5px 10px; border-radius:20px; white-space:nowrap;
+  }
+
+  .tabpanel{ display:none; flex:1; min-height:0; padding: 12px 16px; }
+  .tabpanel.active{ display:flex; flex-direction:column; gap:9px; }
+
+  /* ===== MISSION TAB (compact, no scroll) ===== */
+  .timer-block{
+    text-align:center; background:var(--panel); border:1px solid var(--line);
+    border-radius:16px; padding:10px 8px 8px; position:relative; overflow:hidden; flex-shrink:0;
+  }
+  .timer-block::before{ content:""; position:absolute; inset:0; background:radial-gradient(200px 100px at 50% 0%, rgba(53,242,163,0.16), transparent 70%); }
+  .status-badge{
+    display:inline-flex; align-items:center; gap:6px; font-family:'JetBrains Mono'; font-size:10px; letter-spacing:1.3px;
+    color:var(--green); background:rgba(53,242,163,0.1); border:1px solid rgba(53,242,163,0.4);
+    padding:3px 10px; border-radius:20px; position:relative; z-index:1;
+  }
+  .timer-display{
+    font-family:'JetBrains Mono'; font-weight:700; color:#fff; margin:4px 0 0;
+    text-shadow:0 0 26px rgba(53,242,163,0.4); letter-spacing:1px; position:relative; z-index:1;
+    display:flex; align-items:baseline; justify-content:center; gap:2px;
+  }
+  .timer-display .main{ font-size:42px; }
+  .timer-display .ms{ font-size:20px; color:var(--dim); }
+
+  .players-now{
+    display:flex; align-items:center; justify-content:center; gap:12px;
+    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:8px 12px; flex-shrink:0;
+  }
+  .player-chip{ display:flex; align-items:center; gap:8px; }
+  .avatar{
+    width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+    font-family:'Orbitron'; font-weight:700; font-size:12px; color:#05070a; flex-shrink:0;
+  }
+  .player-chip .pname{ font-size:14px; font-weight:700; line-height:1.1; }
+  .player-chip .prole{ font-size:9.5px; color:var(--dim); font-family:'JetBrains Mono'; }
+  .vs{ font-family:'Orbitron'; font-size:11px; color:var(--dim); }
+
+  .beam-grid{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:7px; flex:1; min-height:0;
+  }
+  .beam{
+    border-radius:12px; background:var(--panel); border:1px solid var(--line);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:6px 4px;
+  }
+  .beam .led{ width:9px; height:9px; border-radius:50%; }
+  .beam.on.g .led{ background:var(--green); box-shadow:0 0 9px var(--green); }
+  .beam.on.r .led{ background:var(--red); box-shadow:0 0 9px var(--red); }
+  .beam.on.b .led{ background:var(--blue); box-shadow:0 0 9px var(--blue); }
+  .beam.off.g{ border-color:#164a35; } .beam.off.g .led{ background:#0e2c20; box-shadow:inset 0 0 0 1px #2a6b4c; }
+  .beam.off.r{ border-color:#521f26; } .beam.off.r .led{ background:#331319; box-shadow:inset 0 0 0 1px #7a2f39; }
+  .beam.off.b{ border-color:#1a3a52; } .beam.off.b .led{ background:#0f2333; box-shadow:inset 0 0 0 1px #2f5c7e; }
+  .beam span.name{ font-size:10.5px; font-family:'JetBrains Mono'; color:var(--text); }
+  .beam.off span.name{ color: var(--dim); }
+  .beam .battery{ width:80%; height:3px; border-radius:2px; background:#1c2836; overflow:hidden; margin-top:1px; }
+  .beam .battery i{ display:block; height:100%; border-radius:2px; }
+  .beam.on.g .battery i{ background:var(--green); } .beam.on.r .battery i{ background:var(--red); } .beam.on.b .battery i{ background:var(--blue); }
+  .beam.off .battery i{ background:#3a4552; }
+  .beam .pct{ font-size:8px; color:var(--dim); font-family:'JetBrains Mono'; }
+
+  .live-scores{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:7px 12px; flex-shrink:0;
+  }
+  .live-scores .lbl{ font-size:9px; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.5px; margin-bottom:4px; }
+  .live-row{ display:flex; align-items:center; font-size:12px; padding:2px 0; }
+  .live-row .r{ width:16px; color:var(--dim); font-family:'JetBrains Mono'; font-size:11px; }
+  .live-row .n{ flex:1; font-weight:600; }
+  .live-row .t{ font-family:'JetBrains Mono'; color:var(--green); font-size:11.5px; }
+  .live-row.top .r{ color:#ffd54a; }
+
+  .bottom-row{ display:flex; gap:8px; flex-shrink:0; }
+  .music-bar{
+    flex:1; display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:8px 10px;
+  }
+  .waveform{ display:flex; align-items:flex-end; gap:2px; height:16px; }
+  .waveform i{ width:2.5px; background:var(--violet); border-radius:2px; animation:bounce 1s infinite ease-in-out; }
+  .waveform i:nth-child(1){height:40%;animation-delay:0s;} .waveform i:nth-child(2){height:85%;animation-delay:0.1s;}
+  .waveform i:nth-child(3){height:55%;animation-delay:0.2s;} .waveform i:nth-child(4){height:95%;animation-delay:0.3s;}
+  .waveform i:nth-child(5){height:35%;animation-delay:0.4s;}
+  @keyframes bounce{ 0%,100%{transform:scaleY(0.4);} 50%{transform:scaleY(1);} }
+  .music-bar .t1{ font-size:11.5px; font-weight:600; }
+  .btn-stop{
+    background: linear-gradient(180deg,#ff5b6a,#d8283b); border:none; border-radius:12px; color:#fff;
+    font-family:'Orbitron'; font-weight:700; font-size:12px; letter-spacing:1.5px; padding:0 20px; cursor:pointer;
+    box-shadow: 0 8px 22px -8px rgba(255,77,94,0.55);
+  }
+
+  /* ===== CONFIG TAB ===== */
+  #tab-config{ overflow-y:auto; }
+  .section-label{ font-family:'JetBrains Mono'; font-size:10.5px; letter-spacing:1.8px; color:var(--dim); text-transform:uppercase; margin:10px 0 8px; }
+  .section-label:first-child{ margin-top:0; }
+  .agent-row{ display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:9px 12px; margin-bottom:7px; }
+  .agent-info{ flex:1; } .agent-info .name{ font-weight:600; font-size:14.5px; } .agent-info .team{ font-size:10.5px; color:var(--dim); font-family:'JetBrains Mono'; }
+  .team-tag{ font-size:9.5px; font-family:'JetBrains Mono'; padding:4px 9px; border-radius:20px; border:1px solid currentColor; }
+  .add-agent{ display:flex; gap:8px; margin-top:4px; }
+  .add-agent input{ flex:1; background:var(--panel); border:1px dashed var(--line); border-radius:12px; padding:11px 14px; color:var(--text); font-family:'Rajdhani'; font-size:14px; }
+  .add-agent input::placeholder{ color:var(--dim); }
+  .btn-add{ width:42px; border-radius:12px; border:1px solid var(--green); background:rgba(53,242,163,0.08); color:var(--green); font-size:19px; font-weight:700; cursor:pointer; }
+
+  .team-toggle{ display:flex; align-items:center; justify-content:space-between; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:4px; }
+  .team-toggle .lbl{ font-size:13.5px; font-weight:600; }
+  .team-toggle .sub{ font-size:10.5px; color:var(--dim); font-family:'JetBrains Mono'; }
+  .switch{ width:42px; height:24px; border-radius:20px; background:#1c2836; border:1px solid var(--line); position:relative; cursor:pointer; flex-shrink:0; }
+  .switch.on{ background:rgba(53,242,163,0.25); border-color:var(--green); }
+  .switch i{ position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:var(--dim); transition:0.2s; }
+  .switch.on i{ left:20px; background:var(--green); box-shadow:0 0 8px var(--green); }
+
+  .mode-grid{ display:grid; grid-template-columns:1fr; gap:9px; }
+  .mode-card{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:13px 14px; cursor:pointer; }
+  .mode-card.selected{ border-color:var(--green); background:rgba(53,242,163,0.06); box-shadow:0 0 0 1px var(--green) inset; }
+  .mode-card .mtop{ display:flex; align-items:center; gap:10px; }
+  .mode-card .icon{ font-size:20px; flex-shrink:0; }
+  .mode-card h3{ font-size:14px; font-weight:700; }
+  .mode-card .req{ margin-left:auto; font-size:9px; font-family:'JetBrains Mono'; color:var(--amber); }
+  .mode-card p{ font-size:11.5px; color:var(--dim); line-height:1.45; margin-top:5px; }
+
+  /* ===== SCORES TAB ===== */
+  #tab-scores{ overflow-y:auto; }
+  .score-row{ display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:11px 13px; margin-bottom:7px; }
+  .rank{ font-family:'Orbitron'; font-weight:900; font-size:14px; width:24px; text-align:center; color:var(--dim); }
+  .score-row.top1 .rank{ color:#ffd54a; } .score-row.top1{ border-color:#5c4a12; }
+  .score-info{ flex:1; } .score-info .name{ font-weight:600; font-size:14px; } .score-info .meta{ font-size:10px; color:var(--dim); font-family:'JetBrains Mono'; }
+  .score-time{ text-align:right; } .score-time .t{ font-family:'JetBrains Mono'; font-weight:700; font-size:14px; } .score-time .h{ font-size:9.5px; color:var(--dim); font-family:'JetBrains Mono'; }
+
+  .navbar{ display:flex; justify-content:space-around; padding:8px 10px calc(10px + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg, transparent, rgba(5,7,10,0.9) 30%, #05070a 100%); border-top:1px solid var(--line); flex-shrink:0; }
+  .navbtn{ background:none; border:none; color:var(--dim); display:flex; flex-direction:column; align-items:center; gap:3px;
+    font-family:'JetBrains Mono'; font-size:9px; letter-spacing:1px; cursor:pointer; padding:4px 14px; }
+  .navbtn .ic{ font-size:18px; }
+  .navbtn.active{ color:var(--green); } .navbtn.active .ic{ filter:drop-shadow(0 0 7px var(--green)); }
+</style>
+</head>
+<body>
+<div class="backdrop-grid"></div>
+<div class="device">
+  <div class="screen">
+
+    <div class="app-header">
+      <div class="brand-badge">🛰️</div>
+      <div class="dot-live"></div>
+      <h1>MISSION MARS</h1>
+      <div class="header-mode" id="header-mode">⚡ TEMPÊTE DE MÉTÉORES</div>
+    </div>
+
+    <!-- ===================== TAB MISSION (par défaut) ===================== -->
+    <div class="tabpanel active" id="tab-mission">
+
+      <div class="timer-block">
+        <div class="status-badge"><span class="dot-live"></span> MISSION EN COURS</div>
+        <div class="timer-display"><span class="main">00:14</span><span class="ms">.372</span></div>
+      </div>
+
+      <div class="players-now">
+        <div class="player-chip">
+          <div class="avatar" style="background:var(--red);">M</div>
+          <div><div class="pname">Marty</div><div class="prole">Équipe Rouge</div></div>
+        </div>
+        <div class="vs">VS</div>
+        <div class="player-chip">
+          <div class="avatar" style="background:var(--blue);">L</div>
+          <div><div class="pname">Léo</div><div class="prole">Équipe Bleue</div></div>
+        </div>
+      </div>
+
+      <div class="beam-grid">
+        <div class="beam on g"><div class="led"></div><span class="name">Laser 1</span><div class="battery"><i style="width:91%"></i></div><span class="pct">91%</span></div>
+        <div class="beam off r"><div class="led"></div><span class="name">Laser 2</span><div class="battery"><i style="width:64%"></i></div><span class="pct">64%</span></div>
+        <div class="beam on b"><div class="led"></div><span class="name">Laser 3</span><div class="battery"><i style="width:78%"></i></div><span class="pct">78%</span></div>
+        <div class="beam on r"><div class="led"></div><span class="name">Laser 4</span><div class="battery"><i style="width:55%"></i></div><span class="pct">55%</span></div>
+        <div class="beam on g"><div class="led"></div><span class="name">Laser 5</span><div class="battery"><i style="width:83%"></i></div><span class="pct">83%</span></div>
+        <div class="beam on b"><div class="led"></div><span class="name">Laser 6</span><div class="battery"><i style="width:47%"></i></div><span class="pct">47%</span></div>
+      </div>
+
+      <div class="live-scores">
+        <div class="lbl">CLASSEMENT EN DIRECT</div>
+        <div class="live-row top"><span class="r">1</span><span class="n">Nina</span><span class="t">00:22.108</span></div>
+        <div class="live-row"><span class="r">2</span><span class="n">Sacha</span><span class="t">00:31.554</span></div>
+        <div class="live-row"><span class="r">3</span><span class="n">Léo</span><span class="t">00:28.019</span></div>
+      </div>
+
+      <div class="bottom-row">
+        <div class="music-bar">
+          <div class="waveform"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="t1">Thème de mission</div>
+        </div>
+        <button class="btn-stop">■ STOP</button>
+      </div>
+
+    </div>
+
+    <!-- ===================== TAB CONFIGURATION ===================== -->
+    <div class="tabpanel" id="tab-config">
+
+      <div class="section-label">Mode équipe</div>
+      <div class="team-toggle">
+        <div><div class="lbl">Jouer en équipes</div><div class="sub">désactivé = chacun pour soi</div></div>
+        <div class="switch on" onclick="this.classList.toggle('on')"><i></i></div>
+      </div>
+
+      <div class="section-label">Agents en mission</div>
+      <div class="agent-row">
+        <div class="avatar" style="background:var(--red);">M</div>
+        <div class="agent-info"><div class="name">Marty</div><div class="team">Capitaine de la mission</div></div>
+        <div class="team-tag" style="color:var(--red);">ÉQUIPE ROUGE</div>
+      </div>
+      <div class="agent-row">
+        <div class="avatar" style="background:var(--blue);">L</div>
+        <div class="agent-info"><div class="name">Léo</div><div class="team">Agent</div></div>
+        <div class="team-tag" style="color:var(--blue);">ÉQUIPE BLEUE</div>
+      </div>
+      <div class="agent-row">
+        <div class="avatar" style="background:var(--red);">N</div>
+        <div class="agent-info"><div class="name">Nina</div><div class="team">Agent</div></div>
+        <div class="team-tag" style="color:var(--red);">ÉQUIPE ROUGE</div>
+      </div>
+      <div class="agent-row">
+        <div class="avatar" style="background:var(--blue);">S</div>
+        <div class="agent-info"><div class="name">Sacha</div><div class="team">Agent</div></div>
+        <div class="team-tag" style="color:var(--blue);">ÉQUIPE BLEUE</div>
+      </div>
+      <div class="add-agent">
+        <input type="text" placeholder="Nom du nouvel agent...">
+        <button class="btn-add">+</button>
+      </div>
+
+      <div class="section-label">Mode de mission</div>
+      <div class="mode-grid">
+        <div class="mode-card">
+          <div class="mtop"><div class="icon">☄️</div><h3>Champ d'astéroïdes</h3></div>
+          <p>Ramène ton fragment à la base sans toucher un seul météore. Le moindre contact désintègre le vaisseau — mission finie.</p>
+        </div>
+        <div class="mode-card selected">
+          <div class="mtop"><div class="icon">⚡</div><h3>Tempête de météores</h3></div>
+          <p>Chaque météore touché endommage ta coque, mais tu peux continuer tant qu'elle tient. Reviens avec le moins d'avaries.</p>
+        </div>
+        <div class="mode-card">
+          <div class="mtop"><div class="icon">🚀</div><h3>Duel orbital</h3><div class="req">2 ÉQUIPES</div></div>
+          <p>Deux escouades s'élancent en même temps vers la base adverse. La plus rapide (ou la moins abîmée) remporte le duel.</p>
+        </div>
+        <div class="mode-card">
+          <div class="mtop"><div class="icon">🛡️</div><h3>Bouclier de la station</h3></div>
+          <p>La station perd un bouclier à chaque contact. Tiens le plus longtemps possible avant l'effondrement total.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===================== TAB SCORES ===================== -->
+    <div class="tabpanel" id="tab-scores">
+
+      <div class="section-label">Classement de la soirée</div>
+      <div class="score-row top1">
+        <div class="rank">1</div>
+        <div class="score-info"><div class="name">Nina 🏆</div><div class="meta">Équipe Rouge · Tempête de météores</div></div>
+        <div class="score-time"><div class="t">00:22.108</div><div class="h">0 avarie</div></div>
+      </div>
+      <div class="score-row">
+        <div class="rank">2</div>
+        <div class="score-info"><div class="name">Sacha</div><div class="meta">Équipe Bleue · Champ d'astéroïdes</div></div>
+        <div class="score-time"><div class="t">00:31.554</div><div class="h">0 avarie</div></div>
+      </div>
+      <div class="score-row">
+        <div class="rank">3</div>
+        <div class="score-info"><div class="name">Léo</div><div class="meta">Équipe Bleue · Tempête de météores</div></div>
+        <div class="score-time"><div class="t">00:28.019</div><div class="h">2 avaries</div></div>
+      </div>
+      <div class="score-row">
+        <div class="rank">4</div>
+        <div class="score-info"><div class="name">Marty</div><div class="meta">Équipe Rouge · Duel orbital</div></div>
+        <div class="score-time"><div class="t">00:14.372</div><div class="h">en cours…</div></div>
+      </div>
+
+    </div>
+
+    <div class="navbar">
+      <button class="navbtn active" data-tab="tab-mission" onclick="showTab(this)"><span class="ic">🎮</span>MISSION</button>
+      <button class="navbtn" data-tab="tab-config" onclick="showTab(this)"><span class="ic">⚙️</span>CONFIG</button>
+      <button class="navbtn" data-tab="tab-scores" onclick="showTab(this)"><span class="ic">🏆</span>SCORES</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function showTab(btn){
+  document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.navbtn').forEach(b => b.classList.remove('active'));
+  document.getElementById(btn.dataset.tab).classList.add('active');
+  btn.classList.add('active');
+}
+document.querySelectorAll('.mode-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    document.getElementById('header-mode').textContent = '⚡ ' + card.querySelector('h3').textContent.toUpperCase();
+  });
+});
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
