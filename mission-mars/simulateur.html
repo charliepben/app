@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulateur — Mission Mars</title>
+<meta name="theme-color" content="#05070a">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=JetBrains+Mono:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#05070a; --panel:#0d131c; --line:#1c2836;
+    --green:#35f2a3; --red:#ff4d5e; --blue:#4dc3ff; --amber:#ffb347;
+    --text:#e7edf5; --dim:#6b7c92;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    background: radial-gradient(1200px 800px at 50% -10%, #101c2b 0%, #05070a 55%), var(--bg);
+    color:var(--text); font-family:'Rajdhani', sans-serif; min-height:100vh; padding:22px 20px 60px;
+  }
+  h1{ font-family:'Orbitron'; font-size:17px; letter-spacing:1.5px; margin-bottom:6px; }
+  .hint{ font-family:'JetBrains Mono'; font-size:10.5px; color:var(--dim); margin-bottom:20px; }
+  .section-label{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; font-family:'JetBrains Mono';
+    font-size:11px; letter-spacing:1.8px; color:var(--dim); text-transform:uppercase; margin:22px 0 10px; max-width:560px;
+  }
+  .mini-btn{
+    background:none; border:1px solid var(--line); color:var(--dim); border-radius:8px; padding:4px 9px;
+    font-family:'JetBrains Mono'; font-size:9.5px; letter-spacing:.5px; cursor:pointer; text-transform:none;
+    -webkit-tap-highlight-color:transparent; white-space:nowrap;
+  }
+  .mini-btn:active{ border-color:var(--green); color:var(--green); }
+
+  .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; max-width:560px; }
+  @media (min-width:440px){ .grid{ grid-template-columns:repeat(6,1fr); } }
+  .grid.buttons{ grid-template-columns:repeat(3,1fr); }
+  @media (min-width:440px){ .grid.buttons{ grid-template-columns:repeat(5,1fr); } }
+
+  .node{
+    position:relative; background:var(--panel); border:2px solid var(--line); border-radius:14px;
+    padding:28px 6px 12px; text-align:center; cursor:pointer; user-select:none;
+    -webkit-tap-highlight-color:transparent; transition:border-color .1s, background .1s;
+  }
+  .node .name{ font-family:'JetBrains Mono'; font-size:11px; color:var(--dim); }
+  .node .state{ font-size:9px; font-family:'JetBrains Mono'; margin-top:5px; color:var(--dim); letter-spacing:.3px; }
+  .node.armed .name{ color:var(--text); }
+  .node.off{ opacity:.45; }
+
+  /* La LED n'a AUCUNE couleur propre : tout vient des commandes reçues (mock passif). */
+  .led{ width:22px; height:22px; border-radius:50%; margin:9px auto; background:#161d27; box-shadow:inset 0 0 0 1px #232c38; }
+  .led.blink{ animation:ledBlink .35s steps(1) infinite; }
+  @keyframes ledBlink{ 50%{ opacity:.15; } }
+  /* la pulsation suit la plage d'intensité commandée (--lamp-min → --lamp-max) */
+  .led.glow, .led.twinkle{ animation:ledGlow 1.5s ease-in-out infinite; }
+  @keyframes ledGlow{ 0%,100%{ opacity:var(--lamp-min,.4); } 50%{ opacity:var(--lamp-max,1); } }
+
+  .sw{ position:absolute; top:8px; right:8px; width:26px; height:15px; border-radius:10px; background:#1c2836; border:1px solid var(--line); cursor:pointer; }
+  .sw input{ display:none; }
+  .sw span{ position:absolute; top:1px; left:1px; width:11px; height:11px; border-radius:50%; background:var(--dim); transition:.15s; }
+  .sw input:checked + span{ left:12px; background:#fff; }
+
+  .console-row{ display:flex; gap:12px; max-width:560px; flex-wrap:wrap; align-items:stretch; }
+  .start-node{
+    flex:1; min-width:180px; background:var(--panel); border:2px solid var(--line); border-radius:14px;
+    padding:16px; text-align:center; cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent;
+  }
+  .start-node .name{ font-family:'Orbitron'; font-size:12px; letter-spacing:1.2px; color:var(--dim); }
+  .start-node .led{ width:38px; height:38px; }
+  .estop{
+    flex:0 0 auto; min-width:150px; padding:16px 22px; border-radius:14px; border:2px solid #6b1622;
+    background:linear-gradient(180deg,#ff5b6a,#a81828); color:#fff; font-family:'Orbitron'; font-weight:700;
+    font-size:12px; letter-spacing:1.2px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  }
+  .estop:active{ transform:scale(.97); }
+
+  .sys-row{ display:flex; gap:10px; max-width:560px; flex-wrap:wrap; }
+  .sys-node{
+    flex:1; min-width:150px; display:flex; align-items:center; gap:10px; background:var(--panel);
+    border:1px solid var(--line); border-radius:12px; padding:12px 14px;
+  }
+  .sys-node .sdot{ width:11px; height:11px; border-radius:50%; background:#232c38; flex-shrink:0; }
+  .sys-node.active{ border-color:var(--amber); background:rgba(255,179,71,.1); }
+  .sys-node.active .sdot{ background:var(--amber); box-shadow:0 0 10px var(--amber); animation:ledBlink .5s steps(1) infinite; }
+  .sys-node.absent{ opacity:.4; }
+  .sys-info{ flex:1; min-width:0; }
+  .sys-info .t{ font-family:'JetBrains Mono'; font-size:11px; }
+  .sys-info .s{ font-family:'JetBrains Mono'; font-size:9px; color:var(--dim); }
+
+  .batt-row{ display:grid; grid-template-columns:1fr; gap:8px; max-width:560px; }
+  @media (min-width:440px){ .batt-row{ grid-template-columns:1fr 1fr; } }
+  .batt-item{ display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:8px 12px; }
+  .batt-label{ font-family:'JetBrains Mono'; font-size:10.5px; color:var(--dim); width:70px; flex-shrink:0; }
+  .batt-item input{ flex:1; accent-color:var(--green); min-width:0; }
+  .batt-val{ font-family:'JetBrains Mono'; font-size:10.5px; width:38px; text-align:right; flex-shrink:0; }
+
+  .log{
+    margin-top:10px; max-width:560px; background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:10px 14px; font-family:'JetBrains Mono'; font-size:10.5px; color:var(--dim); max-height:200px; overflow-y:auto;
+  }
+  .log div{ padding:2px 0; border-bottom:1px solid rgba(255,255,255,0.03); }
+  .log .in{ color:var(--blue); }
+  .log .out{ color:var(--green); }
+  .warn{ margin-top:22px; max-width:560px; font-size:11.5px; color:var(--amber); font-family:'JetBrains Mono'; display:none; }
+</style>
+</head>
+<body>
+
+  <h1>🎛️ SIMULATEUR DE CONSOLE</h1>
+  <div class="hint">Mock passif du boîtier : les lampes n'ont pas de couleur propre, elles affichent les commandes RGB reçues de l'appli. Les clics envoient des signaux de capteurs.</div>
+
+  <div class="section-label">Faisceaux laser <button class="mini-btn" id="btn-reset-lasers">↻ tout réactiver</button></div>
+  <div class="grid" id="beam-grid"></div>
+
+  <div class="section-label">Boutons joueurs</div>
+  <div class="grid buttons" id="button-grid"></div>
+
+  <div class="section-label">Console</div>
+  <div class="console-row">
+    <div class="start-node" id="start-node">
+      <div class="name">BOUTON DÉPART</div>
+      <div class="led" id="start-led"></div>
+      <div class="state" id="start-state">éteint</div>
+    </div>
+    <button class="estop" id="btn-estop">⛔ ARRÊT<br>D'URGENCE</button>
+  </div>
+
+  <div class="section-label">Effets — état reçu de l'appli</div>
+  <div class="sys-row">
+    <div class="sys-node" id="sys-gyro">
+      <span class="sdot"></span>
+      <div class="sys-info"><div class="t">GYROPHARE</div><div class="s" id="sys-gyro-state">connecté · éteint</div></div>
+      <button class="mini-btn" data-key="gyro">déconnecter</button>
+    </div>
+    <div class="sys-node" id="sys-smoke">
+      <span class="sdot"></span>
+      <div class="sys-info"><div class="t">FUMÉE</div><div class="s" id="sys-smoke-state">connecté · éteint</div></div>
+      <button class="mini-btn" data-key="smoke">déconnecter</button>
+    </div>
+  </div>
+
+  <div class="section-label">Batteries <button class="mini-btn" id="btn-send-batt">⟳ envoyer les niveaux</button></div>
+  <div class="batt-row" id="batt-row"></div>
+
+  <div class="section-label">Journal</div>
+  <div class="log" id="log"></div>
+
+  <div class="warn" id="warn">⚠ Ce navigateur ne supporte pas BroadcastChannel — ce simulateur ne peut pas dialoguer avec l'appli.</div>
+
+<script>
+const channel = ('BroadcastChannel' in window) ? new BroadcastChannel('mission-mars-sim') : null;
+function send(evt){ if (channel) channel.postMessage(evt); log('→ ' + describe(evt), 'out'); }
+function describe(e){
+  if (e.type === 'beam') return e.hit ? `laser ${e.id} coupé` : `laser ${e.id} ${e.on ? 'actif' : 'hors jeu'}`;
+  if (e.type === 'press') return `bouton ${e.id} enfoncé`;
+  if (e.type === 'release') return `bouton ${e.id} relâché`;
+  if (e.type === 'battery') return `batterie ${e.target}${e.id ? ' ' + e.id : ''} = ${e.pct}%`;
+  if (e.type === 'system') return `${e.key} ${e.state}`;
+  return e.type;
+}
+function log(msg, cls){
+  const box = document.getElementById('log');
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = `[${new Date().toLocaleTimeString('fr-FR')}] ${msg}`;
+  box.prepend(line);
+  while (box.children.length > 120) box.lastChild.remove();
+}
+
+/* ===== Rendu d'une lampe : applique littéralement la commande reçue.
+   Une commande "glow"/"twinkle" porte une plage d'intensité (brightnessMin → brightness)
+   et sa période : le mock anime exactement cette plage, il n'invente rien. ===== */
+function applyLamp(led, lamp){
+  const off = !lamp || lamp.mode === 'off' || !lamp.brightness;
+  led.className = 'led' + (off ? '' : ' ' + (lamp.mode || 'solid'));
+  led.style.animationDuration = '';
+  if (off) {
+    led.style.background = '#161d27';
+    led.style.boxShadow = 'inset 0 0 0 1px #232c38';
+    led.style.opacity = '';
+    return;
+  }
+  const max = lamp.brightness / 100;
+  const min = (lamp.brightnessMin != null ? lamp.brightnessMin : lamp.brightness) / 100;
+  led.style.background = `rgb(${lamp.r},${lamp.g},${lamp.b})`;
+  led.style.boxShadow = `0 0 ${8 + 14 * max}px ${2 + 4 * max}px rgba(${lamp.r},${lamp.g},${lamp.b},${0.35 + 0.5 * max})`;
+  led.style.setProperty('--lamp-min', String(0.25 + 0.75 * min));
+  led.style.setProperty('--lamp-max', String(0.25 + 0.75 * max));
+  led.style.opacity = String(0.25 + 0.75 * max);
+  if (lamp.periodMs) led.style.animationDuration = lamp.periodMs + 'ms';
+}
+/* libellé lisible de la commande, tel que le boîtier la reçoit */
+function lampLabel(lamp){
+  if (!lamp || lamp.mode === 'off' || !lamp.brightness) return 'éteint';
+  if (lamp.brightnessMin != null && lamp.brightnessMin !== lamp.brightness) {
+    return `${lamp.mode} ${lamp.brightnessMin}→${lamp.brightness}%`;
+  }
+  return `${lamp.mode} ${lamp.brightness}%`;
+}
+
+/* ===== Maintien tactile/souris commun ===== */
+function wireHold(el, { onStart, onEnd }){
+  let holding = false;
+  const start = (e) => {
+    if (e.target.closest('.sw') || e.target.closest('.mini-btn')) return;
+    if (onStart() === false) return;
+    holding = true;
+  };
+  const end = () => { if (holding) { holding = false; onEnd(); } };
+  el.addEventListener('mousedown', start);
+  el.addEventListener('touchstart', start, { passive:true });
+  el.addEventListener('mouseup', end);
+  el.addEventListener('mouseleave', end);
+  el.addEventListener('touchend', end);
+  el.addEventListener('touchcancel', end);
+}
+
+/* ===== Lasers : couleur physique du module (fixe), 3 états ===== */
+const BEAMS = [
+  { id:1, rgb:{r:53,g:242,b:163} }, { id:2, rgb:{r:255,g:77,b:94} }, { id:3, rgb:{r:77,g:195,b:255} },
+  { id:4, rgb:{r:255,g:77,b:94} }, { id:5, rgb:{r:53,g:242,b:163} }, { id:6, rgb:{r:77,g:195,b:255} }
+];
+const beamOn = {}; BEAMS.forEach(b => beamOn[b.id] = true);
+
+const beamGrid = document.getElementById('beam-grid');
+function renderBeams(){
+  beamGrid.innerHTML = BEAMS.map(b => `
+    <div class="node ${beamOn[b.id] ? 'armed' : 'off'}" data-id="${b.id}">
+      <label class="sw"><input type="checkbox" ${beamOn[b.id] ? 'checked' : ''}><span></span></label>
+      <div class="name">Laser ${b.id}</div>
+      <div class="led" data-led="${b.id}"></div>
+      <div class="state">${beamOn[b.id] ? 'INTACT' : 'HORS JEU'}</div>
+    </div>
+  `).join('');
+  BEAMS.forEach(b => {
+    const node = beamGrid.querySelector(`.node[data-id="${b.id}"]`);
+    const led = node.querySelector('.led');
+    applyLamp(led, beamOn[b.id] ? { ...b.rgb, brightness:85, mode:'solid' } : null);
+    node.querySelector('.sw input').addEventListener('change', (e) => {
+      beamOn[b.id] = e.target.checked;
+      send({ type:'beam', id:b.id, on:beamOn[b.id] });
+      renderBeams();
+    });
+    /* maintenir = le faisceau est coupé : il clignote dans sa couleur tant qu'on tient */
+    wireHold(node, {
+      onStart: () => {
+        if (!beamOn[b.id]) return false;
+        applyLamp(led, { ...b.rgb, brightness:100, mode:'blink' });
+        node.querySelector('.state').textContent = 'COUPÉ';
+        send({ type:'beam', id:b.id, hit:true });
+      },
+      onEnd: () => {
+        applyLamp(led, { ...b.rgb, brightness:85, mode:'solid' });
+        node.querySelector('.state').textContent = 'INTACT';
+        send({ type:'beam', id:b.id, on:true });
+      }
+    });
+  });
+}
+renderBeams();
+
+document.getElementById('btn-reset-lasers').addEventListener('click', () => {
+  BEAMS.forEach(b => { beamOn[b.id] = true; send({ type:'beam', id:b.id, on:true }); });
+  renderBeams();
+});
+
+/* ===== Boutons joueurs : lampes pilotées par l'appli, appui = capteur ===== */
+const BUTTONS = [1,2,3,4,5];
+const buttonLamps = {};
+const buttonGrid = document.getElementById('button-grid');
+buttonGrid.innerHTML = BUTTONS.map(id => `
+  <div class="node" data-id="${id}">
+    <div class="name">Bouton ${id}</div>
+    <div class="led" data-led="${id}"></div>
+    <div class="state" data-state="${id}">éteint</div>
+  </div>
+`).join('');
+BUTTONS.forEach(id => {
+  const node = buttonGrid.querySelector(`.node[data-id="${id}"]`);
+  wireHold(node, {
+    onStart: () => {
+      node.style.borderColor = '#fff';
+      send({ type:'press', id });
+    },
+    onEnd: () => {
+      node.style.borderColor = '';
+      send({ type:'release', id });
+    }
+  });
+});
+
+/* ===== Bouton de départ : sa lampe vient de l'appli ===== */
+const startNode = document.getElementById('start-node');
+wireHold(startNode, {
+  onStart: () => { startNode.style.borderColor = '#fff'; send({ type:'start' }); },
+  onEnd: () => { startNode.style.borderColor = ''; }
+});
+document.getElementById('btn-estop').addEventListener('click', () => send({ type:'stop' }));
+
+/* ===== Effets : état reçu + simulation de déconnexion ===== */
+const sysConnected = { gyro:true, smoke:true };
+const sysActive = { gyro:false, smoke:false };
+function renderSystem(key){
+  const node = document.getElementById('sys-' + key);
+  node.classList.toggle('active', sysActive[key] && sysConnected[key]);
+  node.classList.toggle('absent', !sysConnected[key]);
+  document.getElementById('sys-' + key + '-state').textContent =
+    !sysConnected[key] ? 'non connecté' : (sysActive[key] ? 'EN MARCHE' : 'connecté · éteint');
+  node.querySelector('.mini-btn').textContent = sysConnected[key] ? 'déconnecter' : 'connecter';
+}
+document.querySelectorAll('.sys-node .mini-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.key;
+    sysConnected[key] = !sysConnected[key];
+    if (!sysConnected[key]) sysActive[key] = false;
+    renderSystem(key);
+    send({ type:'system', key, state: sysConnected[key] ? (sysActive[key] ? 'active' : 'idle') : 'absent' });
+  });
+});
+renderSystem('gyro'); renderSystem('smoke');
+
+/* ===== Batteries : le matériel annonce ses niveaux ===== */
+const BATTERIES = [
+  { key:'console', id:0, label:'Console', pct:82 },
+  ...BEAMS.map((b, i) => ({ key:'beam', id:b.id, label:'Laser ' + b.id, pct:[91,64,78,55,83,47][i] })),
+  ...BUTTONS.map((id, i) => ({ key:'button', id, label:'Bouton ' + id, pct:[88,73,95,81,67][i] }))
+];
+const battRow = document.getElementById('batt-row');
+battRow.innerHTML = BATTERIES.map((b, i) => `
+  <label class="batt-item">
+    <span class="batt-label">${b.label}</span>
+    <input type="range" min="0" max="100" value="${b.pct}" data-i="${i}">
+    <span class="batt-val">${b.pct}%</span>
+  </label>
+`).join('');
+battRow.querySelectorAll('input').forEach(input => {
+  input.addEventListener('input', () => {
+    const b = BATTERIES[+input.dataset.i];
+    b.pct = +input.value;
+    input.parentElement.querySelector('.batt-val').textContent = b.pct + '%';
+    send({ type:'battery', target:b.key, id:b.id, pct:b.pct });
+  });
+});
+function sendAllBatteries(){ BATTERIES.forEach(b => send({ type:'battery', target:b.key, id:b.id, pct:b.pct })); }
+document.getElementById('btn-send-batt').addEventListener('click', sendAllBatteries);
+
+/* ===== Réception des commandes de l'appli ===== */
+if (channel) {
+  channel.onmessage = (e) => {
+    const evt = e.data;
+    if (!evt || evt.type !== 'lamp') return;
+    if (evt.target === 'start') {
+      applyLamp(document.getElementById('start-led'), evt);
+      document.getElementById('start-state').textContent = lampLabel(evt);
+      log(`← lampe départ : ${lampLabel(evt)}`, 'in');
+    } else if (evt.target === 'button') {
+      buttonLamps[evt.id] = evt;
+      const led = buttonGrid.querySelector(`.led[data-led="${evt.id}"]`);
+      const state = buttonGrid.querySelector(`[data-state="${evt.id}"]`);
+      const node = buttonGrid.querySelector(`.node[data-id="${evt.id}"]`);
+      if (led) applyLamp(led, evt);
+      const off = evt.mode === 'off' || !evt.brightness;
+      if (state) state.textContent = off ? 'éteint' : `rgb(${evt.r},${evt.g},${evt.b}) · ${lampLabel(evt)}`;
+      if (node) node.classList.toggle('off', off);
+      log(`← lampe bouton ${evt.id} : ${lampLabel(evt)}`, 'in');
+    }
+  };
+}
+
+if (!channel) {
+  document.getElementById('warn').style.display = 'block';
+} else {
+  log('Simulateur prêt.', 'in');
+  /* à la connexion, le boîtier se signale : l'appli lui renvoie l'état de toutes les lampes */
+  channel.postMessage({ type:'hello' });
+  setTimeout(sendAllBatteries, 400); /* et annonce ses niveaux de batterie */
+}
+</script>
+</body>
+</html>
