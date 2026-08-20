@@ -103,7 +103,7 @@
   /* ===== MISSION TAB ===== */
   .timer-block{
     text-align:center; background:var(--panel); border:1px solid var(--line);
-    border-radius:16px; padding:10px 8px 8px; position:relative; overflow:hidden; flex-shrink:0;
+    border-radius:16px; padding:10px 8px 4px; position:relative; overflow:hidden; flex-shrink:0;
   }
   .timer-block::before{ content:""; position:absolute; inset:0; background:radial-gradient(200px 100px at 50% 0%, rgba(53,242,163,0.16), transparent 70%); }
   .status-row{ display:flex; flex-direction:row; flex-wrap:wrap; align-items:center; justify-content:center; gap:7px; position:relative; z-index:1; }
@@ -129,8 +129,15 @@
     text-shadow:0 0 26px rgba(53,242,163,0.4); letter-spacing:1px; position:relative; z-index:1;
     display:flex; align-items:baseline; justify-content:center; gap:2px;
   }
-  .timer-display .main{ font-size:clamp(46px, 15cqw, 84px); }
-  .timer-display .ms{ font-size:clamp(46px, 15cqw, 84px); }
+  .timer-display .main{ font-size:clamp(34px, 10cqw, 66px); }
+  .timer-display .ms{ font-size:clamp(34px, 10cqw, 66px); }
+
+  /* En piste / Suivant à GAUCHE, chrono à droite */
+  .mission-top{ display:flex; gap:9px; flex-shrink:0; align-items:stretch; flex-wrap:wrap; }
+  .mission-top .players-now{ flex:1 1 430px; min-width:0; display:flex; flex-direction:column; justify-content:center; }
+  /* Le chrono ne s'écrase pas : s'il n'a pas la place, il passe à la ligne du dessous
+     (flex-wrap) et reprend toute la largeur. */
+  .mission-top .timer-block{ flex:1 1 320px; display:flex; flex-direction:column; justify-content:center; }
 
   .players-now{
     background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:9px 12px; flex-shrink:0;
@@ -138,7 +145,7 @@
   .now-row{ display:flex; align-items:center; gap:10px; }
   .now-row{ flex-direction:column; align-items:stretch; gap:2px; }
   .now-lbl{ font-size:clamp(11px, 2.6cqw, 14px); font-weight:700; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.3px; flex-shrink:0; }
-  .now-players{ flex:1; display:flex; align-items:center; justify-content:center; gap:14px; min-width:0; padding:6px 0; }
+  .now-players{ display:flex; align-items:center; justify-content:center; gap:12px; min-width:0; padding:2px 0; }
   /* entrée du joueur suivant : arrive en grand puis se pose (reste dans l'encart) */
   @keyframes playerPop{ 0%{ transform:scale(1.7); opacity:0; } 25%{ opacity:1; } 60%{ transform:scale(1.7); } 100%{ transform:scale(1); opacity:1; } }
   .now-players.pop{ animation:playerPop 1.7s cubic-bezier(.3,.1,.2,1); }
@@ -150,15 +157,16 @@
   }
   .avatar.mini{ width:clamp(19px, 4.5cqw, 26px); height:clamp(19px, 4.5cqw, 26px); border-radius:6px; font-size:clamp(9px, 2.1cqw, 11px); }
   .avatar.clickable{ cursor:pointer; }
-  .now-players .avatar{ width:clamp(64px, 16cqw, 92px); height:clamp(64px, 16cqw, 92px); border-radius:16px; font-size:clamp(26px, 6cqw, 36px); }
+  .now-players .avatar{ width:clamp(92px, 24cqw, 145px); height:clamp(92px, 24cqw, 145px); border-radius:20px; font-size:clamp(38px, 9cqw, 55px); }
   .player-chip .pname{ font-size:clamp(18px, 4.6cqw, 26px); font-weight:700; line-height:1.15; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:38cqw; }
   .player-chip .prole{ font-size:clamp(13px, 3.2cqw, 17px); font-weight:600; color:var(--dim); font-family:'JetBrains Mono'; margin-top:2px; }
   .vs{ font-family:'Orbitron'; font-size:clamp(12px, 2.8cqw, 16px); color:var(--dim); flex-shrink:0; }
   .next-row{ display:flex; align-items:center; flex-wrap:nowrap; gap:8px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--line); min-width:0; }
   .next-lbl{ font-size:clamp(11px, 2.6cqw, 14px); font-weight:700; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.3px; flex-shrink:0; }
   .next-arrow{ color:var(--dim); font-size:clamp(12px, 2.8cqw, 16px); flex-shrink:0; }
-  .next-names{ display:inline-flex; align-items:center; flex-wrap:nowrap; gap:8px; font-size:clamp(16px, 4.2cqw, 22px); font-weight:700; color:var(--text); overflow:hidden; min-width:0; white-space:nowrap; text-overflow:ellipsis; }
-  .next-names .avatar.mini{ width:clamp(32px, 8cqw, 44px); height:clamp(32px, 8cqw, 44px); border-radius:9px; font-size:clamp(13px, 3.2cqw, 17px); flex-shrink:0; }
+  .next-names{ display:inline-flex; align-items:center; flex-wrap:nowrap; gap:10px; font-size:clamp(16px, 4.2cqw, 22px); font-weight:700; color:var(--text); min-width:0; white-space:nowrap; }
+  /* l'anneau d'équipe est un box-shadow : il déborde de l'avatar, il lui faut de la marge */
+  .next-names .avatar.mini{ width:clamp(32px, 8cqw, 44px); height:clamp(32px, 8cqw, 44px); border-radius:9px; font-size:clamp(13px, 3.2cqw, 17px); flex-shrink:0; margin:5px; }
   .next-names span{ overflow:hidden; text-overflow:ellipsis; }
   .next-names .next-amp{ color:var(--dim); font-weight:400; }
 
@@ -195,7 +203,7 @@
   .beam.off.r{ border-color:#521f26; } .beam.off.r .led{ background:linear-gradient(to bottom, transparent 0%, #7a2f39 100%); }
   .beam.off.b{ border-color:#1a3a52; } .beam.off.b .led{ background:linear-gradient(to bottom, transparent 0%, #2f5c7e 100%); }
   .buttons-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:5px; flex-shrink:0; }
-  .buttons-grid .beam{ aspect-ratio:auto; height:clamp(48px, 12cqw, 70px); }
+  .buttons-grid .beam{ aspect-ratio:1/1; height:auto; }   /* carré, comme les lasers */
   .beam.knob .led{ width:clamp(14px, 3.8cqw, 22px); height:clamp(14px, 3.8cqw, 22px); border-radius:50%; transform:none; transition:box-shadow .1s; }
   .beam.knob .led::after{ display:none; }
   .beam.knob.on.g .led{ background:radial-gradient(circle at 35% 30%, #eafff5 0%, var(--green) 55%, rgba(53,242,163,0) 78%); box-shadow:0 0 7px 2px var(--green), 0 0 18px 5px rgba(53,242,163,.4); }
@@ -211,6 +219,8 @@
     min-width:42px; padding:9px 12px; border-radius:11px; border:1px solid var(--line); background:var(--panel);
     color:var(--dim); font-family:'JetBrains Mono'; font-size:clamp(11px, 2.5cqw, 13px); cursor:pointer;
   }
+  .arrival-btn:disabled{ opacity:.3; cursor:default; }
+  .arrival-hint{ font-size:clamp(10px, 2.2cqw, 12px); color:var(--dim); font-family:'JetBrains Mono'; align-self:center; }
   .arrival-btn.selected{ border-color:var(--amber); color:var(--amber); background:rgba(255,179,71,0.1); }
   .rookie-check{ display:inline-flex; align-items:center; gap:5px; font-size:clamp(10px, 2.3cqw, 12px); color:var(--dim); font-family:'JetBrains Mono'; cursor:pointer; margin-top:3px; }
   .rookie-check input{ accent-color:var(--green); width:14px; height:14px; }
@@ -235,6 +245,38 @@
   .theme-emoji{ font-size:20px; }
   .timer-display.urgent .main, .timer-display.urgent .ms{ color:var(--red); text-shadow:0 0 30px rgba(255,77,94,.6); }
 
+  /* Icône du rôle du bouton dans la mission (cristal, extincteur, base…) */
+  .beam.knob{ position:relative; }
+  .role-icon{
+    position:absolute; left:50%; top:52%; transform:translate(-50%,-50%);
+    font-size:clamp(15px, 4cqw, 24px); line-height:1; pointer-events:none;
+    filter:drop-shadow(0 0 6px rgba(0,0,0,0.9));
+  }
+  .role-icon.dim{ opacity:.25; filter:grayscale(1); }
+  /* la pastille lumineuse passe derrière l'icône et devient un halo */
+  .beam.knob:has(.role-icon:not(:empty)) .led{ opacity:.55; }
+
+  /* La forme SVG EST la lampe du bouton : plus de pastille ronde derrière */
+  .beam.knob .led{ display:none; }
+  .beam.knob .role-icon{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:clamp(20px, 5.4cqw, 30px); height:clamp(28px, 7.6cqw, 42px);
+    display:flex; align-items:center; justify-content:center; pointer-events:none;
+    transition:color .15s, opacity .15s;
+  }
+  .beam.knob .role-icon svg{ width:100%; height:100%; display:block; }
+
+  /* Pastille "Launch System" : état du boîtier de commande */
+  .system-chip.launch{ flex:1.5; gap:5px; }
+  .launch-info{ display:inline-flex; align-items:center; gap:7px; margin-left:2px; }
+  .launch-info .batt-mid{ color:var(--amber); }
+  .launch-info .batt-low{ color:var(--red); }
+  .pbtn{
+    display:inline-block; min-width:15px; text-align:center; padding:1px 3px; border-radius:4px;
+    background:rgba(255,255,255,0.06); color:var(--dim); font-size:.9em;
+  }
+  .pbtn.hit{ background:var(--green); color:var(--bg); }
+
   .systems-row{ display:flex; gap:6px; flex-shrink:0; }
   .system-chip{
     flex:1; display:flex; align-items:center; justify-content:center; gap:6px; background:var(--panel); border:1px solid var(--line);
@@ -245,6 +287,14 @@
   .system-chip.active{ color:#fff; border-color:var(--amber); background:rgba(255,179,71,0.1); }
   .system-chip.active .sdot{ background:var(--amber); box-shadow:0 0 8px var(--amber); animation:pulse 1s infinite; }
   .system-chip.absent{ opacity:.35; filter:grayscale(1); text-decoration:line-through; }
+
+  /* Un module peut annoncer sa couleur exacte : elle prime alors sur les classes g/r/b,
+     pour que l'appli montre la vraie couleur du matériel et pas une approximation. */
+  .beam[style*="--beam"] .led{
+    background:linear-gradient(to bottom, transparent 0%, var(--beam) 70%, #fff 100%) !important;
+    color:var(--beam) !important;
+  }
+  .beam[style*="--beam"].on .battery i{ background:var(--beam) !important; }
 
   .beam .battery{ position:absolute; left:16%; right:16%; bottom:5px; height:clamp(1.5px, 0.35cqw, 2.5px); border-radius:2px; background:rgba(255,255,255,0.06); overflow:hidden; }
   .beam .battery i{ display:block; height:100%; border-radius:2px; opacity:.6; }
@@ -344,7 +394,14 @@
   .wstep.done{ color:var(--green); } .wstep.done .num{ border-color:var(--green); color:var(--green); }
   .wstep-sep{ flex:1; height:2px; border-radius:2px; background:#1c2836; }
   .wizard-body{ flex:1; min-height:0; overflow-y:auto; }
+  /* étape finale : le joueur est centré verticalement dans l'espace disponible */
+  .wizard-body.centered{ display:flex; flex-direction:column; justify-content:center; text-align:center; }
   .wizard-foot{ flex-shrink:0; display:flex; gap:8px; padding-top:12px; }
+  @keyframes wizardGlow{
+    0%,100%{ box-shadow:0 8px 22px -8px var(--green), 0 0 10px -2px var(--green); }
+    50%{ box-shadow:0 8px 26px -6px var(--green), 0 0 30px 4px var(--green); }
+  }
+  #wizard-next{ animation:wizardGlow 1.9s ease-in-out infinite; }
   .wizard-back{
     flex:0 0 auto; padding:0 16px; border-radius:14px; border:1px solid var(--line); background:var(--panel);
     color:var(--dim); font-family:'JetBrains Mono'; font-size:clamp(11px, 2.5cqw, 13px); cursor:pointer;
@@ -352,8 +409,13 @@
   .wizard-crew{ display:flex; align-items:center; justify-content:center; gap:20px; padding:10px 0 4px; flex-wrap:wrap; }
   .wizard-player{ text-align:center; }
   .avatar.huge{
-    width:clamp(130px, 42cqw, 210px); height:clamp(130px, 42cqw, 210px); border-radius:26px;
-    font-size:clamp(52px, 17cqw, 84px); margin:0 auto;
+    width:clamp(180px, 56cqw, 300px); height:clamp(180px, 56cqw, 300px); border-radius:32px;
+    font-size:clamp(72px, 23cqw, 120px); margin:0 auto;
+  }
+  /* en duel, deux avatars côte à côte : on les réduit pour qu'ils tiennent */
+  .wizard-crew.duo .avatar.huge{
+    width:clamp(120px, 34cqw, 190px); height:clamp(120px, 34cqw, 190px); border-radius:24px;
+    font-size:clamp(48px, 14cqw, 76px);
   }
   .wizard-player-name{ font-family:'Orbitron'; font-weight:700; font-size:clamp(18px, 5cqw, 26px); margin-top:14px; }
   .wizard-player-team{ font-family:'JetBrains Mono'; font-size:clamp(11px, 2.6cqw, 14px); margin-top:3px; opacity:.85; }
@@ -426,7 +488,7 @@
   .countdown-overlay{
     position:fixed; inset:0; z-index:70; display:flex; align-items:center; justify-content:center;
     background:rgba(5,7,10,0.82); font-family:'Orbitron'; font-weight:900;
-    font-size:clamp(120px, 40cqw, 260px); color:#fff; text-shadow:0 0 60px var(--accent);
+    font-size:clamp(120px, 40cqw, 260px); color:#fff; text-shadow:0 0 60px var(--green);
     opacity:0; pointer-events:none; transition:opacity .2s;
   }
   .countdown-overlay.show{ opacity:1; }
@@ -446,12 +508,12 @@
 
   /* --- Bandeau éphémère : +1 cristal, éliminé, etc. --- */
   .run-banner{
-    position:relative; z-index:1; margin-top:6px; opacity:0; transform:translateY(-4px);
+    position:relative; z-index:1; height:0; overflow:hidden; opacity:0; transform:translateY(-4px);
     transition:opacity .18s, transform .18s;
     font-family:'Orbitron'; font-weight:700; font-size:clamp(13px, 3.2cqw, 17px); letter-spacing:.08em;
   }
-  .run-banner.show{ opacity:1; transform:translateY(0); }
-  .run-banner.good{ color:var(--accent); text-shadow:0 0 18px var(--accent); }
+  .run-banner.show{ height:auto; margin-top:8px; opacity:1; transform:translateY(0); }
+  .run-banner.good{ color:var(--green); text-shadow:0 0 18px var(--green); }
   .run-banner.bad{ color:var(--red); text-shadow:0 0 18px var(--red); }
   .run-banner.warn{ color:var(--amber); text-shadow:0 0 18px var(--amber); }
 
@@ -464,7 +526,7 @@
   .history-row .h-icon{ flex-shrink:0; font-size:clamp(14px, 3.2cqw, 17px); }
   .history-row .h-names{ font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .history-row .h-detail{ flex:1; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .history-row .h-time{ font-family:'JetBrains Mono'; color:var(--accent); flex-shrink:0; }
+  .history-row .h-time{ font-family:'JetBrains Mono'; color:var(--green); flex-shrink:0; }
   .history-row .h-date{ font-family:'JetBrains Mono'; color:var(--dim); font-size:.85em; flex-shrink:0; }
 
   /* --- Recadrage de photo --- */
@@ -476,14 +538,14 @@
   .crop-panel{ width:100%; max-width:380px; display:flex; flex-direction:column; gap:12px; }
   .crop-title{ font-family:'Orbitron'; font-weight:700; font-size:15px; text-align:center; color:#fff; }
   .crop-stage{
-    width:100%; aspect-ratio:1/1; background:#05070a; border:2px solid var(--accent);
+    width:100%; aspect-ratio:1/1; background:#05070a; border:2px solid var(--green);
     border-radius:16px; overflow:hidden; display:flex; align-items:center; justify-content:center;
-    box-shadow:0 0 28px -8px var(--accent);
+    box-shadow:0 0 28px -8px var(--green);
   }
   #crop-canvas{ touch-action:none; cursor:grab; display:block; }
   #crop-canvas:active{ cursor:grabbing; }
   .crop-zoom-row{ display:flex; align-items:center; gap:10px; color:var(--dim); font-size:16px; }
-  .crop-zoom-row input{ flex:1; accent-color:var(--accent); }
+  .crop-zoom-row input{ flex:1; accent-color:var(--green); }
   .crop-hint{ text-align:center; font-size:11px; color:var(--dim); font-family:'JetBrains Mono'; }
   .crop-actions{ display:flex; gap:10px; }
   .crop-btn{
@@ -491,7 +553,7 @@
     font-family:'Orbitron'; font-weight:700; font-size:13px; cursor:pointer;
   }
   .crop-btn.ghost{ background:var(--panel); color:var(--dim); }
-  .crop-btn.primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink, #05070a); }
+  .crop-btn.primary{ background:var(--green); border-color:var(--green); color:var(--bg); }
 
   .celebrate-overlay{
     position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center;
@@ -562,7 +624,7 @@
   .mode-card .icon{ font-size:clamp(20px, 4.4cqw, 25px); flex-shrink:0; }
   .mode-card h3{ font-size:clamp(14px, 3.2cqw, 17px); font-weight:700; }
   .mode-card .req{ margin-left:auto; font-size:clamp(9px, 2cqw, 11px); font-family:'JetBrains Mono'; color:var(--amber); }
-  .mode-card p{ font-size:clamp(11.5px, 2.6cqw, 13.5px); color:var(--dim); line-height:1.45; margin-top:5px; }
+  .mode-card p{ font-size:clamp(13px, 3cqw, 16px); color:var(--dim); line-height:1.55; margin-top:6px; }
 
   /* ===== SCORES TAB ===== */
   #tab-scores{ overflow-y:auto; }
@@ -604,47 +666,40 @@
     <!-- ===================== TAB MISSION (par défaut) ===================== -->
     <div class="tabpanel active" id="tab-mission">
 
-      <div class="timer-block">
-        <div class="status-row">
-          <div class="status-badge idle" id="status-badge"><span class="dot-live"></span> EN ATTENTE</div>
-          <div class="mode-chip" id="mode-chip" role="button" tabindex="0">⚡ Tempête de météores</div>
+      <div class="mission-top">
+        <div class="players-now">
+          <div class="now-row">
+            <span class="now-lbl">EN&nbsp;PISTE</span>
+            <div class="now-players" id="now-players"></div>
+          </div>
+          <div class="next-row">
+            <span class="next-lbl">SUIVANT</span>
+            <span class="next-arrow">→</span>
+            <span class="next-names" id="next-players"></span>
+          </div>
         </div>
-        <div class="timer-display"><span class="main" id="timer-main">00:00</span><span class="ms" id="timer-cs">.00</span></div>
-        <div class="run-hud" id="run-hud"></div>
-        <div class="run-banner" id="run-banner"></div>
-        <div class="mode-desc" id="mode-desc"></div>
+
+        <div class="timer-block">
+          <div class="status-row">
+            <div class="status-badge idle" id="status-badge"><span class="dot-live"></span> EN ATTENTE</div>
+            <div class="mode-chip" id="mode-chip" role="button" tabindex="0">⚡ Tempête de météores</div>
+          </div>
+          <div class="timer-display"><span class="main" id="timer-main">00:00</span><span class="ms" id="timer-cs">.00</span></div>
+          <div class="run-hud" id="run-hud"></div>
+          <div class="run-banner" id="run-banner"></div>
+          <div class="mode-desc" id="mode-desc"></div>
+        </div>
       </div>
 
-      <div class="players-now">
-        <div class="now-row">
-          <span class="now-lbl">EN&nbsp;PISTE</span>
-          <div class="now-players" id="now-players"></div>
-        </div>
-        <div class="next-row">
-          <span class="next-lbl">SUIVANT</span>
-          <span class="next-arrow">→</span>
-          <span class="next-names" id="next-players"></span>
-        </div>
-      </div>
+      <div class="beam-grid" id="beam-grid"></div>
 
-      <div class="beam-grid">
-        <div class="beam on g" data-beam="1"><span class="name">Laser 1</span><div class="led"></div><div class="battery"><i style="width:91%"></i></div></div>
-        <div class="beam off r" data-beam="2"><span class="name">Laser 2</span><div class="led"></div><div class="battery"><i style="width:64%"></i></div></div>
-        <div class="beam on b" data-beam="3"><span class="name">Laser 3</span><div class="led"></div><div class="battery"><i style="width:78%"></i></div></div>
-        <div class="beam on r" data-beam="4"><span class="name">Laser 4</span><div class="led"></div><div class="battery"><i style="width:55%"></i></div></div>
-        <div class="beam on g" data-beam="5"><span class="name">Laser 5</span><div class="led"></div><div class="battery"><i style="width:83%"></i></div></div>
-        <div class="beam on b" data-beam="6"><span class="name">Laser 6</span><div class="led"></div><div class="battery"><i style="width:47%"></i></div></div>
-      </div>
-
-      <div class="buttons-grid" id="buttons-grid">
-        <div class="beam knob on g" data-button="1"><span class="name">Bouton 1</span><div class="led"></div><div class="battery"><i style="width:88%"></i></div></div>
-        <div class="beam knob on b" data-button="2"><span class="name">Bouton 2</span><div class="led"></div><div class="battery"><i style="width:73%"></i></div></div>
-        <div class="beam knob off r" data-button="3"><span class="name">Bouton 3</span><div class="led"></div><div class="battery"><i style="width:95%"></i></div></div>
-        <div class="beam knob on g" data-button="4"><span class="name">Bouton 4</span><div class="led"></div><div class="battery"><i style="width:81%"></i></div></div>
-        <div class="beam knob on b" data-button="5"><span class="name">Bouton 5</span><div class="led"></div><div class="battery"><i style="width:67%"></i></div></div>
-      </div>
+      <div class="buttons-grid" id="buttons-grid"></div>
 
       <div class="systems-row" id="systems-row">
+        <div class="system-chip launch" id="sys-launch">
+          <span class="sdot"></span>LAUNCH SYSTEM
+          <span class="launch-info"><span id="launch-batt">--%</span><span id="launch-btns">■ ▶</span></span>
+        </div>
         <div class="system-chip" id="sys-gyro"><span class="sdot"></span>GYROPHARE</div>
         <div class="system-chip" id="sys-smoke"><span class="sdot"></span>FUMÉE</div>
       </div>
@@ -781,7 +836,7 @@
         <div class="section-label" id="lbl-mission-mode">Mode de mission</div>
         <div class="mode-grid" id="mode-grid"></div>
 
-        <div class="section-label">Bouton d'arrivée</div>
+        <div class="section-label" id="arrival-label">Bouton d'arrivée</div>
         <div class="arrival-row" id="arrival-row"></div>
       </div>
 
@@ -871,6 +926,7 @@ const MODES = [
     key:'cristal-rush', icon:'💎', name:'Cristal Rush', req:null,
     obstacleName:'Météore', obstacleIcon:'☄️', targetName:'Cristal', targetIcon:'💎',
     playersUsed:'all', timed:true, defaultDuration:120,
+    hasArrival:false,   /* pas d'arrivée : la manche s'arrête au chrono */
     tagline:"Une pluie de cristaux dans le noir. Attrape-les tous.",
     desc:"Les cristaux scintillent dans l'obscurité — rose, violet, vert, bleu glacier. Touche-en le plus possible avant la fin du compte à rebours, pendant que les météores balaient la salle. Chaque impact te coûte un cristal… mais un nouveau se rallume toujours quelque part."
   },
@@ -878,6 +934,7 @@ const MODES = [
     key:'fire', icon:'🔥', name:'Fire', req:null,
     obstacleName:'Flamme', obstacleIcon:'🔥', targetName:'Extincteur', targetIcon:'🧯',
     playersUsed:1, timed:false,
+    hasArrival:true, arrivalLabel:'Extincteur', arrivalIcon:'🧯',
     tagline:"La navette brûle. Un seul bouton peut tout arrêter.",
     desc:"Sirène hurlante, gyrophare rouge : le feu a pris dans la navette. Une seule commande d'extinction, tout au fond de la salle, et un mur de flammes entre elle et toi. Traverse sans te brûler — le plus rapide sauve l'équipage."
   },
@@ -885,6 +942,7 @@ const MODES = [
     key:'duel-orbital', icon:'🚀', name:'Duel orbital', req:'2 ÉQUIPES',
     obstacleName:'Astéroïde', obstacleIcon:'☄️', targetName:'Base', targetIcon:'🛸',
     playersUsed:2, timed:false,
+    hasArrival:true, arrivalLabel:'Base adverse', arrivalIcon:'🛸',
     tagline:"Five… four… three… two… one… ignition!",
     desc:"Deux navettes, deux bases opposées, un champ d'astéroïdes entre les deux. Au signal, chacun frappe son bouton de mise à feu et s'élance vers la base adverse. Le premier arrivé gagne — le premier touché explose."
   }
@@ -911,6 +969,8 @@ function renderModes(){
       renderModes();
       updateModeChip();
       renderPlayers();
+      renderArrivalConfig();   /* le réglage d'arrivée dépend de la mission */
+      updateButtonsForMode();  /* et les rôles/icônes des boutons aussi */
     });
   });
   wireDurationButtons(grid);
@@ -982,7 +1042,6 @@ function buttonLampFor(id){
   if (m.key === 'cristal-rush') {
     if (!inMission || !run) {
       /* hors mission : tous les cristaux en veille douce, pour montrer lesquels servent */
-      if (id === arrivalButtonId) return LAMP_OFF;
       const c0 = CRISTAL_COLORS[(id - 1) % CRISTAL_COLORS.length];
       return { ...c0, mode:'solid', brightness:18 };
     }
@@ -1029,36 +1088,186 @@ function startLamp(){
 
 /* Envoie l'état de TOUTES les lampes au boîtier et met l'affichage local en accord. */
 function syncLamps(){
-  for (let id = 1; id <= 5; id++) {
+  buttonIds().forEach(id => {
     const lamp = buttonLampFor(id);
     broadcastToSim({ type:'lamp', target:'button', id, ...lamp });
     applyButtonLamp(id, lamp);
-  }
+  });
   broadcastToSim({ type:'lamp', target:'start', id:0, ...startLamp() });
+}
+
+/* Le mode courant utilise-t-il un bouton d'arrivée ? (Cristal Rush n'en a pas) */
+function modeHasArrival(){ return currentMode().hasArrival !== false; }
+
+/* Rôle joué par un bouton DANS LA MISSION EN COURS : c'est ce que le joueur voit.
+   Un bouton n'est "l'arrivée" que dans les modes qui en ont une ; ailleurs c'est
+   un cristal, une base de lancement… avec l'icône qui va avec. */
+/* ===== TOPOLOGIE DU MATÉRIEL =====
+   Le nombre de faisceaux et de boutons n'est PAS figé dans l'appli : c'est le boîtier
+   de commande (simulé aujourd'hui, physique demain) qui l'annonce au démarrage via un
+   événement `topology`. Ces valeurs ne servent que tant que rien n'a été annoncé. */
+let TOPOLOGY = {
+  beams:   [1,2,3,4,5,6].map(id => ({ id, color:['g','r','b','r','g','b'][id-1] })),
+  buttons: [1,2,3,4,5].map(id => ({ id }))
+};
+
+function beamIds(){ return TOPOLOGY.beams.map(b => b.id); }
+function buttonIds(){ return TOPOLOGY.buttons.map(b => b.id); }
+
+/* (Re)construit les deux grilles d'après la topologie annoncée. */
+function renderHardware(){
+  const bg = document.getElementById('beam-grid');
+  bg.style.gridTemplateColumns = `repeat(${Math.max(1, TOPOLOGY.beams.length)}, 1fr)`;
+  bg.innerHTML = TOPOLOGY.beams.map(b => `
+    <div class="beam on ${b.color || 'g'}" data-beam="${b.id}"${b.rgb ? ` style="--beam:rgb(${b.rgb.r},${b.rgb.g},${b.rgb.b})"` : ''}>
+      <span class="name">${currentMode().obstacleName} ${b.id}</span>
+      <div class="led"></div>
+      <div class="battery"><i style="width:0%"></i></div>
+    </div>`).join('');
+
+  const kg = document.getElementById('buttons-grid');
+  kg.style.gridTemplateColumns = `repeat(${Math.max(1, TOPOLOGY.buttons.length)}, 1fr)`;
+  kg.innerHTML = TOPOLOGY.buttons.map(b => `
+    <div class="beam knob off" data-button="${b.id}">
+      <span class="name">Bouton ${b.id}</span>
+      <span class="role-icon"></span>
+      <div class="battery"><i style="width:0%"></i></div>
+    </div>`).join('');
+
+  /* le bouton d'arrivée doit rester un bouton qui existe vraiment */
+  if (!buttonIds().includes(arrivalButtonId)) arrivalButtonId = buttonIds()[0] || 1;
+  renderArrivalConfig();
+  syncLamps();
+}
+
+function applyTopology(t){
+  if (!t) return;
+  if (Array.isArray(t.beams) && t.beams.length) TOPOLOGY.beams = t.beams;
+  if (Array.isArray(t.buttons) && t.buttons.length) TOPOLOGY.buttons = t.buttons;
+  renderHardware();
+  updateModeChip();
+}
+
+/* ===== État du boîtier de commande (batterie, boutons physiques) ===== */
+let launchState = { battery:null, start:false, stop:false, online:false };
+function renderLaunchSystem(){
+  const chip = document.getElementById('sys-launch');
+  const batt = document.getElementById('launch-batt');
+  const btns = document.getElementById('launch-btns');
+  if (!chip) return;
+  chip.classList.toggle('active', launchState.online);
+  batt.textContent = launchState.battery == null ? '--%' : launchState.battery + '%';
+  batt.className = launchState.battery == null ? ''
+    : (launchState.battery <= 20 ? 'batt-low' : launchState.battery <= 50 ? 'batt-mid' : '');
+  btns.innerHTML =
+    `<span class="pbtn ${launchState.stop ? 'hit' : ''}" title="Arrêt d'urgence">■</span>` +
+    `<span class="pbtn ${launchState.start ? 'hit' : ''}" title="Bouton départ">▶</span>`;
+}
+
+/* ===== FORMES DES LAMPES =====
+   Un emoji ne peut pas changer de couleur : chaque rôle est donc une forme SVG qui
+   hérite de la couleur de la lampe (fill="currentColor"). C'est la forme ELLE-MÊME
+   qui s'allume — il n'y a plus de pastille ronde derrière.
+   Un thème pourra redéfinir ces formes sans toucher à la logique. */
+const ROLE_SHAPES = {
+  /* druse de quartz : trois pointes de hauteurs différentes, à facettes */
+  crystal: `<svg viewBox="0 0 40 64" aria-hidden="true">
+      <g transform="rotate(-11 10 60)">
+        <path d="M5 60 L5 33 L10 20 L15 33 L15 60 Z" fill="currentColor"/>
+        <path d="M5 60 L5 33 L10 20 L10 60 Z" fill="#fff" opacity=".34"/>
+        <path d="M10 20 L15 33 L15 60 L10 60 Z" fill="#000" opacity=".26"/>
+      </g>
+      <g transform="rotate(13 30 60)">
+        <path d="M25 60 L25 28 L30 12 L35 28 L35 60 Z" fill="currentColor"/>
+        <path d="M25 60 L25 28 L30 12 L30 60 Z" fill="#fff" opacity=".30"/>
+        <path d="M30 12 L35 28 L35 60 L30 60 Z" fill="#000" opacity=".28"/>
+      </g>
+      <g>
+        <path d="M13 62 L13 20 L20 3 L27 20 L27 62 Z" fill="currentColor"/>
+        <path d="M13 62 L13 20 L20 3 L20 62 Z" fill="#fff" opacity=".40"/>
+        <path d="M20 3 L27 20 L27 62 L20 62 Z" fill="#000" opacity=".22"/>
+        <path d="M13 20 L20 3 L27 20 L20 26 Z" fill="#fff" opacity=".22"/>
+      </g>
+    </svg>`,
+  /* extincteur */
+  extinguisher: `<svg viewBox="0 0 40 64" aria-hidden="true">
+      <rect x="11" y="16" width="18" height="42" rx="7" fill="currentColor"/>
+      <rect x="16" y="7" width="8" height="10" rx="2" fill="currentColor"/>
+      <path d="M24 10 L34 5 L34 11 L24 15 Z" fill="currentColor" opacity=".8"/>
+      <rect x="11" y="30" width="18" height="7" fill="#000" opacity=".25"/>
+    </svg>`,
+  /* navette / base de lancement */
+  rocket: `<svg viewBox="0 0 40 64" aria-hidden="true">
+      <path d="M20 3 C28 14 30 28 30 40 L10 40 C10 28 12 14 20 3 Z" fill="currentColor"/>
+      <path d="M10 40 L3 54 L13 48 Z" fill="currentColor" opacity=".75"/>
+      <path d="M30 40 L37 54 L27 48 Z" fill="currentColor" opacity=".75"/>
+      <circle cx="20" cy="22" r="5" fill="#000" opacity=".3"/>
+    </svg>`,
+  /* bouton générique (mission qui ne lui donne pas de rôle) */
+  plain: `<svg viewBox="0 0 40 64" aria-hidden="true">
+      <circle cx="20" cy="32" r="14" fill="currentColor"/>
+      <circle cx="20" cy="32" r="14" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="3"/>
+    </svg>`
+};
+function roleShapeSvg(shape){ return ROLE_SHAPES[shape] || ROLE_SHAPES.plain; }
+
+function buttonRoleFor(id){
+  const m = currentMode();
+  const isArrival = modeHasArrival() && id === arrivalButtonId;
+
+  if (m.key === 'cristal-rush') {
+    /* tous les boutons sont des cristaux : pas d'arrivée dans ce mode */
+    return { label:`${m.targetName} ${id}`, shape:'crystal', used:true };
+  }
+
+  if (m.key === 'fire') {
+    if (isArrival) return { label:m.arrivalLabel, shape:'extinguisher', used:true };
+    return { label:`Bouton ${id}`, shape:'plain', used:false };
+  }
+
+  if (m.key === 'duel-orbital') {
+    if (isArrival) return { label:m.arrivalLabel, shape:'rocket', used:true };
+    if (id === 1 || id === 2) {
+      const p = livePlayers()[id - 1];
+      return { label:p ? p.name : `Base ${id}`, shape:'rocket', used:true };
+    }
+    return { label:`Bouton ${id}`, shape:'plain', used:false };
+  }
+
+  return { label:isArrival ? 'Arrivée' : `Bouton ${id}`, shape:'plain', used:isArrival };
 }
 
 /* Rendu local d'une lampe de bouton (l'appli montre la même chose que le matériel) */
 function applyButtonLamp(id, lamp){
   const el = document.querySelector('.beam[data-button="' + id + '"]');
   if (!el) return;
-  const led = el.querySelector('.led');
   const off = lamp.mode === 'off' || lamp.brightness === 0;
+  const role = buttonRoleFor(id);
+
   el.classList.toggle('unused', off);
-  el.classList.toggle('arrival', id === arrivalButtonId);
+  el.classList.toggle('arrival', modeHasArrival() && id === arrivalButtonId);
   el.classList.toggle('on', !off);
   el.classList.toggle('off', off);
-  if (led) {
-    const a = (lamp.brightness || 0) / 100;
-    led.style.background = off ? '#1c2836' : `rgb(${lamp.r},${lamp.g},${lamp.b})`;
-    led.style.boxShadow = off
-      ? 'inset 0 0 0 1px #2a3644'
-      : `0 0 ${6 + 10 * a}px ${1 + 3 * a}px rgba(${lamp.r},${lamp.g},${lamp.b},${0.35 + 0.5 * a})`;
-    led.style.opacity = off ? '' : String(0.45 + 0.55 * a);
-    led.style.animation = (lamp.mode === 'twinkle' || lamp.mode === 'glow') && !off
-      ? 'readyGlow 1.5s ease-in-out infinite' : 'none';
-  }
+
   const label = el.querySelector('.name');
-  if (label) label.textContent = id === arrivalButtonId ? 'Arrivée' : `Bouton ${id}`;
+  if (label) label.textContent = role.label;
+
+  /* La FORME est la lampe : elle prend la couleur et le halo, il n'y a pas de pastille
+     ronde derrière. Éteinte, elle reste visible en gris pour montrer sa présence. */
+  const holder = el.querySelector('.role-icon');
+  if (!holder) return;
+  if (holder.dataset.shape !== role.shape) {
+    holder.innerHTML = roleShapeSvg(role.shape);
+    holder.dataset.shape = role.shape;
+  }
+  const a = (lamp.brightness || 0) / 100;
+  holder.style.color = off ? '#26313f' : `rgb(${lamp.r},${lamp.g},${lamp.b})`;
+  holder.style.filter = off
+    ? 'none'
+    : `drop-shadow(0 0 ${3 + 7 * a}px rgba(${lamp.r},${lamp.g},${lamp.b},${0.5 + 0.45 * a}))`;
+  holder.style.opacity = off ? '.5' : String(0.55 + 0.45 * a);
+  holder.style.animation = (lamp.mode === 'twinkle' || lamp.mode === 'glow') && !off
+    ? 'readyGlow 1.5s ease-in-out infinite' : 'none';
 }
 
 function updateButtonsForMode(){ syncLamps(); }
@@ -1098,11 +1307,41 @@ function renderThemePicker(){
 /* ===== Bouton d'arrivée configurable ===== */
 function renderArrivalConfig(){
   const row = document.getElementById('arrival-row');
-  row.innerHTML = [1,2,3,4,5].map(id => `
-    <button class="arrival-btn ${id === arrivalButtonId ? 'selected' : ''}" data-id="${id}">${id}</button>
-  `).join('');
+  const label = document.getElementById('arrival-label');
+  const m = currentMode();
+
+  /* Certaines missions n'ont pas d'arrivée du tout (Cristal Rush s'arrête au chrono) :
+     on masque complètement le réglage plutôt que de laisser croire qu'il sert. */
+  if (!modeHasArrival()) {
+    label.style.display = 'none';
+    row.style.display = 'none';
+    row.innerHTML = '';
+    return;
+  }
+  label.style.display = '';
+  row.style.display = '';
+  label.textContent = m.arrivalLabel ? `Bouton « ${m.arrivalLabel} »` : "Bouton d'arrivée";
+
+  /* En duel, les boutons 1 et 2 sont les bases de départ des 2 joueurs :
+     ils ne peuvent pas servir aussi de base adverse. */
+  const reserved = m.key === 'duel-orbital' ? [1, 2] : [];
+  if (reserved.includes(arrivalButtonId)) {
+    arrivalButtonId = [3,4,5].find(id => !reserved.includes(id));
+    saveState();
+  }
+
+  row.innerHTML = buttonIds().map(id => {
+    const off = reserved.includes(id);
+    return `<button class="arrival-btn ${id === arrivalButtonId ? 'selected' : ''}"
+      data-id="${id}" ${off ? 'disabled title="Base de depart d un joueur"' : ''}>${id}</button>`;
+  }).join('');
+  if (reserved.length) {
+    row.insertAdjacentHTML('beforeend',
+      '<span class="arrival-hint">1 et 2 = bases de départ des joueurs</span>');
+  }
   row.querySelectorAll('.arrival-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (btn.disabled) return;
       arrivalButtonId = +btn.dataset.id;
       saveState();
       renderArrivalConfig();
@@ -1522,7 +1761,8 @@ function rules(){ return RULES[currentModeKey] || RULES['cristal-rush']; }
 
 /* Choisit au hasard un nouveau cristal parmi les boutons disponibles. */
 function lightRandomCrystal(r){
-  const candidates = [1,2,3,4,5].filter(id => id !== arrivalButtonId && id !== r.litButton);
+  /* pas d'arrivée dans ce mode : les 5 boutons sont des cristaux */
+  const candidates = buttonIds().filter(id => id !== r.litButton);
   r.litButton = candidates[Math.floor(Math.random() * candidates.length)];
   syncLamps();
 }
@@ -1874,7 +2114,7 @@ function renderRosterStrip(){
    L'utilisateur cadre lui-même la photo dans un carré : on peut la déplacer au doigt
    et zoomer (pincement à deux doigts, molette, ou le curseur). Le résultat est exporté
    en 240x240 JPEG — assez petit pour tenir dans localStorage sans faire sauter le quota. */
-const CROP_OUT = 240;
+const CROP_OUT = 480;   /* 480px : net sur les grands avatars de l'étape 3 et à l'impression */
 let cropState = null;
 
 function openCropper(file, onDone){
@@ -1939,7 +2179,7 @@ function confirmCrop(){
   ctx.drawImage(s.img, (CROP_OUT - w) / 2 + s.x * k, (CROP_OUT - h) / 2 + s.y * k, w, h);
   const done = s.onDone;
   closeCropper();
-  done(out.toDataURL('image/jpeg', 0.85));
+  done(out.toDataURL('image/jpeg', 0.92));
 }
 
 /* --- gestes : glisser pour déplacer, pincer ou molette pour zoomer --- */
@@ -2232,6 +2472,8 @@ function setButtonPressed(id, pressed){
    demain de la vraie console qui relaiera la mesure ADC de chaque nœud). */
 function setBattery(target, id, pct){
   if (target === 'console') {
+    launchState.battery = pct;
+    renderLaunchSystem();
     const el = document.getElementById('header-battery');
     document.getElementById('batt-pct').textContent = pct + '%';
     el.classList.toggle('batt-mid', pct <= 50 && pct > 20);
@@ -2245,7 +2487,15 @@ function setBattery(target, id, pct){
 
 function applyEvent(evt){
   if (!evt || !evt.type) return;
-  if (evt.type === 'hello') { syncLamps(); broadcastToSim({ type:'system', key:'gyro', state:systemState.gyro }); broadcastToSim({ type:'system', key:'smoke', state:systemState.smoke }); }
+  if (evt.type === 'topology') { launchState.online = true; applyTopology(evt); renderLaunchSystem(); }
+  else if (evt.type === 'launch') {
+    if (typeof evt.battery === 'number') launchState.battery = evt.battery;
+    if (typeof evt.start === 'boolean') launchState.start = evt.start;
+    if (typeof evt.stop === 'boolean') launchState.stop = evt.stop;
+    launchState.online = true;
+    renderLaunchSystem();
+  }
+  else if (evt.type === 'hello') { launchState.online = true; renderLaunchSystem(); syncLamps(); broadcastToSim({ type:'system', key:'gyro', state:systemState.gyro }); broadcastToSim({ type:'system', key:'smoke', state:systemState.smoke }); }
   else if (evt.type === 'system') setSystemState(evt.key, evt.state, true); /* annoncé par le matériel */
   else if (evt.type === 'battery') setBattery(evt.target, evt.id, evt.pct);
   else if (evt.type === 'beam') {
@@ -2333,6 +2583,8 @@ function renderWizard(){
   const body = document.getElementById('wizard-body');
   const nextBtn = document.getElementById('wizard-next');
 
+  body.classList.toggle('centered', wizardStep === 2);
+
   if (wizardStep === 0) {
     body.innerHTML = `
       <div class="wizard-title">Qui embarque ?</div>
@@ -2355,7 +2607,7 @@ function renderWizard(){
     body.innerHTML = `
       <div class="wizard-title">Tout est prêt</div>
       <div class="wizard-sub">${m.icon} ${m.name} — ${m.tagline}</div>
-      <div class="wizard-crew">
+      <div class="wizard-crew ${crew.length > 1 ? 'duo' : ''}">
         ${crew.map(p => `
           <div class="wizard-player">
             ${avatarHtml(p, 'huge')}
@@ -2420,7 +2672,8 @@ document.getElementById('team-scores').style.display = teamMode ? 'flex' : 'none
 renderThemePicker();
 renderModes();
 updateModeChip();
-renderArrivalConfig();
+renderHardware();
+renderLaunchSystem();
 renderTeamEditors();
 renderAgents();
 renderPlayers();

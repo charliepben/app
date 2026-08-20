@@ -292,10 +292,16 @@ BUTTONS.forEach(id => {
 /* ===== Bouton de départ : sa lampe vient de l'appli ===== */
 const startNode = document.getElementById('start-node');
 wireHold(startNode, {
-  onStart: () => { startNode.style.borderColor = '#fff'; send({ type:'start' }); },
-  onEnd: () => { startNode.style.borderColor = ''; }
+  /* on remonte AUSSI l'état physique du bouton : l'appli l'affiche dans « Launch System » */
+  onStart: () => { startNode.style.borderColor = '#fff'; sendLaunchState({ start:true }); send({ type:'start' }); },
+  onEnd: () => { startNode.style.borderColor = ''; sendLaunchState({ start:false }); }
 });
-document.getElementById('btn-estop').addEventListener('click', () => send({ type:'stop' }));
+const estop = document.getElementById('btn-estop');
+estop.addEventListener('click', () => {
+  send({ type:'stop' });
+  sendLaunchState({ stop:true });
+  setTimeout(() => sendLaunchState({ stop:false }), 900);
+});
 
 /* ===== Effets : état reçu + simulation de déconnexion ===== */
 const sysConnected = { gyro:true, smoke:true };
@@ -339,6 +345,7 @@ battRow.querySelectorAll('input').forEach(input => {
     b.pct = +input.value;
     input.parentElement.querySelector('.batt-val').textContent = b.pct + '%';
     send({ type:'battery', target:b.key, id:b.id, pct:b.pct });
+    if (b.key === 'console') { consoleBattery = b.pct; sendLaunchState(); }
   });
 });
 function sendAllBatteries(){ BATTERIES.forEach(b => send({ type:'battery', target:b.key, id:b.id, pct:b.pct })); }
@@ -367,13 +374,37 @@ if (channel) {
   };
 }
 
+/* ===== Ce que le boîtier déclare de lui-même ===== */
+function colorLetter(rgb){
+  if (rgb.g > rgb.r && rgb.g > rgb.b) return 'g';
+  if (rgb.b > rgb.r && rgb.b > rgb.g) return 'b';
+  return 'r';
+}
+function announceTopology(){
+  send({
+    type:'topology',
+    beams: BEAMS.map(b => ({ id:b.id, color:colorLetter(b.rgb), rgb:b.rgb })),
+    buttons: BUTTONS.map(id => ({ id }))
+  });
+  log(`topologie annoncée : ${BEAMS.length} faisceaux, ${BUTTONS.length} boutons`, 'out');
+}
+
+/* État du boîtier lui-même : sa batterie et ses deux boutons physiques. */
+let consoleBattery = 82;
+function sendLaunchState(extra){
+  send(Object.assign({ type:'launch', battery:consoleBattery, start:false, stop:false }, extra || {}));
+}
+
 if (!channel) {
   document.getElementById('warn').style.display = 'block';
 } else {
   log('Simulateur prêt.', 'in');
-  /* à la connexion, le boîtier se signale : l'appli lui renvoie l'état de toutes les lampes */
+  /* À la connexion, le boîtier DÉCLARE sa configuration : combien de faisceaux, combien
+     de boutons. L'appli s'y adapte — rien n'est figé côté téléphone. */
+  announceTopology();
   channel.postMessage({ type:'hello' });
   setTimeout(sendAllBatteries, 400); /* et annonce ses niveaux de batterie */
+  setTimeout(sendLaunchState, 500);
 }
 </script>
 </body>
