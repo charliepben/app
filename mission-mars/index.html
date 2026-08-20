@@ -172,7 +172,7 @@
   .next-names .next-amp{ color:var(--dim); font-weight:400; }
 
   .beam-grid{
-    display:flex; justify-content:center; gap:3px; flex-shrink:0;
+    display:flex; justify-content:center; gap:9px; flex-shrink:0;
   }
   .beam{
     position:relative; aspect-ratio:1/1; max-width:clamp(58px, 12vh, 104px);   /* reste carré, mais ne devient jamais géant */
@@ -205,7 +205,7 @@
   .beam.off.g{ border-color:#164a35; } .beam.off.g .led{ background:linear-gradient(to bottom, transparent 0%, #2a6b4c 100%); }
   .beam.off.r{ border-color:#521f26; } .beam.off.r .led{ background:linear-gradient(to bottom, transparent 0%, #7a2f39 100%); }
   .beam.off.b{ border-color:#1a3a52; } .beam.off.b .led{ background:linear-gradient(to bottom, transparent 0%, #2f5c7e 100%); }
-  .buttons-grid{ display:flex; justify-content:center; gap:3px; flex-shrink:0; }
+  .buttons-grid{ display:flex; justify-content:center; gap:9px; flex-shrink:0; }
   .buttons-grid .beam{ aspect-ratio:1/1; height:auto; }   /* carré, comme les lasers */
   .beam.knob .led{ width:clamp(14px, 3.8cqw, 22px); height:clamp(14px, 3.8cqw, 22px); border-radius:50%; transform:none; transition:box-shadow .1s; }
   .beam.knob .led::after{ display:none; }
