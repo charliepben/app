@@ -86,14 +86,6 @@
     padding:8px 10px; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:color .15s, border-color .15s;
   }
   .header-newgame:hover{ color:var(--green); border-color:var(--green); }
-  .header-battery{
-    display:flex; align-items:center; gap:6px; flex-shrink:0;
-    font-family:'JetBrains Mono'; font-size:clamp(10.5px, 2.4cqw, 13px); color:var(--green);
-    background: rgba(53,242,163,0.1); border:1px solid rgba(53,242,163,0.4);
-    padding:5px 10px; border-radius:20px; white-space:nowrap;
-  }
-  .header-battery.batt-mid{ color:var(--amber); background:rgba(255,179,71,0.1); border-color:rgba(255,179,71,0.4); }
-  .header-battery.batt-low{ color:var(--red); background:rgba(255,77,94,0.1); border-color:rgba(255,77,94,0.4); }
 
   .tabpanel{ display:none; flex:1; min-height:0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
   .tabpanel.active{ display:flex; flex-direction:column; gap:9px; }
@@ -160,7 +152,12 @@
   .avatar.clickable{ cursor:pointer; }
   .now-players .avatar{ width:clamp(92px, 24cqw, 145px); height:clamp(92px, 24cqw, 145px); border-radius:20px; font-size:clamp(38px, 9cqw, 55px); }
   .player-chip .pname{ font-size:clamp(18px, 4.6cqw, 30px); font-weight:700; line-height:1.15; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .player-chip .prole{ font-size:clamp(13px, 3.2cqw, 18px); font-weight:600; color:var(--dim); font-family:'JetBrains Mono'; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .player-chip .prole{
+    display:inline-block; max-width:100%; margin-top:5px; padding:2px 9px; border-radius:20px;
+    font-size:clamp(11.5px, 2.9cqw, 15px); font-weight:600; font-style:italic; font-family:'Rajdhani';
+    border:1px solid currentColor; background:rgba(255,255,255,0.05);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
   .vs{ font-family:'Orbitron'; font-size:clamp(12px, 2.8cqw, 16px); color:var(--dim); flex-shrink:0; }
   .next-row{ display:flex; align-items:center; flex-wrap:nowrap; gap:8px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--line); min-width:0; }
   .next-lbl{ font-size:clamp(11px, 2.6cqw, 14px); font-weight:700; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.3px; flex-shrink:0; }
@@ -667,7 +664,6 @@
           <span id="new-game-icon">🚀</span>
         </button>
       </div>
-      <div class="header-battery" id="header-battery">🔋 <span id="batt-pct">--</span></div>
     </div>
 
     <!-- ===================== TAB MISSION (par défaut) ===================== -->
@@ -2511,12 +2507,8 @@ function setButtonPressed(id, pressed){
    demain de la vraie console qui relaiera la mesure ADC de chaque nœud). */
 function setBattery(target, id, pct){
   if (target === 'console') {
-    launchState.battery = pct;
+    launchState.battery = pct;   /* la batterie du boîtier s'affiche dans Launch System */
     renderLaunchSystem();
-    const el = document.getElementById('header-battery');
-    document.getElementById('batt-pct').textContent = pct + '%';
-    el.classList.toggle('batt-mid', pct <= 50 && pct > 20);
-    el.classList.toggle('batt-low', pct <= 20);
     return;
   }
   const sel = target === 'beam' ? `.beam[data-beam="${id}"]` : `.beam[data-button="${id}"]`;
