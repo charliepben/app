@@ -1,15 +1,30 @@
-const CACHE_NAME = "mission-mars-v2";
+const CACHE_NAME = "mission-mars-v3";
 const ASSETS = [
   "./",
   "./index.html",
+  "./simulateur.html",
   "./manifest.json",
   "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "./icons/icon-512.png",
+  // Sons pre-charges : le jour de la fete le telephone peut tres bien
+  // etre hors-ligne, et un jeu muet serait raté.
+  "./sounds/crystal.ogg",
+  "./sounds/crystal-break.ogg",
+  "./sounds/explosion.ogg",
+  "./sounds/flame.ogg",
+  "./sounds/beep.ogg",
+  "./sounds/beep-final.ogg",
+  "./sounds/liftoff.ogg",
+  "./sounds/success.ogg",
+  "./sounds/fail.ogg",
+  "./sounds/siren.ogg"
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(ASSETS.map((u) => cache.add(u).catch(() => {})))
+    )
   );
   self.skipWaiting();
 });
