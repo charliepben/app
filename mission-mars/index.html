@@ -422,6 +422,77 @@
   .confirm-cancel{ background:none; border:1px solid var(--line); color:var(--dim); }
   .confirm-ok{ background:linear-gradient(180deg,#3ef2a8,#1fae72); color:#05070a; box-shadow:0 8px 20px -8px rgba(53,242,163,.6); }
 
+  /* --- Décompte plein écran (5-4-3-2-1 du duel orbital) --- */
+  .countdown-overlay{
+    position:fixed; inset:0; z-index:70; display:flex; align-items:center; justify-content:center;
+    background:rgba(5,7,10,0.82); font-family:'Orbitron'; font-weight:900;
+    font-size:clamp(120px, 40cqw, 260px); color:#fff; text-shadow:0 0 60px var(--accent);
+    opacity:0; pointer-events:none; transition:opacity .2s;
+  }
+  .countdown-overlay.show{ opacity:1; }
+  @keyframes tickPop{ from{ transform:scale(1.6); opacity:.2; } to{ transform:scale(1); opacity:1; } }
+  .countdown-overlay.tickpop{ animation:tickPop .35s ease-out; }
+
+  /* --- État propre à la mission en cours (cristaux, joueurs restants…) --- */
+  .run-hud{
+    display:none; position:relative; z-index:1; margin-top:6px;
+    font-family:'JetBrains Mono'; font-size:clamp(12px, 2.8cqw, 15px); color:var(--dim);
+  }
+  .run-hud.show{ display:block; }
+  .run-hud .hud-big{ font-family:'Orbitron'; font-weight:900; font-size:clamp(22px, 6cqw, 32px); color:#fff; vertical-align:middle; }
+  .run-hud .hud-lost{ color:var(--red); }
+  .run-hud .hud-warn{ color:var(--amber); }
+  .run-hud .hud-bad{ color:var(--red); font-weight:700; }
+
+  /* --- Bandeau éphémère : +1 cristal, éliminé, etc. --- */
+  .run-banner{
+    position:relative; z-index:1; margin-top:6px; opacity:0; transform:translateY(-4px);
+    transition:opacity .18s, transform .18s;
+    font-family:'Orbitron'; font-weight:700; font-size:clamp(13px, 3.2cqw, 17px); letter-spacing:.08em;
+  }
+  .run-banner.show{ opacity:1; transform:translateY(0); }
+  .run-banner.good{ color:var(--accent); text-shadow:0 0 18px var(--accent); }
+  .run-banner.bad{ color:var(--red); text-shadow:0 0 18px var(--red); }
+  .run-banner.warn{ color:var(--amber); text-shadow:0 0 18px var(--amber); }
+
+  .empty-note{ color:var(--dim); font-size:clamp(12px, 2.8cqw, 14px); padding:6px 2px 14px; }
+  .history-row{
+    display:flex; align-items:center; gap:9px; padding:8px 12px; margin-bottom:5px;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    font-size:clamp(11px, 2.5cqw, 13px);
+  }
+  .history-row .h-icon{ flex-shrink:0; font-size:clamp(14px, 3.2cqw, 17px); }
+  .history-row .h-names{ font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .history-row .h-detail{ flex:1; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .history-row .h-time{ font-family:'JetBrains Mono'; color:var(--accent); flex-shrink:0; }
+  .history-row .h-date{ font-family:'JetBrains Mono'; color:var(--dim); font-size:.85em; flex-shrink:0; }
+
+  /* --- Recadrage de photo --- */
+  .crop-overlay{
+    position:fixed; inset:0; z-index:80; display:flex; align-items:center; justify-content:center;
+    background:rgba(5,7,10,0.93); padding:18px; opacity:0; pointer-events:none; transition:opacity .2s;
+  }
+  .crop-overlay.show{ opacity:1; pointer-events:auto; }
+  .crop-panel{ width:100%; max-width:380px; display:flex; flex-direction:column; gap:12px; }
+  .crop-title{ font-family:'Orbitron'; font-weight:700; font-size:15px; text-align:center; color:#fff; }
+  .crop-stage{
+    width:100%; aspect-ratio:1/1; background:#05070a; border:2px solid var(--accent);
+    border-radius:16px; overflow:hidden; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 0 28px -8px var(--accent);
+  }
+  #crop-canvas{ touch-action:none; cursor:grab; display:block; }
+  #crop-canvas:active{ cursor:grabbing; }
+  .crop-zoom-row{ display:flex; align-items:center; gap:10px; color:var(--dim); font-size:16px; }
+  .crop-zoom-row input{ flex:1; accent-color:var(--accent); }
+  .crop-hint{ text-align:center; font-size:11px; color:var(--dim); font-family:'JetBrains Mono'; }
+  .crop-actions{ display:flex; gap:10px; }
+  .crop-btn{
+    flex:1; padding:13px 0; border-radius:12px; border:1px solid var(--line);
+    font-family:'Orbitron'; font-weight:700; font-size:13px; cursor:pointer;
+  }
+  .crop-btn.ghost{ background:var(--panel); color:var(--dim); }
+  .crop-btn.primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink, #05070a); }
+
   .celebrate-overlay{
     position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center;
     background:radial-gradient(circle at 50% 42%, rgba(20,40,55,.9), rgba(5,7,10,0.97) 68%);
@@ -539,6 +610,8 @@
           <div class="mode-chip" id="mode-chip" role="button" tabindex="0">⚡ Tempête de météores</div>
         </div>
         <div class="timer-display"><span class="main" id="timer-main">00:00</span><span class="ms" id="timer-cs">.00</span></div>
+        <div class="run-hud" id="run-hud"></div>
+        <div class="run-banner" id="run-banner"></div>
         <div class="mode-desc" id="mode-desc"></div>
       </div>
 
@@ -636,6 +709,25 @@
       </div>
     </div>
 
+    <div class="crop-overlay" id="crop-overlay">
+      <div class="crop-panel">
+        <div class="crop-title">Cadre la photo</div>
+        <div class="crop-stage"><canvas id="crop-canvas"></canvas></div>
+        <div class="crop-zoom-row">
+          <span>−</span>
+          <input type="range" id="crop-zoom" min="100" max="500" value="100">
+          <span>+</span>
+        </div>
+        <div class="crop-hint">Glisse pour déplacer · pince ou curseur pour zoomer</div>
+        <div class="crop-actions">
+          <button class="crop-btn ghost" id="crop-cancel">Annuler</button>
+          <button class="crop-btn primary" id="crop-ok">Valider</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="countdown-overlay" id="countdown-overlay"></div>
+
     <div class="celebrate-overlay" id="celebrate-overlay">
       <div class="celebrate-content">
         <span class="celebrate-ring"></span><span class="celebrate-ring"></span><span class="celebrate-ring"></span>
@@ -702,31 +794,10 @@
     <div class="tabpanel" id="tab-scores">
 
       <div class="section-label">Classement de la soirée</div>
-      <div class="score-row top1">
-        <div class="rank">1</div>
-        <div class="score-info"><div class="name">Nina 🏆</div><div class="meta">Équipe Bleue · Cristal Rush</div></div>
-        <div class="score-time"><div class="t">00:22.10</div><div class="h">0 avarie</div></div>
-        <button class="btn-print" onclick="printScore('Nina','Équipe Bleue · Cristal Rush','00:22.10','0 avarie — 1ère de la soirée')" title="Imprimer">🖨️</button>
-      </div>
-      <div class="score-row">
-        <div class="rank">2</div>
-        <div class="score-info"><div class="name">Achille</div><div class="meta">Équipe Bleue · Fire</div></div>
-        <div class="score-time"><div class="t">00:31.55</div><div class="h">0 avarie</div></div>
-        <button class="btn-print" onclick="printScore('Achille','Équipe Bleue · Fire','00:31.55','0 avarie')" title="Imprimer">🖨️</button>
-      </div>
-      <div class="score-row">
-        <div class="rank">3</div>
-        <div class="score-info"><div class="name">Paco</div><div class="meta">Équipe Rouge · Cristal Rush</div></div>
-        <div class="score-time"><div class="t">00:28.01</div><div class="h">2 avaries</div></div>
-        <button class="btn-print" onclick="printScore('Paco','Équipe Rouge · Cristal Rush','00:28.01','2 avaries')" title="Imprimer">🖨️</button>
-      </div>
-      <div class="score-row">
-        <div class="rank">4</div>
-        <div class="score-info"><div class="name">Marty</div><div class="meta">Équipe Rouge · Duel orbital</div></div>
-        <div class="score-time"><div class="t">00:14.37</div><div class="h">en cours…</div></div>
-        <button class="btn-print" onclick="printScore('Marty','Équipe Rouge · Duel orbital','00:14.37','en cours…')" title="Imprimer">🖨️</button>
-      </div>
+      <div id="scores-list"></div>
 
+      <div class="section-label" id="history-label">Parties précédentes</div>
+      <div id="history-list"></div>
     </div>
 
   </div>
@@ -905,21 +976,48 @@ function hexToRgb(hex){
 /* Quelle lampe pour le bouton `id`, selon le mode courant ? */
 function buttonLampFor(id){
   const m = MODES.find(x => x.key === currentModeKey) || MODES[0];
-  if (id === arrivalButtonId) {
-    /* le bouton d'arrivée ne pulse que pendant la mission */
-    return (missionState === 'running' || missionState === 'paused')
-      ? { r:255, g:255, b:255, mode:'glow', brightness:100, brightnessMin:30, periodMs:1500 }
-      : { r:255, g:179, b:71, mode:'solid', brightness:25 };
+  const inMission = (missionState === 'running' || missionState === 'paused');
+
+  /* ---- CRISTAL RUSH : un seul cristal allumé à la fois, choisi au hasard ---- */
+  if (m.key === 'cristal-rush') {
+    if (!inMission || !run) {
+      /* hors mission : tous les cristaux en veille douce, pour montrer lesquels servent */
+      if (id === arrivalButtonId) return LAMP_OFF;
+      const c0 = CRISTAL_COLORS[(id - 1) % CRISTAL_COLORS.length];
+      return { ...c0, mode:'solid', brightness:18 };
+    }
+    if (id !== run.litButton) return LAMP_OFF;
+    const c = CRISTAL_COLORS[(id - 1) % CRISTAL_COLORS.length];
+    return { ...c, mode:'twinkle', brightness:100, brightnessMin:40, periodMs:900 };
   }
-  if (m.key === 'fire') return LAMP_OFF;              /* un seul bouton en jeu : l'arrivée */
+
+  /* ---- FIRE : seul le bouton d'arrivée (l'extincteur) est allumé ---- */
+  if (m.key === 'fire') {
+    if (id !== arrivalButtonId) return LAMP_OFF;
+    return inMission
+      ? { r:255, g:255, b:255, mode:'glow', brightness:100, brightnessMin:30, periodMs:1200 }
+      : { r:255, g:179, b:71, mode:'solid', brightness:22 };
+  }
+
+  /* ---- DUEL ORBITAL : les 2 bases aux couleurs des joueurs, éteintes si éliminé ---- */
   if (m.key === 'duel-orbital') {
-    if (id > 2) return LAMP_OFF;                       /* seulement 2 bases */
-    const teamColor = hexToRgb(TEAMS[id === 1 ? 'a' : 'b'].color);
-    return { ...teamColor, mode:'solid', brightness:90 };
+    if (id === arrivalButtonId && inMission && run && run.phase === 'launch') {
+      return { r:255, g:255, b:255, mode:'glow', brightness:100, brightnessMin:30, periodMs:1200 };
+    }
+    if (id > 2) return LAMP_OFF;
+    const ps = livePlayers();
+    const p = ps[id - 1];
+    if (!p) return LAMP_OFF;
+    const col = hexToRgb(colorOf(p));
+    if (!inMission || !run) return { ...col, mode:'solid', brightness:30 };
+    if (run.eliminated && run.eliminated[id - 1]) return LAMP_OFF;      /* navette détruite */
+    if (run.phase === 'countdown') return { ...col, mode:'solid', brightness:25 };
+    return run.launched && run.launched[id - 1]
+      ? { ...col, mode:'solid', brightness:100 }
+      : { ...col, mode:'glow', brightness:100, brightnessMin:35, periodMs:700 };
   }
-  /* cristal-rush : chaque bouton est un cristal qui scintille */
-  const c = CRISTAL_COLORS[(id - 1) % CRISTAL_COLORS.length];
-  return { ...c, mode:'twinkle', brightness:90, brightnessMin:35, periodMs:2200 };
+
+  return LAMP_OFF;
 }
 
 function startLamp(){
@@ -1043,7 +1141,7 @@ function saveState(){
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       teams:TEAMS, players:PLAYERS, roster:ROSTER,
       queueIndex, liveScores, teamTally, currentModeKey, arrivalButtonId,
-      teamMode, modeDurations, currentTheme
+      teamMode, modeDurations, currentTheme, history:HISTORY, soundOn
     }));
   }catch(e){ /* stockage plein ou indisponible, tant pis */ }
 }
@@ -1073,6 +1171,10 @@ function upsertRoster(player){
 const PRESET_COLORS = ['#ff4d5e','#ff8a3d','#ffb347','#ffe066','#35f2a3','#2dd4bf','#4dc3ff','#4d7bff','#9d7bff','#ff6fb0'];
 
 /* couleur de texte lisible (clair ou sombre) selon la luminosité du fond */
+/* Mémoire des parties déjà jouées (persistée en local ; destination à terme : un fichier
+   sur Google Drive chargé/sauvegardé en tâche de fond). */
+let HISTORY = Array.isArray(saved && saved.history) ? saved.history : [];
+
 function textColorFor(hex){
   const c = (hex || '#888888').replace('#','');
   const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
@@ -1098,6 +1200,381 @@ function avatarHtml(p, extraClass, extraAttrs){
     ? `background-image:url('${p.photo}'); ${ring}`
     : `background:${color}; color:${textColorFor(color)}; ${ring}`;
   return `<div class="avatar ${extraClass || ''}" style="${style}" ${extraAttrs || ''}>${p.photo ? '' : letter}</div>`;
+}
+
+/* ===== SONS =====
+   Tout est synthétisé à la volée avec l'API Web Audio : aucun fichier à héberger, ça marche
+   hors-ligne, et le thème peut redéfinir chaque son sans toucher à la logique du jeu.
+   Le contexte audio ne peut démarrer qu'après une interaction de l'utilisateur (règle des
+   navigateurs mobiles) : on le réveille au premier tap. */
+let audioCtx = null;
+let soundOn = (saved && typeof saved.soundOn === 'boolean') ? saved.soundOn : true;
+
+function initAudio(){
+  if (audioCtx) { if (audioCtx.state === 'suspended') audioCtx.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (AC) audioCtx = new AC();
+}
+document.addEventListener('pointerdown', initAudio, { once:false });
+
+/* une note : forme d'onde, fréquence (ou glissando), durée, volume */
+function tone({ type='sine', from=440, to=null, dur=0.2, vol=0.3, delay=0, attack=0.01 }){
+  if (!audioCtx || !soundOn) return;
+  const t0 = audioCtx.currentTime + delay;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(from, t0);
+  if (to !== null) osc.frequency.exponentialRampToValueAtTime(Math.max(1, to), t0 + dur);
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(vol, t0 + attack);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(t0);
+  osc.stop(t0 + dur + 0.05);
+}
+
+/* bruit blanc filtré : explosions, flammes, souffle */
+function noise({ dur=0.4, vol=0.3, delay=0, filterFrom=1200, filterTo=200, type='lowpass' }){
+  if (!audioCtx || !soundOn) return;
+  const t0 = audioCtx.currentTime + delay;
+  const frames = Math.floor(audioCtx.sampleRate * dur);
+  const buf = audioCtx.createBuffer(1, frames, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = type;
+  filter.frequency.setValueAtTime(filterFrom, t0);
+  filter.frequency.exponentialRampToValueAtTime(Math.max(1, filterTo), t0 + dur);
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(vol, t0);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(filter).connect(gain).connect(audioCtx.destination);
+  src.start(t0);
+}
+
+const SOUNDS = {
+  /* cristal attrapé : arpège cristallin qui monte */
+  crystal(){
+    [1046, 1318, 1568, 2093].forEach((f, i) =>
+      tone({ type:'sine', from:f, dur:0.5, vol:0.22, delay:i * 0.055 }));
+    tone({ type:'triangle', from:2637, dur:0.7, vol:0.1, delay:0.2 });
+  },
+  /* cristal perdu : verre qui se casse, descendant */
+  crystalBreak(){
+    [1400, 1100, 820].forEach((f, i) =>
+      tone({ type:'square', from:f, to:f * 0.4, dur:0.22, vol:0.12, delay:i * 0.045 }));
+    noise({ dur:0.35, vol:0.22, filterFrom:6000, filterTo:900, type:'highpass' });
+  },
+  /* explosion : gros boum sourd */
+  explosion(){
+    noise({ dur:0.9, vol:0.5, filterFrom:900, filterTo:60 });
+    tone({ type:'sawtooth', from:120, to:30, dur:0.8, vol:0.35 });
+  },
+  /* flamme : souffle rauque (contact toléré en mode débutant) */
+  flame(){
+    noise({ dur:0.6, vol:0.3, filterFrom:2400, filterTo:400, type:'bandpass' });
+  },
+  /* bip de décompte */
+  beep(high){
+    tone({ type:'square', from: high ? 880 : 440, dur:0.18, vol:0.25 });
+  },
+  /* ignition / liftoff : montée puissante */
+  liftoff(){
+    tone({ type:'sawtooth', from:80, to:600, dur:1.4, vol:0.3 });
+    noise({ dur:1.6, vol:0.35, filterFrom:300, filterTo:2500, type:'lowpass' });
+  },
+  /* mission réussie : accord majeur ascendant */
+  success(){
+    [523, 659, 784, 1046].forEach((f, i) =>
+      tone({ type:'triangle', from:f, dur:0.9, vol:0.22, delay:i * 0.1 }));
+  },
+  /* mission ratée : deux notes descendantes */
+  fail(){
+    tone({ type:'sawtooth', from:400, to:180, dur:0.5, vol:0.28 });
+    tone({ type:'sawtooth', from:300, to:120, dur:0.7, vol:0.25, delay:0.25 });
+  },
+  /* sirène d'alerte (mission Fire) : deux allers-retours */
+  siren(){
+    for (let i = 0; i < 3; i++) {
+      tone({ type:'sawtooth', from:600, to:1000, dur:0.4, vol:0.16, delay:i * 0.8 });
+      tone({ type:'sawtooth', from:1000, to:600, dur:0.4, vol:0.16, delay:i * 0.8 + 0.4 });
+    }
+  }
+};
+/* ===== Sons enregistrés (Kenney, CC0 — voir sounds/LICENSE.txt) =====
+   Les vrais fichiers priment ; si l'un d'eux ne charge pas (réseau, format non
+   supporté), on retombe automatiquement sur la version synthétisée ci-dessus,
+   pour que le jeu ne soit jamais muet le jour J. */
+const SOUND_FILES = {
+  crystal:      'sounds/crystal.ogg',
+  crystalBreak: 'sounds/crystal-break.ogg',
+  explosion:    'sounds/explosion.ogg',
+  flame:        'sounds/flame.ogg',
+  beep:         'sounds/beep.ogg',
+  beepFinal:    'sounds/beep-final.ogg',
+  liftoff:      'sounds/liftoff.ogg',
+  success:      'sounds/success.ogg',
+  fail:         'sounds/fail.ogg',
+  siren:        'sounds/siren.ogg'
+};
+const soundBuffers = {};   /* nom -> AudioBuffer décodé */
+const soundFailed = {};    /* nom -> true si le fichier est inutilisable */
+
+/* Précharge et décode tous les sons (appelé au premier tap, quand l'audio est autorisé) */
+function preloadSounds(){
+  if (!audioCtx || preloadSounds._done) return;
+  preloadSounds._done = true;
+  Object.keys(SOUND_FILES).forEach(name => {
+    fetch(SOUND_FILES[name])
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      .then(buf => audioCtx.decodeAudioData(buf))
+      .then(decoded => { soundBuffers[name] = decoded; })
+      .catch(() => { soundFailed[name] = true; });  /* repli sur la synthèse */
+  });
+}
+
+function playBuffer(name, vol){
+  const buf = soundBuffers[name];
+  if (!buf || !audioCtx) return false;
+  const src = audioCtx.createBufferSource();
+  const gain = audioCtx.createGain();
+  gain.gain.value = vol == null ? 0.9 : vol;
+  src.buffer = buf;
+  src.connect(gain).connect(audioCtx.destination);
+  src.start(0);
+  return true;
+}
+
+/* Point d'entrée unique : fichier réel si disponible, sinon son synthétisé. */
+function play(name, arg){
+  initAudio();
+  preloadSounds();
+  if (!soundOn) return;
+  /* le décompte a deux variantes : bip normal et bip final plus aigu */
+  const key = (name === 'beep' && arg === true) ? 'beepFinal' : name;
+  if (playBuffer(key)) return;
+  if (SOUNDS[name]) SOUNDS[name](arg);
+}
+
+/* ===== RÈGLES DES MISSIONS =====
+   Chaque mode décrit SES règles ici, derrière une interface commune. Le reste de l'appli
+   (chrono, file de joueurs, classements, matériel) ne connaît aucune règle particulière :
+   ajouter une mission = ajouter une entrée, sans toucher au reste.
+
+   Interface d'une règle :
+     onStart(run)          — au démarrage : allumer les bonnes lampes, lancer un décompte…
+     onBeamHit(run, id)    — un faisceau vient d'être coupé
+     onButtonPress(run, id)— un bouton vient d'être enfoncé
+     onTick(run, msLeft)   — à chaque rafraîchissement du chrono
+     score(run)            — { value, label, win } : ce qu'on retient de la manche
+   `run` porte l'état de la manche en cours (points, dégâts, joueurs éliminés…). */
+
+let run = null; /* état de la manche en cours, null hors mission */
+
+function livePlayers(){ return playersAt(queueIndex, modePlayerCount()); }
+
+/* Un joueur « débutant » a droit à une erreur dans les modes éliminatoires. */
+function allowanceFor(p){ return p && p.rookie ? 1 : 0; }
+
+const RULES = {
+  /* ---- CRISTAL RUSH : attraper un maximum de cristaux avant la fin du temps ---- */
+  'cristal-rush': {
+    init(){
+      /* les boutons deviennent des cristaux ; un seul allumé à la fois, au hasard */
+      return { crystals:0, lost:0, litButton:null };
+    },
+    onStart(r){
+      lightRandomCrystal(r);
+    },
+    onButtonPress(r, id){
+      if (id !== r.litButton) return;         /* mauvais bouton : rien */
+      r.crystals++;
+      play('crystal');
+      flashScoreBanner('+1 ' + currentMode().targetName.toLowerCase(), 'good');
+      lightRandomCrystal(r);
+      renderRunHud();
+    },
+    onBeamHit(r){
+      if (r.crystals > 0) { r.crystals--; r.lost++; }
+      play('crystalBreak');
+      flashScoreBanner('−1 ' + currentMode().targetName.toLowerCase(), 'bad');
+      renderRunHud();
+    },
+    score(r){
+      return { value:r.crystals, label:r.crystals + ' ' + currentMode().targetName.toLowerCase() + (r.crystals > 1 ? 's' : ''), win:true };
+    },
+    hud(r){
+      return `<span class="hud-big">${r.crystals}</span> ${currentMode().targetIcon}` +
+             (r.lost ? ` <span class="hud-lost">−${r.lost}</span>` : '');
+    }
+  },
+
+  /* ---- FIRE : traverser les flammes et atteindre le bouton d'arrivée ---- */
+  'fire': {
+    init(){
+      const p = livePlayers()[0];
+      return { hits:0, allowance:allowanceFor(p), failed:false };
+    },
+    onStart(){
+      play('siren');
+      setSystemState('gyro', 'active');   /* gyrophare pendant toute la mission */
+    },
+    onBeamHit(r, id){
+      if (r.failed) return;
+      r.hits++;
+      if (r.allowance > 0) {               /* mode débutant : un contact toléré */
+        r.allowance--;
+        play('flame');
+        flashScoreBanner('Brûlé ! Encore une chance', 'warn');
+        blinkBeam(id);
+      } else {
+        r.failed = true;
+        play('fail');
+        flashScoreBanner('Mission perdue', 'bad');
+        stopMission();
+      }
+      renderRunHud();
+    },
+    onButtonPress(r, id){
+      if (id === arrivalButtonId && !r.failed) stopMission();  /* feu éteint */
+    },
+    score(r){
+      return { value:r.failed ? 0 : 1, label:r.failed ? 'Mission perdue' : 'Feu éteint', win:!r.failed };
+    },
+    hud(r){
+      if (r.failed) return '<span class="hud-bad">MISSION PERDUE</span>';
+      return r.allowance > 0
+        ? '<span class="hud-warn">🛡 1 contact toléré</span>'
+        : '<span class="hud-warn">⚠ le moindre contact est fatal</span>';
+    }
+  },
+
+  /* ---- DUEL ORBITAL : décompte, ignition, course vers la base adverse ---- */
+  'duel-orbital': {
+    init(){
+      const ps = livePlayers();
+      return {
+        phase:'countdown',
+        allowance:ps.map(allowanceFor),
+        eliminated:[false, false],
+        launched:[false, false],
+        winner:null
+      };
+    },
+    onStart(r){
+      runCountdown(5, () => {
+        r.phase = 'launch';
+        play('liftoff');
+        flashScoreBanner('IGNITION !', 'good');
+        syncLamps();
+        renderRunHud();
+      });
+    },
+    onButtonPress(r, id){
+      if (r.phase === 'countdown') return;          /* trop tôt */
+      const idx = id - 1;                            /* bouton 1 = joueur 1, bouton 2 = joueur 2 */
+      if (idx === 0 || idx === 1) {
+        if (!r.launched[idx]) { r.launched[idx] = true; play('beep', true); renderRunHud(); return; }
+      }
+      /* atteindre le bouton de la base adverse = victoire */
+      if (id === arrivalButtonId && r.phase === 'launch') {
+        r.winner = r.eliminated[0] ? 1 : 0;
+        stopMission();
+      }
+    },
+    onBeamHit(r, id){
+      if (r.phase !== 'launch') return;
+      /* on ne sait pas qui a touché : on pénalise le premier joueur encore en course */
+      const idx = r.eliminated[0] ? 1 : 0;
+      if (r.eliminated[idx]) return;
+      if (r.allowance[idx] > 0) {
+        r.allowance[idx]--;
+        play('flame');
+        flashScoreBanner('Coque éraflée ! Encore une chance', 'warn');
+        blinkBeam(id);
+      } else {
+        r.eliminated[idx] = true;
+        play('explosion');
+        flashScoreBanner(livePlayers()[idx].name + ' est éliminé', 'bad');
+        const other = idx === 0 ? 1 : 0;
+        if (r.eliminated[other]) { stopMission(); }
+        else { r.winner = other; stopMission(); }
+      }
+      renderRunHud();
+    },
+    score(r){
+      const ps = livePlayers();
+      if (r.winner === null) return { value:0, label:'Duel nul', win:false };
+      return { value:1, label:'Victoire de ' + (ps[r.winner] ? ps[r.winner].name : '?'), win:true, winnerIndex:r.winner };
+    },
+    hud(r){
+      if (r.phase === 'countdown') return '<span class="hud-warn">Décompte…</span>';
+      const ps = livePlayers();
+      return ps.map((p, i) => `<span class="${r.eliminated[i] ? 'hud-bad' : ''}" style="${r.eliminated[i] ? '' : 'color:' + colorOf(p)}">${r.eliminated[i] ? '💥' : '🚀'} ${p.name}</span>`).join(' · ');
+    }
+  }
+};
+
+function rules(){ return RULES[currentModeKey] || RULES['cristal-rush']; }
+
+/* Choisit au hasard un nouveau cristal parmi les boutons disponibles. */
+function lightRandomCrystal(r){
+  const candidates = [1,2,3,4,5].filter(id => id !== arrivalButtonId && id !== r.litButton);
+  r.litButton = candidates[Math.floor(Math.random() * candidates.length)];
+  syncLamps();
+}
+
+/* Décompte 5-4-3-2-1 puis ignition. */
+let countdownTimer = null;
+function runCountdown(n, done){
+  clearInterval(countdownTimer);
+  let left = n;
+  showCountdown(left);
+  play('beep', false);
+  countdownTimer = setInterval(() => {
+    left--;
+    if (left > 0) { showCountdown(left); play('beep', false); }
+    else {
+      clearInterval(countdownTimer);
+      showCountdown(null);
+      done();
+    }
+  }, 1000);
+}
+function showCountdown(n){
+  const el = document.getElementById('countdown-overlay');
+  if (n === null) { el.classList.remove('show'); return; }
+  el.textContent = n;
+  el.classList.add('show');
+  el.classList.remove('tickpop');
+  void el.offsetWidth;
+  el.classList.add('tickpop');
+}
+
+/* Bandeau éphémère au-dessus du chrono (+1 cristal, éliminé, etc.) */
+function flashScoreBanner(text, kind){
+  const el = document.getElementById('run-banner');
+  el.textContent = text;
+  el.className = 'run-banner show ' + (kind || '');
+  clearTimeout(flashScoreBanner._t);
+  flashScoreBanner._t = setTimeout(() => el.classList.remove('show'), 1400);
+}
+
+/* Fait clignoter un faisceau touché sans le sortir du jeu. */
+function blinkBeam(id){
+  setBeamState(id, 'hit');
+  setTimeout(() => setBeamState(id, 'on'), 900);
+}
+
+/* Affiche l'état propre à la mission en cours (cristaux, joueurs restants…). */
+function renderRunHud(){
+  const el = document.getElementById('run-hud');
+  if (!run || !rules().hud) { el.classList.remove('show'); el.innerHTML = ''; return; }
+  el.innerHTML = rules().hud(run);
+  el.classList.add('show');
 }
 
 /* ===== Mission en direct : file d'agents, chrono, classements ===== */
@@ -1192,6 +1669,58 @@ function renderLiveScores(){
       <span class="n">${s.name}</span>
       <span class="gap">${gap}</span>
       <span class="t">${t.main}${t.cs}</span>
+    </div>`;
+  }).join('');
+}
+
+/* Classement complet de la soirée : une ligne par manche jouée, la meilleure en tête. */
+function renderScoresTab(){
+  const el = document.getElementById('scores-list');
+  if (!liveScores.length) {
+    el.innerHTML = `<div class="empty-note">Aucune manche jouée pour l'instant.</div>`;
+    return;
+  }
+  /* on classe par valeur décroissante (cristaux, victoires) puis par temps croissant */
+  const sorted = [...liveScores].sort((a,b) =>
+    (b.value || 0) - (a.value || 0) || a.ms - b.ms);
+  el.innerHTML = sorted.map((s, i) => {
+    const t = fmtTime(s.ms);
+    const m = MODES.find(x => x.key === s.mode);
+    const meta = [subtitleOf(s) ? 'Équipe ' + subtitleOf(s) : '', m ? m.name : '']
+      .filter(Boolean).join(' · ');
+    const note = s.detail || (s.win ? 'Réussie' : 'Perdue');
+    const esc = str => String(str).replace(/'/g, "\'");
+    return `<div class="score-row ${i === 0 ? 'top1' : ''}">
+      <div class="rank">${i + 1}</div>
+      ${avatarHtml(s, 'mini')}
+      <div class="score-info">
+        <div class="name">${s.name}${i === 0 ? ' 🏆' : ''}</div>
+        <div class="meta">${meta}</div>
+      </div>
+      <div class="score-time"><div class="t">${t.main}${t.cs}</div><div class="h">${note}</div></div>
+      <button class="btn-print" title="Imprimer le diplôme"
+        onclick="printScore('${esc(s.name)}','${esc(meta)}','${t.main}${t.cs}','${esc(note)}')">🖨️</button>
+    </div>`;
+  }).join('');
+}
+
+/* Mémoire des parties passées, la plus récente en haut. */
+function renderHistory(){
+  const el = document.getElementById('history-list');
+  const label = document.getElementById('history-label');
+  if (!el) return;
+  if (!HISTORY.length) { el.innerHTML = ''; label.style.display = 'none'; return; }
+  label.style.display = 'block';
+  el.innerHTML = [...HISTORY].reverse().slice(0, 30).map(h => {
+    const m = MODES.find(x => x.key === h.mode);
+    const d = new Date(h.date);
+    const t = fmtTime(h.ms);
+    return `<div class="history-row">
+      <span class="h-icon">${m ? m.icon : '•'}</span>
+      <span class="h-names">${h.players.join(' & ')}</span>
+      <span class="h-detail">${h.detail || ''}</span>
+      <span class="h-time">${t.main}${t.cs}</span>
+      <span class="h-date">${d.toLocaleDateString('fr-FR')} ${d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}</span>
     </div>`;
   }).join('');
 }
@@ -1341,35 +1870,144 @@ function renderRosterStrip(){
 /* Redimensionne + recompresse la photo avant stockage : une photo de téléphone en pleine
    résolution (plusieurs Mo en base64) fait vite dépasser le quota de localStorage (~5 Mo),
    et l'échec d'écriture était silencieux — les photos "disparaissaient" au rechargement. */
-function shrinkImage(file, maxSize){
-  return new Promise((resolve, reject) => {
+/* ===== RECADRAGE DE PHOTO =====
+   L'utilisateur cadre lui-même la photo dans un carré : on peut la déplacer au doigt
+   et zoomer (pincement à deux doigts, molette, ou le curseur). Le résultat est exporté
+   en 240x240 JPEG — assez petit pour tenir dans localStorage sans faire sauter le quota. */
+const CROP_OUT = 240;
+let cropState = null;
+
+function openCropper(file, onDone){
+  const reader = new FileReader();
+  reader.onload = () => {
     const img = new Image();
-    const reader = new FileReader();
-    reader.onload = () => { img.onload = () => {
-      let { width, height } = img;
-      if (width > height && width > maxSize) { height *= maxSize / width; width = maxSize; }
-      else if (height > maxSize) { width *= maxSize / height; height = maxSize; }
-      const canvas = document.createElement('canvas');
-      canvas.width = width; canvas.height = height;
-      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', 0.82));
-    }; img.onerror = reject; img.src = reader.result; };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+    img.onload = () => {
+      const overlay = document.getElementById('crop-overlay');
+      overlay.classList.add('show');
+      const canvas = document.getElementById('crop-canvas');
+      const box = canvas.parentElement.getBoundingClientRect();
+      const size = Math.min(box.width, box.height);
+      canvas.width = size; canvas.height = size;
+      /* échelle de départ : l'image couvre tout le cadre */
+      const base = Math.max(size / img.width, size / img.height);
+      cropState = { img, size, scale:base, minScale:base, x:0, y:0, onDone };
+      document.getElementById('crop-zoom').value = 100;
+      drawCrop();
+    };
+    img.onerror = () => alert('Impossible de lire cette image.');
+    img.src = reader.result;
+  };
+  reader.onerror = () => alert('Impossible de lire ce fichier.');
+  reader.readAsDataURL(file);
 }
+
+function clampCrop(){
+  const s = cropState;
+  const w = s.img.width * s.scale, h = s.img.height * s.scale;
+  const maxX = Math.max(0, (w - s.size) / 2), maxY = Math.max(0, (h - s.size) / 2);
+  s.x = Math.max(-maxX, Math.min(maxX, s.x));
+  s.y = Math.max(-maxY, Math.min(maxY, s.y));
+}
+
+function drawCrop(){
+  const s = cropState;
+  if (!s) return;
+  clampCrop();
+  const ctx = document.getElementById('crop-canvas').getContext('2d');
+  const w = s.img.width * s.scale, h = s.img.height * s.scale;
+  ctx.clearRect(0, 0, s.size, s.size);
+  ctx.fillStyle = '#05070a';
+  ctx.fillRect(0, 0, s.size, s.size);
+  ctx.drawImage(s.img, (s.size - w) / 2 + s.x, (s.size - h) / 2 + s.y, w, h);
+}
+
+function closeCropper(){
+  document.getElementById('crop-overlay').classList.remove('show');
+  cropState = null;
+}
+
+function confirmCrop(){
+  const s = cropState;
+  if (!s) return;
+  const out = document.createElement('canvas');
+  out.width = CROP_OUT; out.height = CROP_OUT;
+  const k = CROP_OUT / s.size;
+  const w = s.img.width * s.scale * k, h = s.img.height * s.scale * k;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#05070a';
+  ctx.fillRect(0, 0, CROP_OUT, CROP_OUT);
+  ctx.drawImage(s.img, (CROP_OUT - w) / 2 + s.x * k, (CROP_OUT - h) / 2 + s.y * k, w, h);
+  const done = s.onDone;
+  closeCropper();
+  done(out.toDataURL('image/jpeg', 0.85));
+}
+
+/* --- gestes : glisser pour déplacer, pincer ou molette pour zoomer --- */
+(function wireCropper(){
+  const canvas = document.getElementById('crop-canvas');
+  if (!canvas) return;
+  let dragging = false, lastX = 0, lastY = 0, pinchDist = 0;
+
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const setScale = (v) => {
+    const s = cropState;
+    s.scale = Math.max(s.minScale, Math.min(s.minScale * 5, v));
+    document.getElementById('crop-zoom').value = Math.round(s.scale / s.minScale * 100);
+    drawCrop();
+  };
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if (!cropState) return;
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!dragging || !cropState) return;
+    cropState.x += e.clientX - lastX;
+    cropState.y += e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    drawCrop();
+  });
+  const stop = () => { dragging = false; };
+  canvas.addEventListener('pointerup', stop);
+  canvas.addEventListener('pointercancel', stop);
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2 && cropState) { pinchDist = dist(e.touches); dragging = false; }
+  }, { passive:true });
+  canvas.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && cropState && pinchDist) {
+      e.preventDefault();
+      const d = dist(e.touches);
+      setScale(cropState.scale * (d / pinchDist));
+      pinchDist = d;
+    }
+  }, { passive:false });
+
+  canvas.addEventListener('wheel', (e) => {
+    if (!cropState) return;
+    e.preventDefault();
+    setScale(cropState.scale * (e.deltaY < 0 ? 1.08 : 0.93));
+  }, { passive:false });
+
+  document.getElementById('crop-zoom').addEventListener('input', (e) => {
+    if (cropState) setScale(cropState.minScale * (+e.target.value / 100));
+  });
+  document.getElementById('crop-cancel').addEventListener('click', closeCropper);
+  document.getElementById('crop-ok').addEventListener('click', confirmCrop);
+})();
 
 document.getElementById('photo-input').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file || pendingPhotoIndex === null) return;
-  shrinkImage(file, 240).then((dataUrl) => {
+  openCropper(file, (dataUrl) => {
     PLAYERS[pendingPhotoIndex].photo = dataUrl;
     upsertRoster(PLAYERS[pendingPhotoIndex]);
     saveState();
     renderAgents();
     renderPlayers();
     renderLiveScores();
-  }).catch(() => alert('Impossible de charger cette image.'));
+  });
   e.target.value = '';
 });
 
@@ -1461,8 +2099,12 @@ function startMission(){
   missionState = 'running';
   running = true;
   startTime = performance.now();
+  /* ouvre une manche selon les règles du mode choisi */
+  run = rules().init ? rules().init() : {};
   setStatus();
   updateMissionControls();
+  renderRunHud();
+  if (rules().onStart) rules().onStart(run);
   tick();
   tickId = setInterval(tick, 30);
 }
@@ -1477,15 +2119,39 @@ function stopMission(){
   if (missionState !== 'running' && missionState !== 'paused') return;
   running = false;
   clearInterval(tickId);
+  clearInterval(countdownTimer);
+  showCountdown(null);
   const elapsed = elapsedOf(performance.now() - startTime);
   const finishers = playersAt(queueIndex, modePlayerCount());
-  finishers.forEach(p => {
-    liveScores.push({ name:p.name, team:p.team, color:p.color, photo:p.photo, ms:Math.round(elapsed) });
-    teamTally[p.team]++;
+  const result = (run && rules().score) ? rules().score(run) : { value:0, label:'', win:true };
+
+  /* En duel, seul le vainqueur marque ; sinon tout le monde enregistre sa manche. */
+  finishers.forEach((p, i) => {
+    const isWinner = result.winnerIndex === undefined ? result.win : (i === result.winnerIndex);
+    liveScores.push({
+      name:p.name, team:p.team, color:p.color, photo:p.photo,
+      ms:Math.round(elapsed), mode:currentModeKey,
+      value:result.value, detail:result.label, win:isWinner
+    });
+    if (isWinner) teamTally[p.team]++;
   });
-  showCelebration(finishers.map(p => p.name).join(' & '), elapsed);
+
+  /* mémoire des parties passées */
+  HISTORY.push({
+    date:new Date().toISOString(), mode:currentModeKey, ms:Math.round(elapsed),
+    players:finishers.map(p => p.name), detail:result.label, win:result.win
+  });
+  if (HISTORY.length > 200) HISTORY = HISTORY.slice(-200);
+
+  setSystemState('gyro', 'idle');   /* le matériel se remet au repos en fin de mission */
+  play(result.win ? 'success' : 'fail');
+  showCelebration(finishers.map(p => p.name).join(' & '), elapsed, result);
+  run = null;
+  renderRunHud();
   renderLiveScores();
   renderTeamScores();
+  renderHistory();
+  renderScoresTab();
   missionState = 'finished';
   saveState();
   setStatus();
@@ -1582,12 +2248,19 @@ function applyEvent(evt){
   if (evt.type === 'hello') { syncLamps(); broadcastToSim({ type:'system', key:'gyro', state:systemState.gyro }); broadcastToSim({ type:'system', key:'smoke', state:systemState.smoke }); }
   else if (evt.type === 'system') setSystemState(evt.key, evt.state, true); /* annoncé par le matériel */
   else if (evt.type === 'battery') setBattery(evt.target, evt.id, evt.pct);
-  else if (evt.type === 'beam') setBeamState(evt.id, evt.on === false ? 'off' : (evt.hit ? 'hit' : 'on'));
+  else if (evt.type === 'beam') {
+    setBeamState(evt.id, evt.on === false ? 'off' : (evt.hit ? 'hit' : 'on'));
+    /* un faisceau coupé pendant une mission = c'est la règle du mode qui décide quoi en faire */
+    if (evt.hit && missionState === 'running' && run && rules().onBeamHit) rules().onBeamHit(run, evt.id);
+  }
   else if (evt.type === 'button') setButtonState(evt.id, evt.on);
   else if (evt.type === 'press') {
     setButtonPressed(evt.id, true);
-    /* le bouton configuré comme arrivée met fin à la mission en cours */
-    if (evt.id === arrivalButtonId && (missionState === 'running' || missionState === 'paused')) stopMission();
+    if (missionState === 'running' && run && rules().onButtonPress) {
+      rules().onButtonPress(run, evt.id);
+    } else if (evt.id === arrivalButtonId && missionState === 'paused') {
+      stopMission();
+    }
   }
   else if (evt.type === 'release') setButtonPressed(evt.id, false);
   else if (evt.type === 'start') startMission(); /* no-op si pas armé, voir startMission() */
@@ -1753,6 +2426,8 @@ renderAgents();
 renderPlayers();
 renderLiveScores();
 renderTeamScores();
+renderScoresTab();
+renderHistory();
 applyTheme();
 
 if ('serviceWorker' in navigator) {

@@ -1,0 +1,22 @@
+Sons du jeu Mission Mars
+========================
+
+Source : Kenney (https://kenney.nl)
+Packs  : Sci-Fi Sounds, Interface Sounds, Impact Sounds
+Licence: Creative Commons Zero (CC0 1.0 - domaine public)
+         http://creativecommons.org/publicdomain/zero/1.0/
+
+CC0 = utilisation libre, y compris commerciale, sans obligation
+d'attribution. Ce fichier est conserve par courtoisie envers l'auteur.
+
+Correspondance fichier -> son d'origine :
+  crystal.ogg       <- confirmation_001.ogg      (cristal attrape)
+  crystal-break.ogg <- impactGlass_medium_000.ogg (cristal casse)
+  explosion.ogg     <- explosionCrunch_000.ogg   (navette detruite)
+  flame.ogg         <- thrusterFire_000.ogg      (contact tolere, mode debutant)
+  beep.ogg          <- tick_002.ogg              (decompte 5-4-3-2)
+  beep-final.ogg    <- select_003.ogg            (dernier bip / ignition)
+  liftoff.ogg       <- spaceEngineLarge_000.ogg  (liftoff)
+  success.ogg       <- confirmation_004.ogg      (mission reussie)
+  fail.ogg          <- error_004.ogg             (mission perdue)
+  siren.ogg         <- computerNoise_003.ogg     (alerte mission Fire)
