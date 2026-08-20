@@ -286,26 +286,43 @@ document.getElementById('btn-reset-lasers').addEventListener('click', () => {
 const BUTTONS = [1,2,3,4,5];
 const buttonLamps = {};
 const buttonGrid = document.getElementById('button-grid');
-buttonGrid.innerHTML = BUTTONS.map(id => `
-  <div class="node" data-id="${id}">
-    <div class="name">Bouton ${id}</div>
-    <div class="led" data-led="${id}"></div>
-    <div class="state" data-state="${id}">éteint</div>
-  </div>
-`).join('');
-BUTTONS.forEach(id => {
-  const node = buttonGrid.querySelector(`.node[data-id="${id}"]`);
-  wireHold(node, {
-    onStart: () => {
-      node.style.borderColor = '#fff';
-      send({ type:'press', id });
-    },
-    onEnd: () => {
-      node.style.borderColor = '';
-      send({ type:'release', id });
-    }
+/* Chaque bouton peut être éteint, exactement comme on débrancherait le module en vrai. */
+const buttonPowered = {}; BUTTONS.forEach(id => buttonPowered[id] = true);
+
+function renderButtonNodes(){
+  buttonGrid.innerHTML = BUTTONS.map(id => `
+    <div class="node ${buttonPowered[id] ? '' : 'off'}" data-id="${id}">
+      <label class="sw"><input type="checkbox" ${buttonPowered[id] ? 'checked' : ''}><span></span></label>
+      <div class="name">Bouton ${id}</div>
+      <div class="led" data-led="${id}"></div>
+      <div class="state" data-state="${id}">${buttonPowered[id] ? 'éteint' : 'HORS LIGNE'}</div>
+    </div>
+  `).join('');
+
+  BUTTONS.forEach(id => {
+    const node = buttonGrid.querySelector(`.node[data-id="${id}"]`);
+    node.querySelector('.sw input').addEventListener('change', (e) => {
+      buttonPowered[id] = e.target.checked;
+      /* un module éteint disparaît de la topologie annoncée à l'appli */
+      announceTopology();
+      renderButtonNodes();
+      log(`Bouton ${id} → ${buttonPowered[id] ? 'rebranché' : 'débranché'}`, 'out');
+    });
+    wireHold(node, {
+      onStart: () => {
+        if (!buttonPowered[id]) return false;   /* module éteint : aucun signal */
+        node.style.borderColor = '#fff';
+        send({ type:'press', id });
+        return true;
+      },
+      onEnd: () => {
+        node.style.borderColor = '';
+        if (buttonPowered[id]) send({ type:'release', id });
+      }
+    });
   });
-});
+}
+renderButtonNodes();
 
 /* ===== Bouton de départ : sa lampe vient de l'appli ===== */
 const startNode = document.getElementById('start-node');
@@ -402,9 +419,9 @@ function announceTopology(){
   send({
     type:'topology',
     beams: BEAMS.map(b => ({ id:b.id, color:colorLetter(b.rgb), rgb:b.rgb })),
-    buttons: BUTTONS.map(id => ({ id }))
+    buttons: BUTTONS.filter(id => buttonPowered[id]).map(id => ({ id }))
   });
-  log(`topologie annoncée : ${BEAMS.length} faisceaux, ${BUTTONS.length} boutons`, 'out');
+  log(`topologie annoncée : ${BEAMS.length} faisceaux, ${BUTTONS.filter(id => buttonPowered[id]).length} boutons`, 'out');
 }
 
 /* État du boîtier lui-même : sa batterie et ses deux boutons physiques. */

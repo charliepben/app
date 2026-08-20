@@ -119,6 +119,11 @@
   .tabpanel.active{ display:flex; flex-direction:column; gap:9px; }
   #tab-mission{ overflow:hidden; padding-bottom:10px; }
   .scores-scroll{ flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:9px; }
+  /* écran large : les deux classements tiennent côte à côte */
+  @container device (min-width: 700px){
+    .scores-scroll{ flex-direction:row; align-items:flex-start; }
+    .scores-scroll > *{ flex:1 1 0; min-width:0; }
+  }
 
   /* ===== MISSION TAB ===== */
   .timer-block{
@@ -164,7 +169,7 @@
     background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:9px 12px; flex-shrink:0;
   }
   .now-row{ display:flex; align-items:center; gap:10px; }
-  .now-row{ flex-direction:column; align-items:stretch; gap:2px; }
+  .now-row{ flex-direction:column; align-items:stretch; gap:12px; }
   .now-lbl{ font-size:clamp(11px, 2.6cqw, 14px); font-weight:700; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.3px; flex-shrink:0; }
   .now-players{ display:flex; align-items:center; justify-content:center; gap:12px; min-width:0; padding:2px 0; }
   /* Entrée du joueur suivant : la PHOTO grandit vraiment (width/height animées), donc
@@ -178,7 +183,26 @@
   .now-players.pop .avatar{ animation:avatarPop 1.6s cubic-bezier(.3,.1,.2,1); }
   @keyframes namePop{ 0%,45%{ opacity:0; transform:translateY(6px); } 100%{ opacity:1; transform:none; } }
   .now-players.pop .pname, .now-players.pop .prole{ animation:namePop 1.6s ease-out; }
-  .player-chip{ display:flex; align-items:center; gap:12px; min-width:0; flex:0 1 auto; }
+  .player-chip{ position:relative; display:flex; align-items:center; gap:12px; min-width:0; flex:0 1 auto; transition:opacity .35s, filter .35s, transform .35s; }
+
+  .player-chip.winner .avatar{ box-shadow:0 0 0 2px var(--bg), 0 0 0 5px #ffd54a, 0 0 34px -2px #ffd54a !important; }
+  .player-chip.winner .pname{ color:#ffd54a !important; text-shadow:0 0 26px #ffd54a; }
+  .player-chip.loser{ opacity:.32; filter:grayscale(.85); transform:scale(.93); }
+  /* Pluie d'étoiles sur le vainqueur : de vraies formes CSS, pas des emojis. */
+  .chip-stars{ position:absolute; inset:-10px -6px -6px; pointer-events:none; overflow:hidden; z-index:3; border-radius:22px; }
+  .chip-stars i{
+    position:absolute; top:-12px; width:var(--sz); height:var(--sz); background:#fff;
+    clip-path:polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%);
+    filter:drop-shadow(0 0 5px #ffe27a) drop-shadow(0 0 10px #ffd54a);
+    animation:starFall var(--dur) linear var(--delay) infinite;
+    opacity:0;
+  }
+  @keyframes starFall{
+    0%{ transform:translateY(0) rotate(0deg) scale(.5); opacity:0; }
+    12%{ opacity:1; }
+    75%{ opacity:.9; }
+    100%{ transform:translateY(var(--dist)) rotate(220deg) scale(1); opacity:0; }
+  }
   .player-chip > div{ min-width:0; }
   .avatar{
     width:clamp(38px, 9.5cqw, 56px); height:clamp(38px, 9.5cqw, 56px); border-radius:11px; display:flex; align-items:center; justify-content:center;
@@ -195,8 +219,6 @@
   .player-chip .pname{
     font-size:clamp(18px, 4.6cqw, 30px); font-weight:700; line-height:1.15; color:#fff;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    /* halo large et très discret : le prénom doit rester net, pas flou */
-    text-shadow:0 0 30px color-mix(in srgb, currentColor 35%, transparent);
   }
   .player-chip .prole{
     display:inline-block; max-width:100%; margin-top:5px; padding:2px 9px; border-radius:20px;
@@ -261,6 +283,10 @@
   .beam.knob.unused{ opacity:.32; filter:grayscale(1); }
   .beam.knob.unused .led{ background:#1c2836 !important; box-shadow:inset 0 0 0 1px #2a3644 !important; }
   .beam.knob.arrival{ border-color:var(--amber); }
+  .setting-row{ display:flex; align-items:center; justify-content:space-between; gap:14px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; flex-wrap:wrap; }
+  .setting-row .lbl{ font-size:clamp(13px, 2.9cqw, 15.5px); font-weight:600; }
+  .setting-row .sub{ font-size:clamp(10px, 2.3cqw, 12px); color:var(--dim); font-family:'JetBrains Mono'; }
+  .relight-row{ display:flex; gap:6px; flex-wrap:wrap; }
   .arrival-row{ display:flex; gap:7px; flex-wrap:wrap; margin-bottom:6px; }
   .arrival-btn{
     min-width:42px; padding:9px 12px; border-radius:11px; border:1px solid var(--line); background:var(--panel);
@@ -353,9 +379,9 @@
 
   /* laser touché : flash d'alerte temporaire, quelle que soit sa couleur */
   @keyframes hitFlash{ 0%,100%{ background:rgba(255,77,94,0.35); } 50%{ background:rgba(255,77,94,0.05); } }
-  .beam.hit{ border-color:var(--red); animation:hitFlash .35s steps(1) infinite; }
+  .beam.hit{ border-color:var(--red); animation:hitFlash .16s steps(1) infinite; }
   .beam.hit .led{ background:var(--red) !important; color:var(--red); opacity:1; }
-  .beam.hit .led::after{ box-shadow:0 0 6px 2px var(--red), 6px -4px 0 -1px var(--red), -6px -3px 0 -1px var(--red); animation:twinkle .3s ease-in-out infinite; }
+  .beam.hit .led::after{ box-shadow:0 0 6px 2px var(--red), 6px -4px 0 -1px var(--red), -6px -3px 0 -1px var(--red); animation:twinkle .16s ease-in-out infinite; }
 
   .live-scores{
     background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px 12px; flex-shrink:0;
@@ -396,6 +422,7 @@
     border:none; border-radius:14px; color:#fff; flex:1;
     font-family:'Orbitron'; font-weight:700; font-size:clamp(12px, 2.8cqw, 16px); letter-spacing:1.4px;
     padding:clamp(13px, 3.2cqw, 18px) 4px; width:100%; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
   }
   .btn-toggle.go{ background: linear-gradient(180deg,#3ef2a8,#1fae72); box-shadow: 0 8px 22px -8px rgba(53,242,163,0.55); }
   .btn-toggle.stop{ background: linear-gradient(180deg,#ff5b6a,#d8283b); box-shadow: 0 8px 22px -8px rgba(255,77,94,0.55); }
@@ -405,13 +432,35 @@
     background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.7); color:#fff; cursor:default;
     animation:readyGlow 1.5s ease-in-out infinite;
   }
-  .ready-dot{
-    display:inline-block; width:9px; height:9px; border-radius:50%; background:#fff; margin-right:5px;
-    vertical-align:middle; box-shadow:0 0 6px 1px rgba(255,255,255,0.6); animation:readyGlow 1.5s ease-in-out infinite;
+  /* Représentation du bouton DÉPART physique : embase sombre + dôme lumineux,
+     exactement le même vocabulaire visuel que sur le simulateur. */
+  .ready-btn{
+    display:inline-flex; align-items:center; justify-content:center; vertical-align:middle;
+    width:26px; height:26px; border-radius:50%; margin-right:9px; flex-shrink:0;
+    background:#0c1119; box-shadow:inset 0 0 0 3px #171f2a;
+  }
+  .ready-btn i{
+    display:block; width:15px; height:15px; border-radius:50%; background:#fff;
+    box-shadow:0 0 8px 2px rgba(255,255,255,.75);
+    animation:readyGlow 1.5s ease-in-out infinite;
   }
   .btn-pause{
-    flex:0 0 auto; width:clamp(48px, 12cqw, 62px); border:1px solid var(--line); border-radius:14px;
-    background:var(--panel); color:var(--text); font-size:clamp(16px, 3.6cqw, 20px); cursor:pointer;
+    flex:0 0 auto; width:clamp(52px, 13cqw, 68px); border:1px solid var(--line); border-radius:14px;
+    background:linear-gradient(180deg, #1b2431, #131a24); color:var(--text); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:4px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 6px 16px -10px #000;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .btn-pause:hover{ border-color:var(--amber); }
+  .btn-pause:active{ transform:translateY(1px); }
+  /* deux barres (pause) ou un triangle (reprendre), dessinés, pas des caractères */
+  .btn-pause .bar{ display:block; width:clamp(4px,1cqw,6px); height:clamp(15px,3.4cqw,20px); border-radius:2px; background:var(--amber); box-shadow:0 0 10px -2px var(--amber); }
+  .btn-pause .play{
+    display:block; width:0; height:0; margin-left:3px;
+    border-left:clamp(11px,2.6cqw,15px) solid var(--green);
+    border-top:clamp(8px,1.9cqw,11px) solid transparent;
+    border-bottom:clamp(8px,1.9cqw,11px) solid transparent;
+    filter:drop-shadow(0 0 8px var(--green));
   }
 
   .status-badge.ready{ color:#fff; background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.7); animation:readyGlow 1.5s ease-in-out infinite; }
@@ -472,7 +521,7 @@
   .wizard-title{ font-family:'Orbitron'; font-size:clamp(15px, 3.6cqw, 20px); color:#fff; margin-bottom:4px; text-shadow:0 0 20px rgba(255,255,255,.3); }
   .wizard-body.centered .wizard-title{ font-size:clamp(22px, 5.5cqw, 34px); margin-bottom:8px; }
   .wizard-body.centered .wizard-sub{ font-size:clamp(14px, 3.4cqw, 19px); margin-bottom:22px; }
-  .wizard-sub{ font-size:clamp(11.5px, 2.7cqw, 14px); color:var(--dim); margin-bottom:16px; line-height:1.5; }
+  .wizard-sub{ font-size:clamp(14px, 3.1cqw, 17px); color:var(--dim); margin-bottom:18px; line-height:1.55; }
 
   /* cartes de mission "qui font rêver" */
   .mcard{
@@ -486,20 +535,22 @@
   .mcard > *{ position:relative; }
   .mcard.selected{ border-color:#fff; transform:translateY(-2px); }
   .mcard .mcard-icon{ font-size:clamp(30px, 8cqw, 42px); line-height:1; }
-  .mcard h3{ font-family:'Orbitron'; font-size:clamp(17px, 4.4cqw, 24px); color:#fff; margin:8px 0 4px; }
-  .mcard .tagline{ font-size:clamp(12.5px, 3cqw, 15px); color:#dbe6f2; font-style:italic; margin-bottom:8px; }
-  .mcard p{ font-size:clamp(11.5px, 2.6cqw, 13.5px); color:var(--dim); line-height:1.5; }
+  .mcard h3{ font-family:'Orbitron'; font-size:clamp(20px, 4.6cqw, 26px); color:#fff; margin:8px 0 4px; }
+  .mcard .tagline{ font-size:clamp(15px, 3.3cqw, 18px); color:#dbe6f2; font-style:italic; margin-bottom:8px; }
+  .mcard p{ font-size:clamp(14px, 3cqw, 17px); color:var(--dim); line-height:1.6; }
   .mcard .req{
-    position:absolute; top:14px; right:14px; font-size:clamp(8.5px, 2cqw, 10px); font-family:'JetBrains Mono';
+    position:absolute; top:14px; right:14px; font-size:clamp(10px, 2.2cqw, 12px); font-family:'JetBrains Mono';
     color:var(--amber); border:1px solid rgba(255,179,71,.5); border-radius:20px; padding:3px 8px;
   }
   .duration-row{ display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,.08); }
-  .duration-lbl{ font-family:'JetBrains Mono'; font-size:9px; letter-spacing:1.4px; color:var(--dim); margin-right:2px; }
+  .duration-lbl{ font-family:'JetBrains Mono'; font-size:clamp(11px, 2.4cqw, 13px); letter-spacing:1.4px; color:var(--dim); margin-right:2px; }
   .duration-btn{
     padding:6px 11px; border-radius:9px; border:1px solid var(--line); background:rgba(0,0,0,.25);
-    color:var(--dim); font-family:'JetBrains Mono'; font-size:11px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+    color:var(--dim); font-family:'JetBrains Mono'; font-size:clamp(12px, 2.7cqw, 14px); cursor:pointer; -webkit-tap-highlight-color:transparent;
   }
   .duration-btn.selected{ border-color:#fff; color:#fff; background:rgba(255,255,255,.12); }
+  /* mode non sélectionné : les réglages restent visibles, juste en retrait */
+  .duration-row.muted{ opacity:.45; }
 
   /* carte modale de description en cours de jeu */
   .mode-modal{
@@ -507,7 +558,12 @@
     background:rgba(5,7,10,0.85); padding:24px;
   }
   .mode-modal.show{ display:flex; }
-  .mode-modal-card{ max-width:460px; width:100%; }
+  .mode-modal-card{ max-width:560px; width:100%; }
+  .mode-modal-card .mcard{ padding:26px 26px 24px; }
+  .mode-modal-card .mcard-icon{ font-size:clamp(38px, 8cqw, 52px); }
+  .mode-modal-card h3{ font-size:clamp(24px, 5.4cqw, 34px); margin:12px 0 6px; }
+  .mode-modal-card .tagline{ font-size:clamp(16px, 3.6cqw, 21px); margin-bottom:12px; }
+  .mode-modal-card p{ font-size:clamp(15px, 3.3cqw, 19px); line-height:1.6; }
 
   /* confirmation maison (jamais confirm() natif) */
   .confirm-overlay{
@@ -516,7 +572,7 @@
   }
   .confirm-overlay.show{ display:flex; }
   .confirm-card{
-    position:relative; max-width:380px; width:100%; text-align:center; overflow:hidden;
+    position:relative; max-width:460px; width:100%; text-align:center; overflow:hidden;
     background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:26px 22px 20px;
     animation:celebratePop .35s cubic-bezier(.34,1.4,.64,1);
   }
@@ -525,9 +581,9 @@
     background:radial-gradient(120% 80% at 50% 0%, rgba(53,242,163,.22), transparent 65%);
   }
   .confirm-card > *{ position:relative; }
-  .confirm-icon{ font-size:34px; }
-  .confirm-card h3{ font-family:'Orbitron'; font-size:clamp(15px, 3.6cqw, 19px); color:#fff; margin:10px 0 8px; }
-  .confirm-card p{ font-size:clamp(12px, 2.8cqw, 14px); color:var(--dim); line-height:1.55; margin-bottom:20px; }
+  .confirm-icon{ font-size:44px; }
+  .confirm-card h3{ font-family:'Orbitron'; font-size:clamp(19px, 4.6cqw, 26px); color:#fff; margin:12px 0 10px; }
+  .confirm-card p{ font-size:clamp(14.5px, 3.4cqw, 18px); color:var(--dim); line-height:1.6; margin-bottom:22px; }
   .confirm-actions{ display:flex; gap:9px; }
   .confirm-cancel, .confirm-ok{
     flex:1; padding:13px 0; border-radius:12px; font-family:'Orbitron'; font-weight:700;
@@ -640,8 +696,24 @@
 
   /* ===== CONFIG TAB ===== */
   #tab-config{ overflow-y:auto; }
-  .section-label{ font-family:'JetBrains Mono'; font-size:clamp(10px, 2.3cqw, 12px); letter-spacing:1.8px; color:var(--dim); text-transform:uppercase; margin:10px 0 8px; text-shadow:0 0 12px rgba(255,255,255,.12); }
-  .section-label:first-child{ margin-top:0; }
+  /* Règle systématique : un titre de section prend toujours de l'air AU-DESSUS,
+     sauf s'il ouvre son conteneur. Plus besoin de retoucher au cas par cas. */
+  .section-label{
+    font-family:'JetBrains Mono'; font-size:clamp(11px, 2.5cqw, 13px); letter-spacing:1.8px;
+    color:var(--dim); text-transform:uppercase; margin:28px 0 12px;
+    text-shadow:0 0 12px rgba(255,255,255,.12);
+  }
+  .section-label:first-child,
+  #wizard-slot > * > .section-label:first-child,
+  .sheet-body > .section-label:first-child{ margin-top:0; }
+  .drag-handle{
+    flex-shrink:0; color:var(--dim); font-size:16px; line-height:1; cursor:grab; padding:4px 2px;
+    touch-action:none; user-select:none; letter-spacing:-2px;
+  }
+  .drag-handle:active{ cursor:grabbing; }
+  .agent-row.dragging{ opacity:.45; }
+  .agent-row.drop-before{ box-shadow:0 -3px 0 -1px var(--green); }
+  .agent-row.drop-after{ box-shadow:0 3px 0 -1px var(--green); }
   .agent-row{ display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:9px 12px; margin-bottom:7px; }
   .agent-info{ flex:1; } .agent-info .name{ font-weight:600; font-size:clamp(14px, 3.2cqw, 17px); } .agent-info .team{ font-size:clamp(10px, 2.3cqw, 12px); color:var(--dim); font-family:'JetBrains Mono'; }
   .team-tag{ font-size:clamp(9px, 2.1cqw, 11px); font-family:'JetBrains Mono'; padding:4px 9px; border-radius:20px; border:1px solid currentColor; cursor:pointer; white-space:nowrap; }
@@ -706,11 +778,11 @@
       <div class="dot-live"></div>
       <h1>MISSION MARS</h1>
       <div class="header-nav">
-        <button class="header-navbtn" id="open-config" title="Configuration">⚙️</button>
-        <button class="header-navbtn" id="open-scores" title="Scores">🏆</button>
         <button class="header-newgame" id="new-game-btn">
           <span id="new-game-icon">🚀</span><span class="ng-label">NOUVELLE PARTIE</span>
         </button>
+        <button class="header-navbtn" id="open-scores" title="Scores">🏆</button>
+        <button class="header-navbtn" id="open-config" title="Réglages">⚙️</button>
       </div>
     </div>
 
@@ -848,7 +920,7 @@
 
     <!-- ===================== TAB CONFIGURATION ===================== -->
     <div class="sheet" id="tab-config">
-      <div class="sheet-head"><h2>⚙️ Configuration</h2><button class="sheet-close" data-close="tab-config">✕</button></div>
+      <div class="sheet-head"><h2>⚙️ Réglages</h2><button class="sheet-close" data-close="tab-config">✕</button></div>
       <div class="sheet-body">
 
       <!-- section déplacée dans l'étape 1 de l'assistant -->
@@ -891,6 +963,15 @@
 
         <div class="section-label" id="arrival-label">Bouton d'arrivée</div>
         <div class="arrival-row" id="arrival-row"></div>
+      </div>
+
+      <div class="section-label">Faisceaux</div>
+      <div class="setting-row">
+        <div>
+          <div class="lbl">Rallumage après un contact</div>
+          <div class="sub">temps avant qu'un faisceau touché ne revienne</div>
+        </div>
+        <div class="relight-row" id="relight-row"></div>
       </div>
 
       <div class="section-label">Thème</div>
@@ -1008,7 +1089,7 @@ const MODES = [
     key:'duel-orbital', icon:'🚀', name:'Duel orbital', req:'2 ÉQUIPES',
     obstacleName:'Astéroïde', obstacleIcon:'☄️', targetName:'Base', targetIcon:'🛸',
     playersUsed:2, timed:false,
-    hasArrival:true, arrivalLabel:'Base adverse', arrivalIcon:'🛸',
+    hasArrival:true, arrivalLabel:'Arrivée', arrivalIcon:'🛸',
     tagline:"Five… four… three… two… one… ignition!",
     desc:"Deux navettes, deux bases opposées, un champ d'astéroïdes entre les deux. Au signal, chacun frappe son bouton de mise à feu et s'élance vers la base adverse. Le premier arrivé gagne — le premier touché explose."
   }
@@ -1016,6 +1097,7 @@ const MODES = [
 /* valeurs par défaut ; écrasées plus bas par l'état sauvegardé s'il existe */
 let currentModeKey = 'cristal-rush';
 let arrivalButtonId = 3;
+let beamRelightSec = 3;   /* secondes avant qu'un faisceau touché ne se rallume */
 let teamMode = true;
 let modeDurations = {}; /* clé de mode → durée en secondes, pour les modes chronométrés */
 function currentMode(){ return MODES.find(m => m.key === currentModeKey) || MODES[0]; }
@@ -1054,8 +1136,8 @@ function modeCardHtml(m, forceSelected){
       <h3>${m.name}</h3>
       <div class="tagline">${m.tagline}</div>
       <p>${m.desc}</p>
-      ${m.timed && selected ? `
-        <div class="duration-row">
+      ${m.timed ? `
+        <div class="duration-row ${selected ? '' : 'muted'}">
           <span class="duration-lbl">DURÉE</span>
           ${DURATION_CHOICES.map(s => `
             <button class="duration-btn ${s === dur ? 'selected' : ''}" data-dur="${s}" data-mode="${m.key}">${s < 60 ? s + 's' : (s / 60) + 'min'}</button>
@@ -1119,9 +1201,10 @@ function buttonLampFor(id){
   /* ---- FIRE : seul le bouton d'arrivée (l'extincteur) est allumé ---- */
   if (m.key === 'fire') {
     if (id !== arrivalButtonId) return LAMP_OFF;
+    /* l'extincteur est en ROUGE (couleur du feu), pas en blanc */
     return inMission
-      ? { r:255, g:255, b:255, mode:'glow', brightness:100, brightnessMin:30, periodMs:1200 }
-      : { r:255, g:179, b:71, mode:'solid', brightness:22 };
+      ? { r:255, g:60, b:40, mode:'glow', brightness:100, brightnessMin:30, periodMs:1200 }
+      : { r:255, g:60, b:40, mode:'solid', brightness:22 };
   }
 
   /* ---- DUEL ORBITAL : les 2 bases aux couleurs des joueurs, éteintes si éliminé ---- */
@@ -1129,15 +1212,13 @@ function buttonLampFor(id){
     if (id === arrivalButtonId && inMission && run && run.phase === 'launch') {
       return { r:255, g:255, b:255, mode:'glow', brightness:100, brightnessMin:30, periodMs:1200 };
     }
-    if (id > 2) return LAMP_OFF;
-    const ps = livePlayers();
-    const p = ps[id - 1];
+    if (id !== 1) return LAMP_OFF;
+    const p = livePlayers()[0];
     if (!p) return LAMP_OFF;
     const col = hexToRgb(colorOf(p));
     if (!inMission || !run) return { ...col, mode:'solid', brightness:30 };
-    if (run.eliminated && run.eliminated[id - 1]) return LAMP_OFF;      /* navette détruite */
     if (run.phase === 'countdown') return { ...col, mode:'solid', brightness:25 };
-    return run.launched && run.launched[id - 1]
+    return run.launched && run.launched[0]
       ? { ...col, mode:'solid', brightness:100 }
       : { ...col, mode:'glow', brightness:100, brightnessMin:35, periodMs:700 };
   }
@@ -1302,9 +1383,10 @@ function buttonRoleFor(id){
 
   if (m.key === 'duel-orbital') {
     if (isArrival) return { label:m.arrivalLabel, shape:'rocket', used:true };
-    if (id === 1 || id === 2) {
-      const p = livePlayers()[id - 1];
-      return { label:p ? p.name : `Base ${id}`, shape:'rocket', used:true };
+    /* le départ du duel, c'est le bouton du joueur 1 */
+    if (id === 1) {
+      const p = livePlayers()[0];
+      return { label:p ? p.name : 'Départ', shape:'rocket', used:true };
     }
     return { label:`Bouton ${id}`, shape:'plain', used:false };
   }
@@ -1336,10 +1418,15 @@ function applyButtonLamp(id, lamp){
     holder.dataset.shape = role.shape;
   }
   const a = (lamp.brightness || 0) / 100;
-  holder.style.color = off ? '#26313f' : `rgb(${lamp.r},${lamp.g},${lamp.b})`;
+  const c = `${lamp.r},${lamp.g},${lamp.b}`;
+  holder.style.color = off ? '#26313f' : `rgb(${c})`;
+  /* trois halos empilés (serré → large) : la forme émet vraiment de la lumière,
+     au lieu d'être entourée d'un flou uniforme. */
   holder.style.filter = off
     ? 'none'
-    : `drop-shadow(0 0 ${3 + 7 * a}px rgba(${lamp.r},${lamp.g},${lamp.b},${0.5 + 0.45 * a}))`;
+    : `drop-shadow(0 0 ${1 + 1.5 * a}px rgba(${c},.95))` +
+      ` drop-shadow(0 0 ${4 + 5 * a}px rgba(${c},.75))` +
+      ` drop-shadow(0 0 ${10 + 14 * a}px rgba(${c},.45))`;
   holder.style.opacity = off ? '.5' : String(0.55 + 0.45 * a);
   holder.style.animation = (lamp.mode === 'twinkle' || lamp.mode === 'glow') && !off
     ? 'readyGlow 1.5s ease-in-out infinite' : 'none';
@@ -1380,6 +1467,21 @@ function renderThemePicker(){
 }
 
 /* ===== Bouton d'arrivée configurable ===== */
+/* Délai de rallumage d'un faisceau touché (0 = immédiat). */
+const RELIGHT_CHOICES = [0, 1, 2, 3, 5, 8];
+function renderRelightConfig(){
+  const row = document.getElementById('relight-row');
+  if (!row) return;
+  row.innerHTML = RELIGHT_CHOICES.map(v => `
+    <button class="arrival-btn ${v === beamRelightSec ? 'selected' : ''}" data-v="${v}">${v === 0 ? 'imm.' : v + 's'}</button>
+  `).join('');
+  row.querySelectorAll('.arrival-btn').forEach(b => b.addEventListener('click', () => {
+    beamRelightSec = +b.dataset.v;
+    saveState();
+    renderRelightConfig();
+  }));
+}
+
 function renderArrivalConfig(){
   const row = document.getElementById('arrival-row');
   const label = document.getElementById('arrival-label');
@@ -1399,20 +1501,20 @@ function renderArrivalConfig(){
 
   /* En duel, les boutons 1 et 2 sont les bases de départ des 2 joueurs :
      ils ne peuvent pas servir aussi de base adverse. */
-  const reserved = m.key === 'duel-orbital' ? [1, 2] : [];
+  const reserved = m.key === 'duel-orbital' ? [1] : [];   /* le 1 est le bouton de départ */
   if (reserved.includes(arrivalButtonId)) {
-    arrivalButtonId = [3,4,5].find(id => !reserved.includes(id));
+    arrivalButtonId = buttonIds().find(id => !reserved.includes(id)) || arrivalButtonId;
     saveState();
   }
 
   row.innerHTML = buttonIds().map(id => {
     const off = reserved.includes(id);
     return `<button class="arrival-btn ${id === arrivalButtonId ? 'selected' : ''}"
-      data-id="${id}" ${off ? 'disabled title="Base de depart d un joueur"' : ''}>${id}</button>`;
+      data-id="${id}" ${off ? 'disabled title="Bouton de depart"' : ''}>${id}</button>`;
   }).join('');
   if (reserved.length) {
     row.insertAdjacentHTML('beforeend',
-      '<span class="arrival-hint">1 et 2 = bases de départ des joueurs</span>');
+      '<span class="arrival-hint">le bouton 1 est le départ</span>');
   }
   row.querySelectorAll('.arrival-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1455,7 +1557,7 @@ function saveState(){
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       teams:TEAMS, players:PLAYERS, roster:ROSTER,
       queueIndex, liveScores, teamTally, currentModeKey, arrivalButtonId,
-      teamMode, modeDurations, currentTheme, history:HISTORY, soundOn
+      teamMode, modeDurations, currentTheme, history:HISTORY, soundOn, beamRelightSec
     }));
   }catch(e){ /* stockage plein ou indisponible, tant pis */ }
 }
@@ -1473,6 +1575,7 @@ let ROSTER = Array.isArray(saved && saved.roster) ? saved.roster : PLAYERS.map(p
 if (saved && MODES.some(m => m.key === saved.currentModeKey)) currentModeKey = saved.currentModeKey;
 if (saved && saved.arrivalButtonId >= 1 && saved.arrivalButtonId <= 5) arrivalButtonId = saved.arrivalButtonId;
 if (saved && typeof saved.teamMode === 'boolean') teamMode = saved.teamMode;
+if (saved && typeof saved.beamRelightSec === 'number') beamRelightSec = saved.beamRelightSec;
 if (saved && saved.modeDurations) modeDurations = saved.modeDurations;
 if (saved && THEMES[saved.currentTheme]) currentTheme = saved.currentTheme;
 
@@ -1707,18 +1810,18 @@ const RULES = {
       if (id !== r.litButton) return;         /* mauvais bouton : rien */
       r.crystals++;
       play('crystal');
-      flashScoreBanner('+1 ' + currentMode().targetName.toLowerCase(), 'good');
+      flashScoreBanner('+1 cristal', 'good');
       lightRandomCrystal(r);
       renderRunHud();
     },
     onBeamHit(r){
       if (r.crystals > 0) { r.crystals--; r.lost++; }
       play('crystalBreak');
-      flashScoreBanner('−1 ' + currentMode().targetName.toLowerCase(), 'bad');
+      flashScoreBanner('−1 cristal', 'bad');
       renderRunHud();
     },
     score(r){
-      return { value:r.crystals, label:r.crystals + ' ' + currentMode().targetName.toLowerCase() + (r.crystals > 1 ? 's' : ''), win:true };
+      return { value:r.crystals, label:plural(r.crystals, 'cristal', 'cristaux'), win:true };
     },
     hud(r){
       return `<span class="hud-big">${r.crystals}</span> ${currentMode().targetIcon}` +
@@ -1789,11 +1892,13 @@ const RULES = {
     },
     onButtonPress(r, id){
       if (r.phase === 'countdown') return;          /* trop tôt */
-      const idx = id - 1;                            /* bouton 1 = joueur 1, bouton 2 = joueur 2 */
-      if (idx === 0 || idx === 1) {
-        if (!r.launched[idx]) { r.launched[idx] = true; play('beep', true); renderRunHud(); return; }
+      /* mise à feu : le bouton 1 est le point de départ commun */
+      if (id === 1 && !r.launched[0]) {
+        r.launched[0] = true; r.launched[1] = true;
+        play('beep', true); renderRunHud(); syncLamps();
+        return;
       }
-      /* atteindre le bouton de la base adverse = victoire */
+      /* atteindre le bouton d'ARRIVÉE (celui choisi en config) = victoire */
       if (id === arrivalButtonId && r.phase === 'launch') {
         r.winner = r.eliminated[0] ? 1 : 0;
         stopMission();
@@ -1971,27 +2076,77 @@ function fmtTime(ms){
 function modePlayerCount(){
   return currentModeKey === 'duel-orbital' ? 2 : 1;
 }
+/* Qui joue à partir de la position `i` de la file.
+   En duel + mode équipe, on refuse d'opposer deux joueurs de la même équipe : on va
+   chercher le prochain adversaire valable dans la file. Indispensable dès que les
+   effectifs sont impairs (3 joueurs pour 2 équipes, par exemple). */
 function playersAt(i, count){
-  const out = [];
-  for (let k = 0; k < count; k++) out.push(PLAYERS[(i + k) % PLAYERS.length]);
+  const n = PLAYERS.length;
+  const first = PLAYERS[i % n];
+  if (count < 2 || !teamMode || n < 2) {
+    const out = [];
+    for (let k = 0; k < count; k++) out.push(PLAYERS[(i + k) % n]);
+    return out;
+  }
+  const out = [first];
+  for (let k = 1; k < count; k++) {
+    let pick = null;
+    for (let step = 1; step < n; step++) {
+      const cand = PLAYERS[(i + k - 1 + step) % n];
+      if (out.includes(cand)) continue;
+      if (!out.some(p => p.team === cand.team)) { pick = cand; break; }
+    }
+    /* aucun adversaire d'une autre équipe (tout le monde dans la même) : on prend le suivant */
+    if (!pick) pick = PLAYERS[(i + k) % n];
+    out.push(pick);
+  }
   return out;
 }
-function playerChipHtml(p){
+/* En duel les joueurs s'affrontent : on écrit « vs », pas « & ». */
+/* « 1 cristal » / « 3 cristaux » : le pluriel n'est pas toujours un simple « s ». */
+function plural(n, singulier, pluriel){
+  return n + ' ' + (n > 1 ? pluriel : singulier);
+}
+
+function joinPlayerNames(names){
+  return names.join(modePlayerCount() === 2 ? ' vs ' : ' & ');
+}
+
+/* Petites étoiles scintillantes qui tombent sur le vainqueur (positions et rythmes
+   tirés au hasard pour que ça ne paraisse pas mécanique). */
+function starShowerHtml(){
+  let out = '<div class="chip-stars">';
+  for (let i = 0; i < 16; i++) {
+    const left = Math.round(Math.random() * 100);
+    const size = (4 + Math.random() * 7).toFixed(1);
+    const dur  = (1.6 + Math.random() * 1.6).toFixed(2);
+    const del  = (Math.random() * 2.2).toFixed(2);
+    const dist = (120 + Math.random() * 90).toFixed(0);
+    out += `<i style="left:${left}%; --sz:${size}px; --dur:${dur}s; --delay:${del}s; --dist:${dist}px"></i>`;
+  }
+  return out + '</div>';
+}
+
+function playerChipHtml(p, outcome){
   const color = colorOf(p);
   const sub = subtitleOf(p);
-  return `<div class="player-chip">${avatarHtml(p)}<div><div class="pname" style="color:${color};">${p.name}</div>${sub ? `<div class="prole" style="color:${color};">${sub}</div>` : ''}</div></div>`;
+  const stars = outcome === 'winner' ? starShowerHtml() : '';
+  return `<div class="player-chip${outcome ? ' ' + outcome : ''}">${stars}${avatarHtml(p)}<div><div class="pname" style="color:${color};">${p.name}</div>${sub ? `<div class="prole" style="color:${color};">${sub}</div>` : ''}</div></div>`;
 }
 
 function renderPlayers(){
   const n = modePlayerCount();
   const current = playersAt(queueIndex, n);
   const next = playersAt(queueIndex + n, n);
+  /* Manche terminée avec un vainqueur désigné : on le met en avant, l'autre s'efface. */
+  const showOutcome = missionState === 'finished' && lastResult && lastResult.winnerIndex != null;
+  const outcomeOf = (i) => showOutcome ? (i === lastResult.winnerIndex ? 'winner' : 'loser') : '';
   document.getElementById('now-players').innerHTML = n === 2
-    ? `${playerChipHtml(current[0])}<div class="vs">VS</div>${playerChipHtml(current[1])}`
-    : playerChipHtml(current[0]);
+    ? `${playerChipHtml(current[0], outcomeOf(0))}<div class="vs">${showOutcome ? '' : 'VS'}</div>${playerChipHtml(current[1], outcomeOf(1))}`
+    : playerChipHtml(current[0], showOutcome ? 'winner' : '');
   document.getElementById('next-players').innerHTML = next
     .map(p => `${avatarHtml(p, 'mini')} <span style="color:${colorOf(p)};">${p.name}</span>`)
-    .join(' <span class="next-amp">&amp;</span> ');
+    .join(` <span class="next-amp">${modePlayerCount() === 2 ? 'vs' : '&amp;'}</span> `);
 }
 
 function renderLiveScores(){
@@ -2105,7 +2260,8 @@ function renderTeamEditors(){
 let pendingPhotoIndex = null;
 function renderAgents(){
   document.getElementById('agents-list').innerHTML = PLAYERS.map((p, idx) => `
-    <div class="agent-row">
+    <div class="agent-row" data-row="${idx}" draggable="true">
+      <span class="drag-handle" title="Glisser pour réordonner">⠿</span>
       ${avatarHtml(p, 'clickable', `data-idx="${idx}"`)}
       <div class="agent-info">
         <input class="name-input" data-idx="${idx}" value="${p.name.replace(/"/g,'&quot;')}" maxlength="18">
@@ -2179,7 +2335,97 @@ function renderAgents(){
       renderPlayers();
     });
   });
+  wirePlayerReorder();
   renderRosterStrip();
+}
+
+/* ===== Réordonner les joueurs par glisser-déposer =====
+   L'ordre de la liste EST l'ordre de passage : pouvoir le réarranger évite de supprimer
+   et recréer des joueurs. Fonctionne à la souris (HTML5 drag) et au doigt (pointer). */
+let dragFrom = null;
+
+function movePlayer(from, to){
+  if (from === to || from == null || to == null) return;
+  const [moved] = PLAYERS.splice(from, 1);
+  PLAYERS.splice(to, 0, moved);
+  saveState();
+  renderAgents();
+  renderPlayers();
+}
+
+function wirePlayerReorder(){
+  const list = document.getElementById('agents-list');
+  const rows = [...list.querySelectorAll('.agent-row')];
+
+  rows.forEach(row => {
+    const idx = +row.dataset.row;
+
+    row.addEventListener('dragstart', (e) => {
+      dragFrom = idx;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', String(idx)); } catch(err){}
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      rows.forEach(r => r.classList.remove('drop-before', 'drop-after'));
+      dragFrom = null;
+    });
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (dragFrom === null || dragFrom === idx) return;
+      const r = row.getBoundingClientRect();
+      const after = e.clientY > r.top + r.height / 2;
+      row.classList.toggle('drop-after', after);
+      row.classList.toggle('drop-before', !after);
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drop-before', 'drop-after'));
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (dragFrom === null) return;
+      const r = row.getBoundingClientRect();
+      const after = e.clientY > r.top + r.height / 2;
+      let to = idx + (after ? 1 : 0);
+      if (dragFrom < to) to--;
+      movePlayer(dragFrom, to);
+    });
+
+    /* --- au doigt : on suit le pointeur depuis la poignée --- */
+    const handle = row.querySelector('.drag-handle');
+    if (!handle) return;
+    handle.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse') return;   /* la souris passe par le drag HTML5 */
+      e.preventDefault();
+      dragFrom = idx;
+      row.classList.add('dragging');
+      const move = (ev) => {
+        const el = document.elementFromPoint(ev.clientX, ev.clientY);
+        const over = el && el.closest('.agent-row');
+        rows.forEach(r => r.classList.remove('drop-before', 'drop-after'));
+        if (over && +over.dataset.row !== dragFrom) {
+          const rr = over.getBoundingClientRect();
+          over.classList.add(ev.clientY > rr.top + rr.height / 2 ? 'drop-after' : 'drop-before');
+        }
+      };
+      const up = (ev) => {
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', up);
+        row.classList.remove('dragging');
+        const el = document.elementFromPoint(ev.clientX, ev.clientY);
+        const over = el && el.closest('.agent-row');
+        rows.forEach(r => r.classList.remove('drop-before', 'drop-after'));
+        if (over) {
+          const rr = over.getBoundingClientRect();
+          let to = +over.dataset.row + (ev.clientY > rr.top + rr.height / 2 ? 1 : 0);
+          if (dragFrom < to) to--;
+          movePlayer(dragFrom, to);
+        }
+        dragFrom = null;
+      };
+      document.addEventListener('pointermove', move);
+      document.addEventListener('pointerup', up);
+    });
+  });
 }
 
 function renderRosterStrip(){
@@ -2384,9 +2630,12 @@ function updateMissionControls(){
     btn.disabled = false;
     btn.className = 'btn-toggle stop';
     pauseBtn.style.display = 'flex';
-    pauseBtn.textContent = missionState === 'paused' ? '▶' : '⏸';
+    pauseBtn.innerHTML = missionState === 'paused'
+      ? '<span class="play"></span>'
+      : '<span class="bar"></span><span class="bar"></span>';
+    pauseBtn.title = missionState === 'paused' ? 'Reprendre' : 'Mettre en pause';
   } else if (missionState === 'ready') {
-    btn.innerHTML = '<span class="ready-dot"></span> ' + w('waitingStart').toUpperCase();
+    btn.innerHTML = '<span class="ready-btn"><i></i></span>' + w('waitingStart').toUpperCase();
     btn.disabled = true;
     btn.className = 'btn-toggle idle';
     pauseBtn.style.display = 'none';
@@ -2483,13 +2732,16 @@ function stopMission(){
   if (HISTORY.length > 200) HISTORY = HISTORY.slice(-200);
 
   lastResult = {
-    who: finishers.map(p => p.name).join(' & '),
+    who: joinPlayerNames(finishers.map(p => p.name)),
+    winnerIndex: result.winnerIndex,
     label: result.label || (result.win ? 'Réussie' : 'Perdue')
   };
   setSystemState('gyro', 'idle');   /* le matériel se remet au repos en fin de mission */
   play(result.win ? 'success' : 'fail');
-  showCelebration(finishers.map(p => p.name).join(' & '), elapsed, result);
+  showCelebration(joinPlayerNames(finishers.map(p => p.name)), elapsed, result);
   run = null;
+  missionState = 'finished';   /* avant renderPlayers : c'est ce qui déclenche la mise en avant */
+  renderPlayers();
   renderRunHud();
   renderLiveScores();
   renderTeamScores();
@@ -2552,10 +2804,12 @@ function setBeamState(id, state){
   el.classList.remove('on', 'off', 'hit');
   el.classList.add(state === 'hit' ? 'hit' : state);
   if (state === 'hit') {
+    /* le faisceau clignote vite, puis met `beamRelightSec` secondes à revenir */
     hitTimers[id] = setTimeout(() => {
       el.classList.remove('hit');
       el.classList.add('on');
-    }, 8000);
+      broadcastToSim({ type:'beam-relit', id });
+    }, Math.max(0, beamRelightSec) * 1000);
   }
 }
 
@@ -2777,6 +3031,7 @@ renderThemePicker();
 renderModes();
 updateModeChip();
 renderHardware();
+renderRelightConfig();
 renderLaunchSystem();
 renderTeamEditors();
 renderAgents();
