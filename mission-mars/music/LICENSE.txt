@@ -1,0 +1,18 @@
+Musiques de Mission Mars
+========================
+
+Source : OpenGameArt.org
+Licence: Creative Commons Zero (CC0 1.0 - domaine public)
+         http://creativecommons.org/publicdomain/zero/1.0/
+
+CC0 = utilisation libre, y compris commerciale, sans obligation
+d'attribution. Ces credits sont conserves par courtoisie.
+
+  cristal-rush.mp3  "Party Sector"          par Joth
+                    https://opengameart.org/content/party-sector
+
+  fire.ogg          "Fast fight / battle music (looped)" par xcvg
+                    https://opengameart.org/content/fast-fight-battle-music-looped
+
+  duel-orbital.mp3  "Interstellar Fleet 1"  par Zane Little Music
+                    https://opengameart.org/content/interstellar-fleet-1

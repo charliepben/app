@@ -416,7 +416,13 @@
   .waveform i:nth-child(3){height:55%;animation-delay:0.2s;} .waveform i:nth-child(4){height:95%;animation-delay:0.3s;}
   .waveform i:nth-child(5){height:35%;animation-delay:0.4s;}
   @keyframes bounce{ 0%,100%{transform:scaleY(0.4);} 50%{transform:scaleY(1);} }
-  .music-bar .t1{ font-size:clamp(11px, 2.5cqw, 13.5px); font-weight:600; }
+  .music-bar{ cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .music-txt{ flex:1; min-width:0; }
+  .music-bar .t2{ font-size:clamp(10px, 2.2cqw, 12px); color:var(--dim); font-family:'JetBrains Mono'; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .music-state{ flex-shrink:0; color:var(--violet); font-size:15px; }
+  .music-bar.muted .music-state{ color:var(--dim); }
+  .music-bar.muted .waveform i{ animation-play-state:paused; opacity:.3; }
+  .music-bar .t1{ font-size:clamp(12px, 2.7cqw, 15px); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .mission-controls{ display:flex; gap:8px; flex-shrink:0; }
   .btn-toggle{
     border:none; border-radius:14px; color:#fff; flex:1;
@@ -848,9 +854,13 @@
         </div>
       </div>
 
-      <div class="music-bar">
-        <div class="waveform"><i></i><i></i><i></i><i></i><i></i></div>
-        <div class="t1">Thème de mission</div>
+      <div class="music-bar" id="music-bar" role="button" tabindex="0" title="Couper / remettre la musique">
+        <div class="waveform" id="waveform"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="music-txt">
+          <div class="t1" id="music-title">Thème de mission</div>
+          <div class="t2" id="music-sub"></div>
+        </div>
+        <span class="music-state" id="music-state">♪</span>
       </div>
 
       <div class="mission-controls">
@@ -1117,6 +1127,7 @@ function renderModes(){
       renderModes();
       updateModeChip();
       renderPlayers();
+      renderMusicBar(false);  /* chaque mission a son thème */
       renderArrivalConfig();   /* le réglage d'arrivée dépend de la mission */
       updateButtonsForMode();  /* et les rôles/icônes des boutons aussi */
     });
@@ -1479,6 +1490,7 @@ function renderRelightConfig(){
     beamRelightSec = +b.dataset.v;
     saveState();
     renderRelightConfig();
+renderMusicBar(false);
   }));
 }
 
@@ -1557,7 +1569,7 @@ function saveState(){
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       teams:TEAMS, players:PLAYERS, roster:ROSTER,
       queueIndex, liveScores, teamTally, currentModeKey, arrivalButtonId,
-      teamMode, modeDurations, currentTheme, history:HISTORY, soundOn, beamRelightSec
+      teamMode, modeDurations, currentTheme, history:HISTORY, soundOn, musicOn, beamRelightSec
     }));
   }catch(e){ /* stockage plein ou indisponible, tant pis */ }
 }
@@ -1766,6 +1778,54 @@ function playBuffer(name, vol){
 }
 
 /* Point d'entrée unique : fichier réel si disponible, sinon son synthétisé. */
+/* ===== MUSIQUES DE MISSION (OpenGameArt, CC0 — voir music/LICENSE.txt) =====
+   Un thème par mode de jeu, joué en boucle pendant la manche. */
+const MUSIC = {
+  'cristal-rush': { file:'music/cristal-rush.mp3', title:'Party Sector',      author:'Joth' },
+  'fire':         { file:'music/fire.ogg',         title:'Fast Fight',        author:'xcvg' },
+  'duel-orbital': { file:'music/duel-orbital.mp3', title:'Interstellar Fleet', author:'Zane Little Music' }
+};
+let musicEl = null;
+let musicOn = (saved && typeof saved.musicOn === 'boolean') ? saved.musicOn : true;
+
+function currentTrack(){ return MUSIC[currentModeKey] || null; }
+
+function renderMusicBar(playing){
+  const t = currentTrack();
+  const bar = document.getElementById('music-bar');
+  document.getElementById('music-title').textContent = t ? t.title : 'Thème de mission';
+  document.getElementById('music-sub').textContent = t
+    ? (playing ? '▶ ' : '') + t.author
+    : '';
+  document.getElementById('music-state').textContent = musicOn ? '♪' : '✕';
+  bar.classList.toggle('muted', !musicOn || !playing);
+}
+
+function startMissionMusic(){
+  const t = currentTrack();
+  if (!t) return;
+  stopMissionMusic();
+  if (!musicOn) { renderMusicBar(false); return; }
+  musicEl = new Audio(t.file);
+  musicEl.loop = true;
+  musicEl.volume = 0.45;
+  musicEl.play().catch(() => { /* le navigateur peut refuser avant interaction */ });
+  renderMusicBar(true);
+}
+
+function stopMissionMusic(){
+  if (musicEl) { musicEl.pause(); musicEl.currentTime = 0; musicEl = null; }
+  renderMusicBar(false);
+}
+
+document.getElementById('music-bar').addEventListener('click', () => {
+  musicOn = !musicOn;
+  saveState();
+  if (!musicOn) { if (musicEl) { musicEl.pause(); musicEl = null; } renderMusicBar(false); }
+  else if (missionState === 'running') startMissionMusic();
+  else renderMusicBar(false);
+});
+
 function play(name, arg){
   initAudio();
   preloadSounds();
@@ -2692,6 +2752,7 @@ function startMission(){
   setStatus();
   updateMissionControls();
   renderRunHud();
+  startMissionMusic();
   if (rules().onStart) rules().onStart(run);
   tick();
   tickId = setInterval(tick, 30);
@@ -2736,6 +2797,7 @@ function stopMission(){
     winnerIndex: result.winnerIndex,
     label: result.label || (result.win ? 'Réussie' : 'Perdue')
   };
+  stopMissionMusic();
   setSystemState('gyro', 'idle');   /* le matériel se remet au repos en fin de mission */
   play(result.win ? 'success' : 'fail');
   showCelebration(joinPlayerNames(finishers.map(p => p.name)), elapsed, result);
