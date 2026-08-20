@@ -195,7 +195,8 @@
   .player-chip .pname{
     font-size:clamp(18px, 4.6cqw, 30px); font-weight:700; line-height:1.15; color:#fff;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    text-shadow:0 0 16px currentColor, 0 0 34px rgba(255,255,255,.15);
+    /* halo large et très discret : le prénom doit rester net, pas flou */
+    text-shadow:0 0 30px color-mix(in srgb, currentColor 35%, transparent);
   }
   .player-chip .prole{
     display:inline-block; max-width:100%; margin-top:5px; padding:2px 9px; border-radius:20px;
