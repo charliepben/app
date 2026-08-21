@@ -1338,23 +1338,22 @@ function renderLaunchSystem(){
    qui s'allume — il n'y a plus de pastille ronde derrière.
    Un thème pourra redéfinir ces formes sans toucher à la logique. */
 const ROLE_SHAPES = {
-  /* druse de quartz : trois pointes de hauteurs différentes, à facettes */
+  /* Druse de quartz : trois pointes de hauteurs ET de bases décalées, avec de la marge
+     autour. Si les pointes remplissent la boîte et se terminent toutes à plat sur la même
+     ligne, le halo comble les interstices et l'ensemble se lit comme un rectangle. */
   crystal: `<svg viewBox="0 0 40 64" aria-hidden="true">
-      <g transform="rotate(-11 10 60)">
-        <path d="M5 60 L5 33 L10 20 L15 33 L15 60 Z" fill="currentColor"/>
-        <path d="M5 60 L5 33 L10 20 L10 60 Z" fill="#fff" opacity=".34"/>
-        <path d="M10 20 L15 33 L15 60 L10 60 Z" fill="#000" opacity=".13"/>
+      <g transform="rotate(-13 13 54)">
+        <path d="M9 54 L9 34 L13 24 L17 34 L17 52 Z" fill="currentColor"/>
+        <path d="M9 54 L9 34 L13 24 L13 53 Z" fill="#fff" opacity=".34"/>
       </g>
-      <g transform="rotate(13 30 60)">
-        <path d="M25 60 L25 28 L30 12 L35 28 L35 60 Z" fill="currentColor"/>
-        <path d="M25 60 L25 28 L30 12 L30 60 Z" fill="#fff" opacity=".30"/>
-        <path d="M30 12 L35 28 L35 60 L30 60 Z" fill="#000" opacity=".13"/>
+      <g transform="rotate(14 28 56)">
+        <path d="M24 56 L24 30 L28 17 L32 30 L32 54 Z" fill="currentColor"/>
+        <path d="M24 56 L24 30 L28 17 L28 55 Z" fill="#fff" opacity=".30"/>
       </g>
       <g>
-        <path d="M13 62 L13 20 L20 3 L27 20 L27 62 Z" fill="currentColor"/>
-        <path d="M13 62 L13 20 L20 3 L20 62 Z" fill="#fff" opacity=".40"/>
-        <path d="M20 3 L27 20 L27 62 L20 62 Z" fill="#000" opacity=".13"/>
-        <path d="M13 20 L20 3 L27 20 L20 26 Z" fill="#fff" opacity=".22"/>
+        <path d="M15 59 L15 21 L20 7 L25 21 L25 59 Z" fill="currentColor"/>
+        <path d="M15 59 L15 21 L20 7 L20 59 Z" fill="#fff" opacity=".40"/>
+        <path d="M15 21 L20 7 L25 21 L20 26 Z" fill="#fff" opacity=".24"/>
       </g>
     </svg>`,
   /* extincteur */
