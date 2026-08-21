@@ -92,10 +92,37 @@
   .estop .lbl{ font-family:'Orbitron'; font-weight:700; font-size:11px; letter-spacing:1.2px; color:#ff8a95; }
   .estop:active .cap{ transform:translateY(3px); box-shadow:inset 0 -2px 8px rgba(0,0,0,.6), 0 0 0 5px #d8b42a, 0 0 0 7px #7a6414; }
 
+  /* Les 3 boutons physiques présents sur la mallette de commande */
+  .case-row{ display:flex; gap:12px; max-width:560px; flex-wrap:wrap; }
+  .case-btn{
+    flex:1; min-width:150px; padding:14px 12px 12px; border-radius:14px; cursor:pointer;
+    border:2px solid var(--line); background:var(--panel); -webkit-tap-highlight-color:transparent;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+  }
+  .case-btn .cap{ width:46px; height:46px; border-radius:50%; box-shadow:inset 0 -4px 9px rgba(0,0,0,.5), inset 0 3px 7px rgba(255,255,255,.22); }
+  .case-btn .lbl{ font-family:'Orbitron'; font-weight:700; font-size:10px; letter-spacing:1.1px; color:var(--dim); }
+  .case-btn .st{ font-family:'JetBrains Mono'; font-size:9px; color:var(--dim); }
+  .case-btn:active .cap{ transform:translateY(2px); }
+  .case-btn.violet .cap{ background:radial-gradient(circle at 38% 30%, #d9c6ff, #9d7bff 45%, #4a2f8f 100%); }
+  .case-btn.white  .cap{ background:radial-gradient(circle at 38% 30%, #ffffff, #cfd8e6 45%, #6d7787 100%); }
+  .case-btn.red    .cap{ background:radial-gradient(circle at 38% 30%, #ff9aa4, #e8323f 45%, #8c1019 100%); }
+  /* allumé = le bouton est lumineux et son cadre prend la couleur */
+  .case-btn.on.violet{ border-color:#9d7bff; box-shadow:0 0 22px -6px #9d7bff; }
+  .case-btn.on.violet .cap{ box-shadow:0 0 16px 3px #9d7bff, inset 0 3px 7px rgba(255,255,255,.35); }
+  .case-btn.on.white{ border-color:#fff; box-shadow:0 0 22px -6px #fff; }
+  .case-btn.on.white .cap{ box-shadow:0 0 16px 3px #fff, inset 0 3px 7px rgba(255,255,255,.4); }
+  .case-btn.on.red{ border-color:#ff5b6a; box-shadow:0 0 22px -6px #ff5b6a; }
+  .case-btn.on.red .cap{ box-shadow:0 0 16px 3px #ff5b6a, inset 0 3px 7px rgba(255,255,255,.3); }
+  .case-btn.on .lbl, .case-btn.on .st{ color:var(--text); }
+  /* mallette éteinte : tout le reste du simulateur est inerte */
+  body.case-off .grid, body.case-off .console-row, body.case-off .sys-row, body.case-off .batt-row{
+    opacity:.28; pointer-events:none; filter:grayscale(.7);
+  }
+
   .sys-row{ display:flex; gap:10px; max-width:560px; flex-wrap:wrap; }
   .sys-node{
-    flex:1; min-width:150px; display:flex; align-items:center; gap:10px; background:var(--panel);
-    border:1px solid var(--line); border-radius:12px; padding:12px 14px;
+    position:relative; flex:1; min-width:150px; display:flex; align-items:center; gap:10px;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 40px 12px 14px;
   }
   .sys-node .sdot{ width:11px; height:11px; border-radius:50%; background:#232c38; flex-shrink:0; }
   .sys-node.active{ border-color:var(--amber); background:rgba(255,179,71,.1); }
@@ -143,17 +170,30 @@
     <button class="estop" id="btn-estop"><span class="cap"></span><span class="lbl">ARRÊT D'URGENCE</span></button>
   </div>
 
+  <div class="section-label">Interrupteurs de la mallette</div>
+  <div class="case-row">
+    <button class="case-btn violet" id="case-power">
+      <span class="cap"></span><span class="lbl">MALLETTE</span><span class="st" id="case-power-st">éteinte</span>
+    </button>
+    <button class="case-btn white" id="case-smoke">
+      <span class="cap"></span><span class="lbl">FUMÉE</span><span class="st" id="case-smoke-st">éteinte</span>
+    </button>
+    <button class="case-btn red" id="case-kill">
+      <span class="cap"></span><span class="lbl">COUPE-CIRCUIT</span><span class="st" id="case-kill-st">lasers armés</span>
+    </button>
+  </div>
+
   <div class="section-label">Effets — état reçu de l'appli</div>
   <div class="sys-row">
     <div class="sys-node" id="sys-gyro">
+      <label class="sw"><input type="checkbox" data-key="gyro" checked><span></span></label>
       <span class="sdot"></span>
       <div class="sys-info"><div class="t">GYROPHARE</div><div class="s" id="sys-gyro-state">connecté · éteint</div></div>
-      <button class="mini-btn" data-key="gyro">déconnecter</button>
     </div>
     <div class="sys-node" id="sys-smoke">
+      <label class="sw"><input type="checkbox" data-key="smoke" checked><span></span></label>
       <span class="sdot"></span>
       <div class="sys-info"><div class="t">FUMÉE</div><div class="s" id="sys-smoke-state">connecté · éteint</div></div>
-      <button class="mini-btn" data-key="smoke">déconnecter</button>
     </div>
   </div>
 
@@ -338,6 +378,63 @@ estop.addEventListener('click', () => {
   setTimeout(() => sendLaunchState({ stop:false }), 900);
 });
 
+/* ===== Les 3 interrupteurs physiques de la mallette =====
+   - violet : allume la mallette (rien ne fonctionne tant qu'elle est éteinte)
+   - blanc  : allume la machine à fumée (l'allume, ne déclenche pas un jet)
+   - rouge  : coupe-circuit des lasers (les désarme tous d'un coup)             */
+const caseState = { power:false, smoke:false, kill:false };
+
+function renderCase(){
+  document.getElementById('case-power').classList.toggle('on', caseState.power);
+  document.getElementById('case-smoke').classList.toggle('on', caseState.smoke && caseState.power);
+  document.getElementById('case-kill').classList.toggle('on', caseState.kill && caseState.power);
+  document.getElementById('case-power-st').textContent = caseState.power ? 'ALLUMÉE' : 'éteinte';
+  document.getElementById('case-smoke-st').textContent = !caseState.power ? '—' : (caseState.smoke ? 'ALLUMÉE' : 'éteinte');
+  document.getElementById('case-kill-st').textContent = !caseState.power ? '—' : (caseState.kill ? 'LASERS COUPÉS' : 'lasers armés');
+  document.body.classList.toggle('case-off', !caseState.power);
+}
+
+document.getElementById('case-power').addEventListener('click', () => {
+  caseState.power = !caseState.power;
+  renderCase();
+  log(`Mallette → ${caseState.power ? 'allumée' : 'éteinte'}`, 'out');
+  if (caseState.power) {
+    /* à l'allumage, le boîtier se présente : topologie, batteries, état */
+    announceTopology();
+    send({ type:'hello' });
+    sendAllBatteries();
+    sendLaunchState();
+  } else {
+    caseState.smoke = false; caseState.kill = false;
+    renderCase();
+    send({ type:'launch', offline:true });
+  }
+});
+
+document.getElementById('case-smoke').addEventListener('click', () => {
+  if (!caseState.power) return;
+  caseState.smoke = !caseState.smoke;
+  sysConnected.smoke = true;
+  sysActive.smoke = caseState.smoke;
+  renderCase();
+  renderSystem('smoke');
+  send({ type:'system', key:'smoke', state: caseState.smoke ? 'active' : 'idle' });
+  log(`Machine à fumée → ${caseState.smoke ? 'allumée' : 'éteinte'}`, 'out');
+});
+
+document.getElementById('case-kill').addEventListener('click', () => {
+  if (!caseState.power) return;
+  caseState.kill = !caseState.kill;
+  renderCase();
+  /* coupe-circuit : tous les faisceaux passent hors jeu d'un coup */
+  BEAMS.forEach(b => {
+    beamOn[b.id] = !caseState.kill;
+    send({ type:'beam', id:b.id, on: beamOn[b.id] });
+  });
+  renderBeams();
+  log(`Coupe-circuit → lasers ${caseState.kill ? 'COUPÉS' : 'réarmés'}`, 'out');
+});
+
 /* ===== Effets : état reçu + simulation de déconnexion ===== */
 const sysConnected = { gyro:true, smoke:true };
 const sysActive = { gyro:false, smoke:false };
@@ -347,15 +444,19 @@ function renderSystem(key){
   node.classList.toggle('absent', !sysConnected[key]);
   document.getElementById('sys-' + key + '-state').textContent =
     !sysConnected[key] ? 'non connecté' : (sysActive[key] ? 'EN MARCHE' : 'connecté · éteint');
-  node.querySelector('.mini-btn').textContent = sysConnected[key] ? 'déconnecter' : 'connecter';
+  const sw = node.querySelector('.sw input');
+  if (sw) sw.checked = sysConnected[key];
 }
-document.querySelectorAll('.sys-node .mini-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const key = btn.dataset.key;
-    sysConnected[key] = !sysConnected[key];
+/* même geste que pour les lasers et les boutons : l'interrupteur en haut à droite
+   simule le fait de débrancher physiquement le module */
+document.querySelectorAll('.sys-node .sw input').forEach(input => {
+  input.addEventListener('change', () => {
+    const key = input.dataset.key;
+    sysConnected[key] = input.checked;
     if (!sysConnected[key]) sysActive[key] = false;
     renderSystem(key);
     send({ type:'system', key, state: sysConnected[key] ? (sysActive[key] ? 'active' : 'idle') : 'absent' });
+    log(`${key} → ${sysConnected[key] ? 'branché' : 'débranché'}`, 'out');
   });
 });
 renderSystem('gyro'); renderSystem('smoke');
@@ -436,10 +537,10 @@ if (!channel) {
   log('Simulateur prêt.', 'in');
   /* À la connexion, le boîtier DÉCLARE sa configuration : combien de faisceaux, combien
      de boutons. L'appli s'y adapte — rien n'est figé côté téléphone. */
-  announceTopology();
-  channel.postMessage({ type:'hello' });
-  setTimeout(sendAllBatteries, 400); /* et annonce ses niveaux de batterie */
-  setTimeout(sendLaunchState, 500);
+  /* Rien n'est annoncé tant que la mallette n'est pas allumée (bouton violet) :
+     c'est le comportement du vrai matériel. */
+  renderCase();
+  log(`Mallette éteinte — appuie sur le bouton violet pour l'allumer.`, 'in');
 }
 </script>
 </body>
