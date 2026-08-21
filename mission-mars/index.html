@@ -765,6 +765,14 @@
   .score-row.top1 .rank{ color:#ffd54a; } .score-row.top1{ border-color:#5c4a12; }
   .score-info{ flex:1; } .score-info .name{ font-weight:600; font-size:clamp(14px, 3.2cqw, 17px); } .score-info .meta{ font-size:clamp(10px, 2.2cqw, 12px); color:var(--dim); font-family:'JetBrains Mono'; }
   .score-time{ text-align:right; } .score-time .t{ font-family:'JetBrains Mono'; font-weight:700; font-size:clamp(14px, 3.2cqw, 17px); } .score-time .h{ font-size:clamp(9.5px, 2.1cqw, 11.5px); color:var(--dim); font-family:'JetBrains Mono'; }
+  .round-chips{ display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+  .round-chip{
+    font-family:'JetBrains Mono'; font-size:clamp(9.5px, 2.1cqw, 11.5px); color:var(--dim);
+    background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:20px; padding:2px 8px;
+  }
+  .round-chip b{ color:var(--text); }
+  .round-chip.clean{ border-color:var(--green); color:var(--green); }
+  .round-chip.clean b{ color:var(--green); }
   .btn-print{ background:none; border:1px solid var(--line); border-radius:8px; width:32px; height:32px; color:var(--dim); font-size:13px; cursor:pointer; flex-shrink:0; margin-left:2px; }
 
   .print-only{ display:none; }
@@ -1569,7 +1577,7 @@ function saveState(){
   try{
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       teams:TEAMS, players:PLAYERS, roster:ROSTER,
-      queueIndex, liveScores, teamTally, currentModeKey, arrivalButtonId,
+      queueIndex, liveScores, teamTally, roundIndex, currentModeKey, arrivalButtonId,
       teamMode, modeDurations, currentTheme, history:HISTORY, soundOn, musicOn, beamRelightSec
     }));
   }catch(e){ /* stockage plein ou indisponible, tant pis */ }
@@ -2093,6 +2101,7 @@ let startTime = 0;
 let tickId = null;
 let liveScores = Array.isArray(saved && saved.liveScores) ? saved.liveScores : [];
 let teamTally = (saved && saved.teamTally && typeof saved.teamTally.a === 'number') ? saved.teamTally : { a:0, b:0 };
+let roundIndex = (saved && typeof saved.roundIndex === 'number') ? saved.roundIndex : 0;
 
 /* Remet à zéro la partie (scores, file de joueurs) sans toucher aux joueurs ni aux équipes. */
 /* Remet la partie à zéro sans toucher aux joueurs ni aux équipes. */
@@ -2104,6 +2113,7 @@ function resetGame(){
   lastResult = null;
   queueIndex = 0;
   liveScores = [];
+  roundIndex = 0;
   teamTally = { a:0, b:0 };
   missionState = 'ready';
   saveState();
@@ -2221,17 +2231,20 @@ function renderPlayers(){
 }
 
 function renderLiveScores(){
-  const sorted = [...liveScores].sort((a,b) => a.ms - b.ms).slice(0, 4);
-  const best = sorted.length ? sorted[0].ms : 0;
-  document.getElementById('live-scores-body').innerHTML = sorted.map((s, i) => {
-    const t = fmtTime(s.ms);
-    const gap = i === 0 ? '' : '+' + ((s.ms - best) / 1000).toFixed(2) + 's';
+  const st = computeStandings().slice(0, 5);
+  const body = document.getElementById('live-scores-body');
+  if (!st.length) {
+    body.innerHTML = `<div class="empty-note">Aucune manche jouée pour l'instant.</div>`;
+    return;
+  }
+  body.innerHTML = st.map((p, i) => {
+    const last = p.entries[p.entries.length - 1];
     return `<div class="live-row ${i === 0 ? 'top' : ''}">
       <span class="r">${i + 1}</span>
-      ${avatarHtml(s, 'mini')}
-      <span class="n">${s.name}</span>
-      <span class="gap">${gap}</span>
-      <span class="t">${t.main}${t.cs}</span>
+      ${avatarHtml(p, 'mini')}
+      <span class="n">${p.name}</span>
+      <span class="gap">${last ? last.detail : ''}</span>
+      <span class="t">${p.points} pts</span>
     </div>`;
   }).join('');
 }
@@ -2239,30 +2252,36 @@ function renderLiveScores(){
 /* Classement complet de la soirée : une ligne par manche jouée, la meilleure en tête. */
 function renderScoresTab(){
   const el = document.getElementById('scores-list');
-  if (!liveScores.length) {
+  const st = computeStandings();
+  if (!st.length) {
     el.innerHTML = `<div class="empty-note">Aucune manche jouée pour l'instant.</div>`;
     return;
   }
-  /* on classe par valeur décroissante (cristaux, victoires) puis par temps croissant */
-  const sorted = [...liveScores].sort((a,b) =>
-    (b.value || 0) - (a.value || 0) || a.ms - b.ms);
-  el.innerHTML = sorted.map((s, i) => {
-    const t = fmtTime(s.ms);
-    const m = MODES.find(x => x.key === s.mode);
-    const meta = [subtitleOf(s) ? 'Équipe ' + subtitleOf(s) : '', m ? m.name : '']
-      .filter(Boolean).join(' · ');
-    const note = s.detail || (s.win ? 'Réussie' : 'Perdue');
+  el.innerHTML = st.map((p, i) => {
+    const meta = subtitleOf(p) ? 'Équipe ' + subtitleOf(p) : '';
+    /* le détail de chaque manche, dans l'unité qui parle pour cette mission */
+    const chips = p.entries.map(e => {
+      const m = MODES.find(x => x.key === e.mode);
+      const t = fmtTime(e.ms);
+      const perf = e.mode === 'cristal-rush' ? plural(e.value || 0, 'cristal', 'cristaux')
+                 : t.main + t.cs;
+      return `<span class="round-chip${e.clean ? ' clean' : ''}" title="${m ? m.name : ''} — ${e.rank}e place, ${e.pts} pts${e.clean ? ' (sans-faute)' : ''}">
+        ${m ? m.icon : '•'} ${perf} <b>+${e.pts}</b></span>`;
+    }).join('');
+    const best = p.entries.reduce((a, b) => (b.pts > a.pts ? b : a), p.entries[0]);
+    const bt = fmtTime(best.ms);
     const esc = str => String(str).replace(/'/g, "\'");
     return `<div class="score-row ${i === 0 ? 'top1' : ''}">
       <div class="rank">${i + 1}</div>
-      ${avatarHtml(s, 'mini')}
+      ${avatarHtml(p, 'mini')}
       <div class="score-info">
-        <div class="name">${s.name}${i === 0 ? ' 🏆' : ''}</div>
-        <div class="meta">${meta}</div>
+        <div class="name">${p.name}${i === 0 ? ' 🏆' : ''}</div>
+        <div class="meta">${meta}${meta ? ' · ' : ''}${plural(p.played, 'manche', 'manches')}${p.clean ? ` · ${p.clean} sans-faute` : ''}</div>
+        <div class="round-chips">${chips}</div>
       </div>
-      <div class="score-time"><div class="t">${t.main}${t.cs}</div><div class="h">${note}</div></div>
+      <div class="score-time"><div class="t">${p.points}</div><div class="h">points</div></div>
       <button class="btn-print" title="Imprimer le diplôme"
-        onclick="printScore('${esc(s.name)}','${esc(meta)}','${t.main}${t.cs}','${esc(note)}')">🖨️</button>
+        onclick="printScore('${esc(p.name)}','${esc(meta)}','${bt.main}${bt.cs}','${esc(best.detail || '')}')">🖨️</button>
     </div>`;
   }).join('');
 }
@@ -2288,17 +2307,86 @@ function renderHistory(){
   }).join('');
 }
 
+/* ===== CLASSEMENT GÉNÉRAL =====
+   On ne compare jamais « 7 cristaux » à « 22 secondes ». À chaque manche, on classe les
+   joueurs ENTRE EUX selon la règle propre à la mission, et seule la PLACE est convertie
+   en points. Les points ne sont jamais stockés : ils sont recalculés ici depuis les
+   résultats bruts, pour qu'un changement de barème ne perde ni ne fausse rien. */
+const POINTS_BY_RANK = [10, 6, 4, 3, 2, 1];
+const BONUS_CLEAN = 2;   /* sans-faute : aucune touche encaissée sur la manche */
+
+function pointsForRank(i){ return POINTS_BY_RANK[i] != null ? POINTS_BY_RANK[i] : 1; }
+
+/* Chaque mission dit comment SES résultats se classent. */
+const RANKERS = {
+  'cristal-rush': (a, b) => (b.value || 0) - (a.value || 0) || (a.hits || 0) - (b.hits || 0),
+  'fire': (a, b) => {
+    /* ceux qui ont éteint le feu d'abord, du plus rapide au plus lent ;
+       les autres ensuite, celui qui a tenu le plus longtemps devant */
+    if (!!a.finished !== !!b.finished) return a.finished ? -1 : 1;
+    return a.finished ? a.ms - b.ms : b.ms - a.ms;
+  },
+  'duel-orbital': (a, b) => (b.win ? 1 : 0) - (a.win ? 1 : 0) || a.ms - b.ms
+};
+function rankerFor(mode){ return RANKERS[mode] || ((a, b) => a.ms - b.ms); }
+
+/* Classement général : un objet par joueur, avec le détail de ses manches. */
+function computeStandings(){
+  const rounds = {};
+  liveScores.forEach((e, i) => {
+    const key = e.round != null ? e.round : 'x' + i;   /* anciennes parties : 1 manche chacune */
+    (rounds[key] = rounds[key] || []).push(e);
+  });
+
+  const byPlayer = {};
+  Object.keys(rounds).forEach(key => {
+    const list = [...rounds[key]].sort(rankerFor(rounds[key][0].mode));
+    list.forEach((e, i) => {
+      const clean = e.hits === 0 && !e.aborted;
+      const pts = pointsForRank(i) + (clean ? BONUS_CLEAN : 0);
+      const t = byPlayer[e.name] || (byPlayer[e.name] = {
+        name:e.name, team:e.team, color:e.color, photo:e.photo,
+        points:0, played:0, clean:0, entries:[]
+      });
+      t.points += pts;
+      t.played++;
+      if (clean) t.clean++;
+      t.team = e.team; t.photo = e.photo; t.color = e.color;   /* on garde le plus récent */
+      t.entries.push({ ...e, rank:i + 1, pts, clean });
+    });
+  });
+
+  return Object.values(byPlayer).sort((a, b) =>
+    b.points - a.points || b.clean - a.clean || a.name.localeCompare(b.name));
+}
+
+/* Score d'équipe = MOYENNE des points de ses joueurs.
+   Avec des effectifs impairs (2 contre 1), la somme avantagerait mécaniquement
+   l'équipe la plus nombreuse. */
+function computeTeamStandings(){
+  const buckets = { a:[], b:[] };
+  computeStandings().forEach(p => { if (buckets[p.team]) buckets[p.team].push(p.points); });
+  const moy = (arr) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0;
+  return {
+    a: { moyenne: moy(buckets.a), total: buckets.a.reduce((s, v) => s + v, 0), joueurs: buckets.a.length },
+    b: { moyenne: moy(buckets.b), total: buckets.b.reduce((s, v) => s + v, 0), joueurs: buckets.b.length }
+  };
+}
+
 function renderTeamScores(){
   ['a','b'].forEach(key => {
     document.getElementById('team-label-' + key).textContent = TEAMS[key].name.toUpperCase();
     document.getElementById('team-label-' + key).style.color = TEAMS[key].color;
     document.getElementById('team-bar-' + key).style.background = TEAMS[key].color;
   });
-  const total = (teamTally.a + teamTally.b) || 1;
-  document.getElementById('team-val-a').textContent = teamTally.a;
-  document.getElementById('team-val-b').textContent = teamTally.b;
-  document.getElementById('team-bar-a').style.width = (teamTally.a / total * 100) + '%';
-  document.getElementById('team-bar-b').style.width = (teamTally.b / total * 100) + '%';
+  const st = computeTeamStandings();
+  const max = Math.max(st.a.moyenne, st.b.moyenne, 1);
+  ['a','b'].forEach(key => {
+    const v = st[key].moyenne;
+    document.getElementById('team-val-' + key).textContent = v ? v.toFixed(1) : '0';
+    document.getElementById('team-val-' + key).title = `${st[key].total} pts / ${st[key].joueurs} joueur(s)`;
+    document.getElementById('team-bar-' + key).style.width = (v / max * 100) + '%';
+  });
 }
 
 function renderTeamEditors(){
@@ -2801,12 +2889,18 @@ function stopMission(reason){
   if (aborted) result = { ...result, win:false, aborted:true, label:'Mission abandonnée' };
 
   /* En duel, seul le vainqueur marque ; sinon tout le monde enregistre sa manche. */
+  roundIndex++;
   finishers.forEach((p, i) => {
     const isWinner = result.winnerIndex === undefined ? result.win : (i === result.winnerIndex);
+    /* On enregistre le RÉSULTAT BRUT. Les points sont recalculés à l'affichage :
+       si le barème change, rien n'est perdu et rien n'est faussé. */
     liveScores.push({
       name:p.name, team:p.team, color:p.color, photo:p.photo,
-      ms:Math.round(elapsed), mode:currentModeKey,
-      value:result.value, detail:result.label, win:isWinner
+      ms:Math.round(elapsed), mode:currentModeKey, round:roundIndex,
+      value:result.value, detail:result.label, win:isWinner,
+      hits: run ? (run.hitCount || 0) : 0,
+      finished: !aborted && isWinner,
+      aborted: aborted
     });
     if (isWinner) teamTally[p.team]++;
   });
@@ -2953,6 +3047,7 @@ function applyEvent(evt){
     setBeamState(evt.id, evt.on === false ? 'off' : (evt.hit ? 'hit' : 'on'));
     /* un faisceau coupé pendant une mission = c'est la règle du mode qui décide quoi en faire */
     if (evt.hit && missionState === 'running') {
+      if (run) run.hitCount = (run.hitCount || 0) + 1;   /* compté pour TOUS les modes */
       flashGyro();   /* signal visuel systématique, quel que soit le mode */
       if (run && rules().onBeamHit) rules().onBeamHit(run, evt.id);
     }
