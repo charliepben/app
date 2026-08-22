@@ -411,6 +411,24 @@
   .setting-row .sub{ font-size:clamp(10px, 2.3cqw, 12px); color:var(--dim); font-family:'JetBrains Mono'; }
   .relight-row{ display:flex; gap:6px; flex-wrap:wrap; }
 
+  /* Réglages en deux onglets : ce qui sert à jouer, et le reste. */
+  .sheet-tabs{ display:flex; gap:4px; background:#141b25; border:1px solid var(--line); border-radius:11px; padding:3px; }
+  .sheet-tab{
+    border:none; background:none; cursor:pointer; border-radius:8px; padding:6px 13px;
+    font-family:'JetBrains Mono'; font-size:clamp(10.5px, 2.3cqw, 12.5px); color:var(--dim);
+    -webkit-tap-highlight-color:transparent; transition:.15s;
+  }
+  .sheet-tab.active{ background:var(--panel); color:#fff; box-shadow:0 1px 6px -2px #000; }
+  .cfg-pane{ display:none; }
+  .cfg-pane.active{ display:block; animation:paneIn .22s ease-out; }
+  @keyframes paneIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
+  .adv-note{
+    font-size:clamp(10.5px, 2.3cqw, 12.5px); color:var(--dim); font-style:italic;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 13px;
+    margin-bottom:4px;
+  }
+  .hard-beam-btn.selected{ border-color:var(--red); color:var(--red); background:rgba(255,77,94,.12); }
+
   /* ===== Paramètres avancés : présents, mais discrets et repliés ===== */
   .advanced{ margin-top:22px; border-top:1px solid var(--line); padding-top:14px; }
   .advanced > summary{
@@ -722,11 +740,29 @@
   }
   .wizard-player-name{ font-family:'Orbitron'; font-weight:700; font-size:clamp(18px, 5cqw, 26px); margin-top:14px; }
   .wizard-player-team{ font-family:'JetBrains Mono'; font-size:clamp(11px, 2.6cqw, 14px); margin-top:3px; opacity:.85; }
-  /* transition entre étapes : le contenu arrive en glissant, dans le sens de la navigation */
-  @keyframes stepInNext{ from{ opacity:0; transform:translateX(26px); } to{ opacity:1; transform:none; } }
-  @keyframes stepInPrev{ from{ opacity:0; transform:translateX(-26px); } to{ opacity:1; transform:none; } }
-  .wizard-body.step-next{ animation:stepInNext .32s cubic-bezier(.22,.9,.3,1); }
-  .wizard-body.step-prev{ animation:stepInPrev .32s cubic-bezier(.22,.9,.3,1); }
+  /* Transition entre étapes : le contenu arrive de loin, en tournant légèrement et en
+     grandissant. 26 px de glissement, ça ne se voyait pas — là, ça se voit. */
+  @keyframes stepInNext{
+    0%{ opacity:0; transform:translateX(90px) scale(.9) rotate(2.2deg); filter:blur(6px); }
+    55%{ opacity:1; filter:blur(0); }
+    75%{ transform:translateX(-10px) scale(1.02) rotate(-.4deg); }
+    100%{ opacity:1; transform:none; filter:blur(0); }
+  }
+  @keyframes stepInPrev{
+    0%{ opacity:0; transform:translateX(-90px) scale(.9) rotate(-2.2deg); filter:blur(6px); }
+    55%{ opacity:1; filter:blur(0); }
+    75%{ transform:translateX(10px) scale(1.02) rotate(.4deg); }
+    100%{ opacity:1; transform:none; filter:blur(0); }
+  }
+  .wizard-body.step-next{ animation:stepInNext .52s cubic-bezier(.18,.85,.28,1); }
+  .wizard-body.step-prev{ animation:stepInPrev .52s cubic-bezier(.18,.85,.28,1); }
+  /* le numéro de l'étape franchie fait un petit éclat au passage */
+  @keyframes stepFlash{
+    0%{ transform:scale(1); box-shadow:0 0 0 0 rgba(53,242,163,.7); }
+    45%{ transform:scale(1.35); box-shadow:0 0 0 14px rgba(53,242,163,0); }
+    100%{ transform:scale(1.12); box-shadow:0 0 16px -2px var(--green); }
+  }
+  .wstep.active.just-reached .num{ animation:stepFlash .55s ease-out; }
   .wizard-title{ font-family:'Orbitron'; font-size:clamp(15px, 3.6cqw, 20px); color:#fff; margin-bottom:4px; text-shadow:0 0 20px rgba(255,255,255,.3); }
   .wizard-body.centered .wizard-title{ font-size:clamp(22px, 5.5cqw, 34px); margin-bottom:8px; }
   .wizard-body.centered .wizard-sub{ font-size:clamp(14px, 3.4cqw, 19px); margin-bottom:22px; }
@@ -749,12 +785,16 @@
   /* les deux équipes au complet, à l'étape finale */
   .wizard-teams{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:4px; }
   .wteam{ flex:1 1 200px; max-width:340px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px 12px; }
+  .wteam{ padding:14px 16px; }
   .wteam .wt-name{
-    font-family:'JetBrains Mono'; font-style:italic; font-weight:700; letter-spacing:.04em;
-    font-size:clamp(11px, 2.5cqw, 13px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    font-family:'Orbitron'; font-style:italic; font-weight:900; letter-spacing:.03em;
+    font-size:clamp(17px, 4.2cqw, 30px); line-height:1.15;
+    text-shadow:0 0 24px currentColor; overflow:hidden; text-overflow:ellipsis;
   }
-  .wteam .wt-list{ display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-top:8px; }
-  .wteam .avatar.pip{ width:clamp(22px, 5.5cqw, 32px); height:clamp(22px, 5.5cqw, 32px); border-radius:8px; font-size:clamp(10px, 2.4cqw, 14px); }
+  .wteam .wt-list{ display:flex; align-items:center; justify-content:center; gap:9px; flex-wrap:wrap; margin-top:12px; }
+  .wteam .wt-one{ display:inline-flex; flex-direction:column; align-items:center; gap:4px; }
+  .wteam .wt-one span{ font-size:clamp(11px, 2.5cqw, 14px); font-weight:600; }
+  .wteam .avatar.pip{ width:clamp(38px, 9cqw, 62px); height:clamp(38px, 9cqw, 62px); border-radius:13px; font-size:clamp(16px, 4cqw, 26px); }
 
   /* ===== Écran de fin de partie ===== */
   .gover-podium{ display:flex; align-items:flex-end; justify-content:center; gap:clamp(8px, 3cqw, 22px); margin:6px 0 18px; }
@@ -767,6 +807,7 @@
   .gpod.p2 .avatar, .gpod.p3 .avatar{ width:clamp(54px, 15cqw, 92px); height:clamp(54px, 15cqw, 92px); border-radius:16px; font-size:clamp(21px, 6cqw, 36px); }
   .gpod.p1 .gp-name{ color:#ffd54a; text-shadow:0 0 22px rgba(255,213,74,.55); font-size:clamp(15px, 3.8cqw, 20px); }
   .gover-rest{ text-align:left; max-width:520px; margin:0 auto; }
+  .gover-table{ max-width:820px; margin:16px auto 0; text-align:left; }
   .gover-teams{ display:flex; gap:10px; justify-content:center; margin:14px auto 0; max-width:520px; }
   .gteam{ flex:1; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px 12px; text-align:center; }
   .gteam.win{ border-color:#ffd54a; box-shadow:0 0 22px -10px #ffd54a; }
@@ -1074,6 +1115,25 @@
   .round-chip b{ color:var(--text); }
   .round-chip.clean{ border-color:var(--green); color:var(--green); }
   .round-chip.clean b{ color:var(--green); }
+  /* Le tableau complet des manches */
+  .table-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:12px; background:var(--panel); }
+  .score-table{ width:100%; border-collapse:collapse; font-size:clamp(10.5px, 2.3cqw, 13px); }
+  .score-table th{
+    text-align:left; font-family:'JetBrains Mono'; font-weight:600; font-size:clamp(9px, 2cqw, 11px);
+    letter-spacing:.06em; color:var(--dim); padding:8px 9px; border-bottom:1px solid var(--line);
+    white-space:nowrap; position:sticky; top:0; background:var(--panel);
+  }
+  .score-table td{ padding:7px 9px; border-bottom:1px solid rgba(255,255,255,.04); white-space:nowrap; }
+  .score-table tr:last-child td{ border-bottom:none; }
+  .score-table tbody tr:hover{ background:rgba(255,255,255,.03); }
+  .score-table .c{ text-align:center; }
+  .score-table .who{ font-weight:600; }
+  .score-table .dim{ color:var(--dim); }
+  .score-table .pts{ font-family:'JetBrains Mono'; font-weight:700; color:var(--green); }
+  .score-table .bonus{ color:#ffd54a; }
+  .score-table .clean-ok{ color:var(--green); }
+  .table-legend{ font-size:clamp(9.5px, 2.1cqw, 11.5px); color:var(--dim); font-style:italic; margin:6px 2px 0; }
+
   .btn-print{ background:none; border:1px solid var(--line); border-radius:8px; width:32px; height:32px; color:var(--dim); font-size:13px; cursor:pointer; flex-shrink:0; margin-left:2px; }
 
   .print-only{ display:none; }
@@ -1292,9 +1352,17 @@
 
     <!-- ===================== TAB CONFIGURATION ===================== -->
     <div class="sheet" id="tab-config">
-      <div class="sheet-head"><h2>⚙️ Réglages</h2><button class="sheet-close" data-close="tab-config">✕</button></div>
+      <div class="sheet-head">
+        <h2>⚙️ Réglages</h2>
+        <div class="sheet-tabs">
+          <button class="sheet-tab active" data-cfgtab="cfg-game">Partie</button>
+          <button class="sheet-tab" data-cfgtab="cfg-adv">Avancé</button>
+        </div>
+        <button class="sheet-close" data-close="tab-config">✕</button>
+      </div>
       <div class="sheet-body">
 
+      <div class="cfg-pane active" id="cfg-game">
       <!-- section déplacée dans l'étape 1 de l'assistant -->
       <div id="section-players">
         <div class="section-label">Mode équipe</div>
@@ -1337,14 +1405,22 @@
         <div class="arrival-row" id="arrival-row"></div>
       </div>
 
-      <!-- Réglages fins : rangés à part, et repliés. On n'en a pas besoin pour jouer. -->
-      <details class="advanced" id="advanced-block">
-        <summary>
-          <span class="adv-chev">▸</span>
-          <span class="adv-title">Paramètres avancés</span>
-          <span class="adv-hint">réglages fins — inutiles pour jouer</span>
-        </summary>
-        <div class="adv-body">
+      </div><!-- /cfg-game -->
+
+      <!-- Réglages fins : leur propre onglet. Le bloc replié était illisible. -->
+      <div class="cfg-pane" id="cfg-adv">
+          <div class="adv-note">Réglages fins — inutiles pour jouer. Ils ne sont jamais proposés
+            dans l'assistant de début de partie.</div>
+
+          <div class="section-label">Faisceaux difficiles</div>
+          <div class="setting-row">
+            <div>
+              <div class="lbl">Marquer les faisceaux les plus durs</div>
+              <div class="sub">ils sont désactivés pour les joueurs en mode débutant</div>
+            </div>
+            <div class="relight-row" id="hard-beams-row"></div>
+          </div>
+
           <div class="section-label">Faisceaux</div>
           <div class="setting-row">
             <div>
@@ -1368,8 +1444,7 @@
 
           <div class="section-label">Thème</div>
           <div class="theme-row" id="theme-row"></div>
-        </div>
-      </details>
+      </div><!-- /cfg-adv -->
       </div>
     </div>
 
@@ -1380,6 +1455,9 @@
 
       <div class="section-label">Classement de la soirée</div>
       <div id="scores-list"></div>
+
+      <div class="section-label">Détail de toutes les manches</div>
+      <div id="scores-detail"></div>
 
       <div class="section-label" id="history-label">Parties précédentes</div>
       <div id="history-list"></div>
@@ -1410,6 +1488,11 @@ document.getElementById('open-config').addEventListener('click', () => {
 });
 document.getElementById('open-scores').addEventListener('click', () => { renderScoresTab(); renderHistory(); openSheet('tab-scores'); });
 document.querySelectorAll('.sheet-close').forEach(b => b.addEventListener('click', () => closeSheet(b.dataset.close)));
+document.querySelectorAll('.sheet-tab').forEach(tab => tab.addEventListener('click', () => {
+  document.querySelectorAll('.sheet-tab').forEach(t => t.classList.toggle('active', t === tab));
+  document.querySelectorAll('.cfg-pane').forEach(p => p.classList.toggle('active', p.id === tab.dataset.cfgtab));
+  stopMusicPreview();
+}));
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     document.querySelectorAll('.sheet.show').forEach(el => el.classList.remove('show'));
@@ -1461,8 +1544,7 @@ function applyTheme(){
   document.getElementById('lbl-players').textContent = w('players');
   document.getElementById('lbl-mission-mode').textContent = w('missionMode');
   document.querySelector('.now-lbl').textContent = w('onTrack').toUpperCase();
-  document.querySelector('.next-lbl').textContent = w('next').toUpperCase();
-  updateMissionControls(); setStatus(); renderModes(); updateModeChip();
+  updateMissionControls(); setStatus(); renderModes(); updateModeChip(); renderRoundTrack();
 }
 
 /* ===== Modes de mission =====
@@ -1504,6 +1586,7 @@ let arrivalButtonId = 3;
 let beamRelightSec = 3;   /* secondes avant qu'un faisceau touché ne se rallume */
 let fireExtinguisherId = null;   /* extincteur choisi pour la mission Fire (null = celui de l'arrivée) */
 let smokeBurstSec = 3;           /* durée du jet de fumée au départ de chaque manche */
+let hardBeams = [];              /* faisceaux marqués « difficiles » : coupés pour les débutants */
 let teamMode = true;
 let modeDurations = {}; /* clé de mode → durée en secondes, pour les modes chronométrés */
 function currentMode(){ return MODES.find(m => m.key === currentModeKey) || MODES[0]; }
@@ -2047,6 +2130,32 @@ function renderThemePicker(){
 /* ===== Bouton d'arrivée configurable ===== */
 /* Délai de rallumage d'un faisceau touché (0 = immédiat). */
 const RELIGHT_CHOICES = [0, 1, 2, 3, 5, 8];
+/* Les faisceaux marqués difficiles sont retirés du jeu quand le joueur en piste est en
+   mode débutant. Le petit joueur traverse le même parcours, en plus clément. */
+function renderHardBeamsConfig(){
+  const row = document.getElementById('hard-beams-row');
+  if (!row) return;
+  row.innerHTML = beamIds().map(id => `
+    <button class="arrival-btn hard-beam-btn ${hardBeams.includes(id) ? 'selected' : ''}" data-v="${id}">${id}</button>
+  `).join('');
+  row.querySelectorAll('.hard-beam-btn').forEach(b => b.addEventListener('click', () => {
+    const id = +b.dataset.v;
+    hardBeams = hardBeams.includes(id) ? hardBeams.filter(x => x !== id) : hardBeams.concat(id);
+    saveState();
+    renderHardBeamsConfig();
+    applyHardBeams();
+  }));
+}
+/* Envoie l'état d'armement au matériel selon le joueur en piste. */
+function applyHardBeams(){
+  const rookie = livePlayers().some(p => p && p.rookie);
+  beamIds().forEach(id => {
+    const off = rookie && hardBeams.includes(id);
+    setBeamState(id, off ? 'off' : 'on');
+    broadcastToSim({ type:'beam', id, on: !off });
+  });
+}
+
 const SMOKE_CHOICES = [0, 2, 3, 5, 8];
 function renderSmokeConfig(){
   const row = document.getElementById('smoke-row');
@@ -2153,7 +2262,7 @@ function saveState(){
       queueIndex, liveScores, teamTally, roundIndex, roundsTarget, roundsChoice, playedThisRound, roundStartIndex,
       currentModeKey, arrivalButtonId,
       teamMode, modeDurations, currentTheme, history:HISTORY, soundOn, musicOn, beamRelightSec,
-      musicChoice, fireExtinguisherId, smokeBurstSec
+      musicChoice, fireExtinguisherId, smokeBurstSec, hardBeams
     }));
   }catch(e){ /* stockage plein ou indisponible, tant pis */ }
 }
@@ -2177,6 +2286,9 @@ if (saved && MODES.some(m => m.key === saved.currentModeKey)) currentModeKey = s
 if (saved && saved.arrivalButtonId >= 1 && saved.arrivalButtonId <= 5) arrivalButtonId = saved.arrivalButtonId;
 if (saved && typeof saved.teamMode === 'boolean') teamMode = saved.teamMode;
 if (saved && typeof saved.beamRelightSec === 'number') beamRelightSec = saved.beamRelightSec;
+if (saved && typeof saved.smokeBurstSec === 'number') smokeBurstSec = saved.smokeBurstSec;
+if (saved && (typeof saved.fireExtinguisherId === 'number' || saved.fireExtinguisherId === null)) fireExtinguisherId = saved.fireExtinguisherId;
+if (Array.isArray(saved && saved.hardBeams)) hardBeams = saved.hardBeams;
 if (saved && saved.modeDurations) modeDurations = saved.modeDurations;
 if (saved && THEMES[saved.currentTheme]) currentTheme = saved.currentTheme;
 
@@ -2232,6 +2344,8 @@ function initAudio(){
   if (audioCtx) { if (audioCtx.state === 'suspended') audioCtx.resume(); return; }
   const AC = window.AudioContext || window.webkitAudioContext;
   if (AC) audioCtx = new AC();
+  /* le contexte vient d'apparaître : on décode tout ce qui attendait */
+  Object.keys(soundRaw).forEach(decodeIfPossible);
 }
 document.addEventListener('pointerdown', initAudio, { once:false });
 
@@ -2358,25 +2472,40 @@ const SOUND_FILES = {
   voice1:       'sounds/voice-1.ogg',
   voiceGo:      'sounds/voice-go.ogg'
 };
-const soundBuffers = {};   /* nom -> AudioBuffer décodé */
+const soundBuffers = {};   /* nom -> AudioBuffer décodé, prêt à jouer */
+const soundRaw = {};       /* nom -> ArrayBuffer téléchargé, en attente d'un contexte audio */
 const soundFailed = {};    /* nom -> true si le fichier est inutilisable */
 
-/* Précharge et décode tous les sons (appelé au premier tap, quand l'audio est autorisé) */
+/* Le TÉLÉCHARGEMENT n'a pas besoin de contexte audio : on le lance dès le chargement de la
+   page. Le décodage, lui, en a besoin — il se fera dès que le premier geste de
+   l'utilisateur aura autorisé l'audio.
+
+   C'est ce qui manquait : les fichiers n'étaient récupérés qu'au premier son demandé, donc
+   le décompte du duel tombait sur des tampons vides et retombait sur le bip synthétisé —
+   la voix ne se faisait jamais entendre. */
 function preloadSounds(){
-  if (!audioCtx || preloadSounds._done) return;
+  if (preloadSounds._done) return;
   preloadSounds._done = true;
   Object.keys(SOUND_FILES).forEach(name => {
     fetch(SOUND_FILES[name])
       .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
-      .then(buf => audioCtx.decodeAudioData(buf))
-      .then(decoded => { soundBuffers[name] = decoded; })
+      .then(buf => { soundRaw[name] = buf; decodeIfPossible(name); })
       .catch(() => { soundFailed[name] = true; });  /* repli sur la synthèse */
   });
+}
+function decodeIfPossible(name){
+  if (!audioCtx || !soundRaw[name] || soundBuffers[name]) return;
+  const raw = soundRaw[name];
+  delete soundRaw[name];
+  audioCtx.decodeAudioData(raw)
+    .then(decoded => { soundBuffers[name] = decoded; })
+    .catch(() => { soundFailed[name] = true; });
 }
 
 function playBuffer(name, vol){
   const buf = soundBuffers[name];
   if (!buf || !audioCtx) return false;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   const src = audioCtx.createBufferSource();
   const gain = audioCtx.createGain();
   gain.gain.value = vol == null ? 0.9 : vol;
@@ -3182,6 +3311,7 @@ function renderPlayers(){
     ? `${playerChipHtml(current[0], outcomeOf(0))}<div class="vs">${duelOutcome ? '' : 'VS'}</div>${playerChipHtml(current[1], outcomeOf(1))}`
     : playerChipHtml(current[0], done && !lastResult.aborted ? 'winner' : '');
   renderRoundTrack();   /* c'est lui qui annonce désormais le joueur suivant */
+  applyHardBeams();     /* le parcours s'adapte au joueur en piste */
 }
 
 /* ===== Suivi de la manche =====
@@ -3208,7 +3338,7 @@ function renderRoundTrack(){
   /* Qui passe après ? C'est ici qu'on le dit maintenant, et on le dit franchement. */
   const nextCrew = playersAt(queueIndex + n, n);
   const nextHtml = nextCrew.length
-    ? `<div class="rt-next"><span class="rt-next-lbl">SUIVANT</span>` +
+    ? `<div class="rt-next"><span class="rt-next-lbl">${w('next').toUpperCase()}</span>` +
       nextCrew.map(p => `<span class="rt-next-one">${avatarHtml(p, 'pip')}` +
         `<b style="color:${colorOf(p)}">${p.name}</b></span>`).join('<span class="rt-next-sep">' +
         (n === 2 ? 'vs' : '&amp;') + '</span>') + '</div>'
@@ -3243,9 +3373,51 @@ function renderLiveScores(){
 }
 
 /* Classement complet de la soirée : une ligne par manche jouée, la meilleure en tête. */
+/* ===== Le tableau complet =====
+   Une ligne par passage, avec TOUT ce qui a été mesuré : la manche, la mission, la
+   performance dans l'unité du jeu, les impacts, le rang et les points. C'est la pièce
+   qui manquait — le reste de l'appli ne montrait que des résumés. */
+function fullScoreTableHtml(){
+  const rows = [];
+  computeStandings().forEach(p => {
+    p.entries.forEach(e => rows.push({ ...e, player:p.name, photo:p.photo, color:p.color, team:p.team }));
+  });
+  if (!rows.length) return '';
+  rows.sort((a, b) => (a.round - b.round) || (a.heat || 0) - (b.heat || 0) || a.rank - b.rank);
+
+  const body = rows.map(e => {
+    const m = MODES.find(x => x.key === e.mode);
+    const t = fmtTime(e.ms);
+    const perf = e.aborted ? '<span class="hud-warn">abandon</span>'
+      : e.mode === 'cristal-rush' ? plural(e.value || 0, 'cristal', 'cristaux')
+      : (e.mode === 'fire' && !e.finished) ? '<span class="hud-bad">perdu</span> · ' + t.main + t.cs
+      : t.main + t.cs;
+    return `<tr>
+      <td class="c">${e.round}</td>
+      <td>${m ? m.icon : '•'} <span class="dim">${m ? m.name : e.mode}</span></td>
+      <td class="who"><span style="color:${e.color}">${e.player}</span></td>
+      <td>${perf}</td>
+      <td class="c">${e.hits ? '💥 ' + e.hits : '<span class="clean-ok">0</span>'}</td>
+      <td class="c">${e.rank}<span class="dim">e</span></td>
+      <td class="c pts">+${e.pts}${e.clean ? '<span class="bonus"> ✦</span>' : ''}</td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="table-wrap"><table class="score-table">
+    <thead><tr>
+      <th class="c">M.</th><th>Mission</th><th>Joueur</th><th>Performance</th>
+      <th class="c">Impacts</th><th class="c">Rang</th><th class="c">Pts</th>
+    </tr></thead>
+    <tbody>${body}</tbody>
+  </table></div>
+  <div class="table-legend">✦ = manche sans le moindre impact (+${BONUS_CLEAN} points)</div>`;
+}
+
 function renderScoresTab(){
   const el = document.getElementById('scores-list');
   const st = computeStandings();
+  const detail = document.getElementById('scores-detail');
+  if (detail) detail.innerHTML = fullScoreTableHtml();
   if (!st.length) {
     el.innerHTML = `<div class="empty-note">Aucune manche jouée pour l'instant.</div>`;
     return;
@@ -3931,6 +4103,7 @@ function beginRun(){
   setStatus();
   updateMissionControls();
   renderRunHud();
+  applyHardBeams();         /* un débutant ne rencontre pas les faisceaux difficiles */
   releaseForcedEffects();   /* le jeu reprend la main sur le gyrophare */
   if (!rules().preStart) smokeBurst();   /* sinon elle est déjà partie avec le décompte */
   startMissionMusic();
@@ -4303,7 +4476,13 @@ function renderWizard(){
   /* rejoue l'animation dans le sens du déplacement */
   body.classList.remove('step-next', 'step-prev');
   void body.offsetWidth;
-  body.classList.add(wizardStep >= (renderWizard._last != null ? renderWizard._last : 0) ? 'step-next' : 'step-prev');
+  const forward = wizardStep >= (renderWizard._last != null ? renderWizard._last : 0);
+  body.classList.add(forward ? 'step-next' : 'step-prev');
+  if (renderWizard._last !== wizardStep) {
+    const num = document.querySelector('#wizard-steps .wstep.active');
+    if (num) { num.classList.add('just-reached'); setTimeout(() => num.classList.remove('just-reached'), 600); }
+    play('beep', forward);
+  }
   renderWizard._last = wizardStep;
 
   if (wizardStep === 0) {
@@ -4329,6 +4508,13 @@ function renderWizard(){
       ${starShowerHtml()}
       <div class="wizard-title">Tout est prêt</div>
       <div class="wizard-sub">${m.icon} ${m.name} — ${m.tagline}</div>
+      <div class="rounds-row">
+        <span class="rounds-lbl">MANCHES</span>
+        ${ROUNDS_CHOICES.map(n => `
+          <button class="round-btn ${n === roundsChoice ? 'selected' : ''}" data-rounds="${n}"
+                  title="${roundsTitle(n)}">${roundsLabel(n)}</button>
+        `).join('')}
+      </div>
       <div class="wizard-crew ${crew.length > 1 ? 'duo' : ''}">
         ${crew.map(p => `
           <div class="wizard-player">
@@ -4337,13 +4523,6 @@ function renderWizard(){
             ${subtitleOf(p) ? `<div class="wizard-player-team" style="color:${colorOf(p)};">${subtitleOf(p)}</div>` : ''}
           </div>
         `).join('<div class="vs">VS</div>')}
-      </div>
-      <div class="rounds-row">
-        <span class="rounds-lbl">MANCHES</span>
-        ${ROUNDS_CHOICES.map(n => `
-          <button class="round-btn ${n === roundsChoice ? 'selected' : ''}" data-rounds="${n}"
-                  title="${roundsTitle(n)}">${roundsLabel(n)}</button>
-        `).join('')}
       </div>
       <div class="wizard-teams">${teamsRecapHtml()}</div>`;
     body.querySelectorAll('.round-btn').forEach(b => {
@@ -4366,8 +4545,8 @@ function renderWizard(){
 
 /* Les deux équipes au complet — on voit tout de suite qui joue pour qui. */
 function teamsRecapHtml(){
-  const line = (p) => avatarHtml(p, 'pip', `title="${p.name}"`) +
-    `<span style="font-size:.82em;color:${colorOf(p)}">${p.name}</span>`;
+  const line = (p) => `<span class="wt-one">${avatarHtml(p, 'pip', `title="${p.name}"`)}` +
+    `<span style="color:${colorOf(p)}">${p.name}</span></span>`;
   if (!teamMode) {
     return `<div class="wteam"><div class="wt-name" style="color:var(--dim)">TOUS LES JOUEURS</div>
       <div class="wt-list">${PLAYERS.map(line).join('')}</div></div>`;
@@ -4439,6 +4618,7 @@ function gameOverHtml(){
           <span class="t">${p.points} pts</span>
         </div>`).join('')}</div>` : ''}
       ${teamsBlock}
+      <div class="gover-table">${fullScoreTableHtml()}</div>
     ` : '<div class="wizard-sub">Aucune manche jouée.</div>'}`;
 }
 /* remet les sections empruntées par l'assistant dans l'onglet Config */
@@ -4513,11 +4693,13 @@ document.getElementById('team-scores').style.display = teamMode ? 'flex' : 'none
 renderThemePicker();
 renderMusicPicker();
 renderMusicBar(false);   /* le thème choisi s'affiche déjà au repos */
+preloadSounds();        /* on télécharge les sons tout de suite ; le décodage attendra un geste */
 renderModes();
 updateModeChip();
 renderHardware();
 renderRelightConfig();
 renderSmokeConfig();
+renderHardBeamsConfig();
 renderLaunchSystem();
 renderTeamEditors();
 renderAgents();
