@@ -225,13 +225,14 @@
 
   /* En piste / Suivant à GAUCHE, chrono à droite */
   .mission-top{ display:flex; gap:9px; flex-shrink:0; align-items:stretch; flex-wrap:wrap; }
-  .mission-top .players-now{ flex:1 1 430px; min-width:0; display:flex; flex-direction:column; justify-content:center; }
+  .mission-top .players-now{ flex:1.35 1 430px; min-width:0; display:flex; flex-direction:column; justify-content:center; }
   /* Le chrono ne s'écrase pas : s'il n'a pas la place, il passe à la ligne du dessous
      (flex-wrap) et reprend toute la largeur. */
-  .mission-top .timer-block{ flex:1 1 380px; display:flex; flex-direction:column; justify-content:center; }
+  .mission-top .timer-block{ flex:.75 1 285px; display:flex; flex-direction:column; justify-content:center; }
 
   .players-now{
-    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:9px 12px; flex-shrink:0;
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:12px 16px 20px; flex-shrink:0;
   }
   .now-row{ display:flex; flex-direction:column; align-items:stretch; gap:12px; }
   .now-lbl{ font-size:clamp(11px, 2.6cqw, 14px); font-weight:700; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.3px; flex-shrink:0; }
@@ -278,6 +279,10 @@
   /* Photo à gauche, identité à droite : l'encart est bien plus compact en largeur utile,
      et le regard va de l'image au nom sans redescendre. */
   .player-chip{ flex-direction:row; align-items:center; text-align:left; gap:clamp(18px, 4.5cqw, 34px); }
+  /* En DUEL, deux joueurs partagent la rangée : le prénom à droite de la photo viendrait
+     buter dans le VS. Il repasse donc sous la photo, comme avant. */
+  .now-players.duo .player-chip{ flex-direction:column; text-align:center; gap:10px; }
+  .now-players.duo .pident{ align-items:center; }
   /* Le prénom et l'équipe côte à côte, centrés sous la photo. `wrap` pour qu'un prénom
      long ne pousse pas l'étiquette hors du cadre : elle repasse dessous, centrée. */
   .player-chip .pident{
@@ -319,7 +324,9 @@
      (il n'a plus rien à séparer), mais un trait EN DESSOUS, qui le détache du chrono. */
   .round-track{
     background:var(--panel); border:1px solid var(--line); border-radius:14px;
-    padding:9px 14px 4px; margin:9px 0 0; flex-shrink:0;
+    /* les pastilles portent un halo qui déborde d'environ 18 px : sans cette marge il
+       touche le cadre, et on croit la photo collée au bord */
+    padding:10px 24px; margin:9px 0 0; flex-shrink:0;
   }
   .rt-head{
     display:flex; align-items:baseline; gap:8px; font-family:'JetBrains Mono';
@@ -625,8 +632,10 @@
   .system-chip .battery i.batt-low{ background:var(--red); }
 
   .systems-row{ display:flex; gap:6px; flex-shrink:0; }
+  /* `flex:1 1 0` et pas `flex:1` : sinon une tuile au contenu plus long (le titre de la
+     musique) se taille plus large que sa voisine. Là, les quatre font exactement la moitié. */
   .system-chip{
-    flex:1; display:flex; align-items:center; justify-content:center; gap:6px; background:var(--panel); border:1px solid var(--line);
+    flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center; gap:6px; background:var(--panel); border:1px solid var(--line);
     border-radius:10px; padding:8px 4px; font-size:clamp(9px, 2.1cqw, 11px); font-family:'JetBrains Mono'; letter-spacing:.5px; color:var(--dim);
     cursor:pointer; -webkit-tap-highlight-color:transparent; user-select:none;
   }
@@ -873,7 +882,10 @@
     font-size:clamp(17px, 4.2cqw, 30px); line-height:1.15;
     text-shadow:0 0 24px currentColor; overflow:hidden; text-overflow:ellipsis;
   }
-  .wteam .wt-list{ display:flex; align-items:center; justify-content:center; gap:9px; flex-wrap:wrap; margin-top:12px; }
+  .wteam .wt-list{
+    display:flex; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:14px;
+    gap:clamp(14px, 3.4cqw, 26px); row-gap:clamp(16px, 4cqw, 28px);
+  }
   .wteam .wt-one{ display:inline-flex; flex-direction:column; align-items:center; gap:4px; }
   .wteam .wt-one span{ font-size:clamp(11px, 2.5cqw, 14px); font-weight:600; }
   .wteam .avatar.pip{ width:clamp(57px, 13.5cqw, 93px); height:clamp(57px, 13.5cqw, 93px); border-radius:19px; font-size:clamp(24px, 6cqw, 39px); }
@@ -1234,7 +1246,7 @@
     .players-now{ padding:7px 12px; }
     .now-row{ gap:6px; }
     .player-chip{ gap:clamp(14px, 2.4vh, 26px); }
-    .round-track{ margin-top:7px; padding:7px 14px 2px; }
+    .round-track{ margin-top:7px; padding:8px 22px; }
     .rt-pips{ margin-top:16px; }
     .scores-scroll{ min-height:clamp(110px, 18vh, 230px); }
   }
@@ -4202,6 +4214,7 @@ function renderPlayers(){
   const done = missionState === 'finished' && lastResult;
   const duelOutcome = done && lastResult.winnerIndex != null;
   const outcomeOf = (i) => duelOutcome ? (i === lastResult.winnerIndex ? 'winner' : 'loser') : '';
+  document.getElementById('now-players').classList.toggle('duo', n === 2);
   document.getElementById('now-players').innerHTML = n === 2
     ? `${playerChipHtml(current[0], outcomeOf(0))}<div class="vs">${duelOutcome ? '' : 'VS'}</div>${playerChipHtml(current[1], outcomeOf(1))}`
     : playerChipHtml(current[0], done && !lastResult.aborted ? 'winner' : '');
