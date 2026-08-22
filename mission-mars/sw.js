@@ -1,4 +1,4 @@
-const CACHE_NAME = "mission-mars-v5";
+const CACHE_NAME = "mission-mars-v6";
 const ASSETS = [
   "./",
   "./index.html",
@@ -8,6 +8,10 @@ const ASSETS = [
   "./icons/favicon-simulateur.svg",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
+  // Visuels des missions : legers, et indispensables a l'identite de chaque jeu
+  "./img/mode-cristal-rush.png",
+  "./img/mode-fire.png",
+  "./img/mode-duel-orbital.png",
   // Sons pre-charges : le jour de la fete le telephone peut tres bien
   // etre hors-ligne, et un jeu muet serait raté.
   "./sounds/crystal.ogg",

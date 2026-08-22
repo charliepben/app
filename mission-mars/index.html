@@ -127,6 +127,91 @@
     .scores-scroll > *{ flex:1 1 0; min-width:0; }
   }
 
+  /* ===== Écran large : deux colonnes =====
+     Sur un iPad en paysage, empiler huit blocs à la verticale fait déborder la barre du bas.
+     Il y a en revanche de la largeur à revendre : on répartit. `display:contents` sur
+     .mission-top dissout le conteneur pour que ses deux enfants deviennent des cases de
+     la grille à part entière. */
+  @media (min-width: 900px) and (min-height: 560px){
+    #tab-mission.tabpanel.active{
+      display:grid; gap:9px; align-content:stretch;
+      grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-rows:auto auto auto 1fr auto auto;
+      grid-template-areas:
+        "banner  banner"
+        "players timer"
+        "beams   scores"
+        "btns    scores"
+        "sys     scores"
+        "music   music"
+        "ctrl    ctrl";
+    }
+    #tab-mission.tabpanel.active > .mode-banner{ grid-area:banner; }
+    #tab-mission.tabpanel.active > .mission-top{ display:contents; }
+    #tab-mission.tabpanel.active .players-now{ grid-area:players; }
+    #tab-mission.tabpanel.active .timer-block{ grid-area:timer; }
+    #tab-mission.tabpanel.active > .beam-grid{ grid-area:beams; align-self:center; }
+    #tab-mission.tabpanel.active > .buttons-grid{ grid-area:btns; align-self:center; }
+    #tab-mission.tabpanel.active > .systems-row{ grid-area:sys; align-self:start; }
+    #tab-mission.tabpanel.active > .scores-scroll{ grid-area:scores; }
+    #tab-mission.tabpanel.active > .music-bar{ grid-area:music; }
+    #tab-mission.tabpanel.active > .mission-controls,
+    #tab-mission.tabpanel.active > #mission-btn{ grid-area:ctrl; }
+    /* dans une colonne, les deux classements se remettent l'un sous l'autre */
+    #tab-mission.tabpanel.active > .scores-scroll{ flex-direction:column; }
+
+    /* En paysage, la hauteur est la ressource rare : les gros éléments se dimensionnent
+       en vh plutôt qu'en largeur de conteneur. Sans ça, la barre du bas sort de l'écran —
+       or elle doit rester visible en toutes circonstances. */
+    #tab-mission.tabpanel.active .now-players .avatar{
+      --av: clamp(64px, 13vh, 130px);
+      font-size:clamp(26px, 6vh, 50px);
+    }
+    /* main et ms gardent la MÊME taille : les chiffres doivent rester alignés */
+    #tab-mission.tabpanel.active .timer-display .main,
+    #tab-mission.tabpanel.active .timer-display .ms{ font-size:clamp(34px, 9.5vh, 78px); }
+    #tab-mission.tabpanel.active > .mode-banner{ min-height:clamp(52px, 9vh, 100px); }
+    #tab-mission.tabpanel.active .players-now .avatar.mini{ width:clamp(22px,3.4vh,34px); height:clamp(22px,3.4vh,34px); }
+  }
+
+  /* ===== Bandeau du mode de mission =====
+     Les visuels sont composés pour ça : la matière est à droite, la traînée s'efface vers
+     la gauche — c'est exactement là qu'on écrit le nom. Rien ne se superpose. */
+  .mode-banner{
+    position:relative; flex-shrink:0; overflow:hidden; cursor:pointer;
+    border:1px solid var(--line); border-radius:14px; background:var(--panel);
+    min-height:clamp(58px, 11vh, 108px); display:flex; align-items:center;
+    padding:10px 14px; -webkit-tap-highlight-color:transparent;
+    transition:border-color .25s, box-shadow .25s;
+  }
+  .mode-banner .mb-art{
+    position:absolute; right:0; top:50%; transform:translateY(-50%);
+    height:132%; width:auto; max-width:none;   /* la traînée déborde à gauche, et c'est rogné */
+    pointer-events:none; opacity:.95;
+  }
+  /* voile sombre sous le texte : le visuel peut aller où il veut, le nom reste lisible */
+  .mode-banner::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(90deg, var(--bg) 0%, rgba(5,7,10,.92) 26%, rgba(5,7,10,.55) 46%, transparent 68%);
+  }
+  .mode-banner .mb-txt{ position:relative; z-index:2; min-width:0; max-width:62%; }
+  .mode-banner .mb-name{
+    font-family:'Orbitron'; font-weight:900; letter-spacing:.06em;
+    font-size:clamp(15px, 4.2cqw, 30px); color:#fff; line-height:1.05;
+    text-shadow:0 0 22px rgba(0,0,0,.9), 0 2px 6px #000;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .mode-banner .mb-tag{
+    font-size:clamp(10px, 2.4cqw, 14px); color:#c8d4e2; font-style:italic; margin-top:3px;
+    text-shadow:0 1px 6px #000; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  /* un liseré à la couleur de la mission, pour qu'on la reconnaisse d'un coup d'œil */
+  .mode-banner{ border-color:color-mix(in srgb, var(--mb-glow, #35f2a3) 45%, var(--line)); }
+  .mode-banner::before{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(120% 130% at 0% 50%, color-mix(in srgb, var(--mb-glow, #35f2a3) 22%, transparent), transparent 62%);
+  }
+
   /* ===== MISSION TAB ===== */
   .timer-block{
     text-align:center; background:var(--panel); border:1px solid var(--line);
@@ -419,18 +504,24 @@
     transition:stroke-dashoffset .12s linear;
   }
 
-  /* Pastille "Launch System" : état du boîtier de commande */
-  .system-chip.launch{ flex:1.5; gap:5px; }
+  /* Pastille "Launch System" : état de la mallette. Elle est VIOLETTE, comme
+     l'interrupteur qui l'alimente — et elle s'éteint avec lui. */
+  .system-chip.launch{ position:relative; flex:1.5; gap:5px; padding-bottom:11px; }
+  .system-chip.launch.active{ color:#fff; border-color:var(--violet); background:rgba(157,123,255,0.12); }
+  .system-chip.launch.active .sdot{ background:var(--violet); box-shadow:0 0 8px var(--violet); }
   .launch-info{ display:inline-flex; align-items:center; gap:7px; margin-left:2px; }
   .launch-info .batt-mid{ color:var(--amber); }
   .launch-info .batt-low{ color:var(--red); }
-  .pbtn{
-    display:inline-block; min-width:15px; text-align:center; padding:1px 3px; border-radius:4px;
-    background:rgba(255,255,255,0.06); color:var(--dim); font-size:.9em;
-  }
-  .pbtn.hit{ background:var(--green); color:var(--bg); }
-  .system-chip.offline{ opacity:.55; }
+  .system-chip.offline{ opacity:.4; filter:grayscale(.6); }
   .launch-info .offline-txt{ font-style:italic; }
+  /* même jauge que sur les faisceaux et les boutons : une seule façon de dire "batterie" */
+  .system-chip .battery{
+    position:absolute; left:12%; right:12%; bottom:4px; height:3px; border-radius:2px;
+    background:rgba(255,255,255,0.06); overflow:hidden;
+  }
+  .system-chip .battery i{ display:block; height:100%; border-radius:2px; background:var(--violet); opacity:.75; transition:width .4s ease; }
+  .system-chip .battery i.batt-mid{ background:var(--amber); }
+  .system-chip .battery i.batt-low{ background:var(--red); }
 
   .systems-row{ display:flex; gap:6px; flex-shrink:0; }
   .system-chip{
@@ -681,6 +772,16 @@
     content:""; position:absolute; inset:0; opacity:.5;
     background:radial-gradient(120% 90% at 12% 0%, var(--mcard-glow, rgba(53,242,163,.35)), transparent 62%);
   }
+  /* le visuel de la mission, en haut à droite de sa carte */
+  .mcard .mcard-art{
+    position:absolute; right:-4%; top:50%; transform:translateY(-50%);
+    height:118%; max-width:58%; object-fit:contain; object-position:right center;
+    opacity:.85; pointer-events:none; z-index:0;
+    -webkit-mask-image:linear-gradient(90deg, transparent 0%, #000 34%);
+            mask-image:linear-gradient(90deg, transparent 0%, #000 34%);
+  }
+  .mcard .mcard-head, .mcard .tagline, .mcard p{ position:relative; z-index:1; }
+  .mcard-titles, .mcard .tagline{ text-shadow:0 1px 8px rgba(5,7,10,.85); }
   .mcard > *{ position:relative; }
   .mcard.selected{ border-color:#fff; transform:translateY(-2px); }
   /* icône à gauche du titre : la carte est bien plus compacte en hauteur */
@@ -993,6 +1094,14 @@
     <!-- ===================== TAB MISSION (par défaut) ===================== -->
     <div class="tabpanel active" id="tab-mission">
 
+      <div class="mode-banner" id="mode-banner" role="button" tabindex="0" title="Voir la carte de mission">
+        <img class="mb-art" id="mode-banner-art" alt="" aria-hidden="true">
+        <div class="mb-txt">
+          <div class="mb-name" id="mode-banner-name">Cristal Rush</div>
+          <div class="mb-tag" id="mode-banner-tag"></div>
+        </div>
+      </div>
+
       <div class="mission-top">
         <div class="players-now">
           <div class="now-row">
@@ -1010,7 +1119,6 @@
         <div class="timer-block">
           <div class="status-row">
             <div class="status-badge idle" id="status-badge"><span class="dot-live"></span> EN ATTENTE</div>
-            <div class="mode-chip" id="mode-chip" role="button" tabindex="0">⚡ Tempête de météores</div>
           </div>
           <div class="timer-display"><span class="main" id="timer-main">00:00</span><span class="ms" id="timer-cs">.00</span></div>
           <div class="run-hud" id="run-hud"></div>
@@ -1026,7 +1134,8 @@
       <div class="systems-row" id="systems-row">
         <div class="system-chip launch" id="sys-launch">
           <span class="sdot"></span>LAUNCH SYSTEM
-          <span class="launch-info"><span id="launch-batt">--%</span><span id="launch-btns">■ ▶</span></span>
+          <span class="launch-info"><span id="launch-batt">--%</span></span>
+          <div class="battery"><i id="launch-batt-bar" style="width:0%"></i></div>
         </div>
         <div class="system-chip" id="sys-gyro"><span class="sdot"></span>GYROPHARE</div>
         <div class="system-chip" id="sys-smoke"><span class="sdot"></span>FUMÉE</div>
@@ -1368,6 +1477,7 @@ function renderModes(){
       updateModeChip();
       renderPlayers();
       renderMusicBar(false);  /* chaque mission a son thème */
+      renderModeBanner();
       if (!inMissionNow()) renderTimerIdle();
       renderArrivalConfig();   /* le réglage d'arrivée dépend de la mission */
       updateButtonsForMode();  /* et les rôles/icônes des boutons aussi */
@@ -1377,12 +1487,33 @@ function renderModes(){
 }
 
 const MODE_GLOW = { 'cristal-rush':'rgba(157,123,255,.5)', 'fire':'rgba(255,138,61,.5)', 'duel-orbital':'rgba(77,195,255,.5)' };
+/* Un visuel par mission. Comme tout le reste de l'habillage, il est déclaré ici : un autre
+   thème n'a qu'à fournir ses propres images, la mécanique ne bouge pas. */
+const MODE_ART = {
+  'cristal-rush': 'img/mode-cristal-rush.png',
+  'fire':         'img/mode-fire.png',
+  'duel-orbital': 'img/mode-duel-orbital.png'
+};
+const MODE_TINT = { 'cristal-rush':'#8fb8ff', 'fire':'#ff7a3d', 'duel-orbital':'#4dc3ff' };
+
+function renderModeBanner(){
+  const m = currentMode();
+  const el = document.getElementById('mode-banner');
+  if (!el) return;
+  const art = MODE_ART[m.key];
+  const img = document.getElementById('mode-banner-art');
+  if (art) { img.src = art; img.style.display = ''; } else { img.removeAttribute('src'); img.style.display = 'none'; }
+  el.style.setProperty('--mb-glow', MODE_TINT[m.key] || '#35f2a3');
+  document.getElementById('mode-banner-name').textContent = m.name;
+  document.getElementById('mode-banner-tag').textContent = m.tagline || '';
+}
 const DURATION_CHOICES = [30, 60, 90, 120, 180, 300];
 function modeCardHtml(m, forceSelected){
   const selected = forceSelected !== undefined ? forceSelected : (m.key === currentModeKey);
   const dur = durationFor(m.key);
   return `
     <div class="mcard ${selected ? 'selected' : ''}" data-mode="${m.key}" style="--mcard-glow:${MODE_GLOW[m.key] || 'rgba(53,242,163,.35)'}">
+      ${MODE_ART[m.key] ? `<img class="mcard-art" src="${MODE_ART[m.key]}" alt="" aria-hidden="true">` : ''}
       ${m.req ? `<div class="req">${m.req}</div>` : ''}
       <div class="mcard-head">
         <div class="mcard-icon">${m.icon}</div>
@@ -1414,9 +1545,10 @@ function wireDurationButtons(root){
   });
 }
 
+/* Le bandeau du haut porte désormais l'identité de la mission ; il n'y a plus de pastille. */
 function updateModeChip(){
+  renderModeBanner();
   const m = MODES.find(x => x.key === currentModeKey) || MODES[0];
-  document.getElementById('mode-chip').innerHTML = m.icon + ' ' + m.name;
   document.querySelectorAll('.beam-grid .beam .name').forEach((el, i) => {
     el.textContent = `${m.obstacleName} ${i + 1}`;
   });
@@ -1578,30 +1710,30 @@ function applyTopology(t){
 }
 
 /* ===== État du boîtier de commande (batterie, boutons physiques) ===== */
-let launchState = { battery:null, start:false, stop:false, online:false };
+let launchState = { battery:null, start:false, lasers:false, smokeArmed:false, online:false };
 function renderLaunchSystem(){
   const chip = document.getElementById('sys-launch');
   const batt = document.getElementById('launch-batt');
-  const btns = document.getElementById('launch-btns');
+  const bar = document.getElementById('launch-batt-bar');
   if (!chip) return;
 
   chip.classList.toggle('active', launchState.online);
   chip.classList.toggle('offline', !launchState.online);
 
-  /* Tant qu'aucune console ne s'est annoncée, on le dit clairement plutôt que
-     d'afficher un pourcentage inventé. */
+  /* Mallette hors service (son interrupteur violet est baissé) ou jamais annoncée :
+     on le dit, plutôt que d'afficher un pourcentage inventé. */
   if (!launchState.online) {
     batt.textContent = 'hors ligne';
     batt.className = 'offline-txt';
-    btns.innerHTML = '';
+    bar.style.width = '0%';
     return;
   }
-  batt.textContent = launchState.battery == null ? '· batterie ?' : '· ' + launchState.battery + '%';
-  batt.className = launchState.battery == null ? ''
-    : (launchState.battery <= 20 ? 'batt-low' : launchState.battery <= 50 ? 'batt-mid' : '');
-  btns.innerHTML =
-    `<span class="pbtn ${launchState.stop ? 'hit' : ''}" title="Arrêt d'urgence">■</span>` +
-    `<span class="pbtn ${launchState.start ? 'hit' : ''}" title="Bouton départ">▶</span>`;
+  const pct = launchState.battery;
+  batt.textContent = pct == null ? '· batterie ?' : '· ' + pct + '%';
+  const level = pct == null ? '' : (pct <= 20 ? 'batt-low' : pct <= 50 ? 'batt-mid' : '');
+  batt.className = level;
+  bar.className = level;
+  bar.style.width = (pct == null ? 0 : Math.max(0, Math.min(100, pct))) + '%';
 }
 
 /* ===== FORMES DES LAMPES =====
@@ -1802,8 +1934,8 @@ function openModeModal(){
   document.getElementById('mode-modal').classList.add('show');
 }
 document.getElementById('mode-modal').addEventListener('click', function(){ this.classList.remove('show'); });
-document.getElementById('mode-chip').addEventListener('click', openModeModal);
-document.getElementById('mode-chip').addEventListener('keydown', (e) => {
+document.getElementById('mode-banner').addEventListener('click', openModeModal);
+document.getElementById('mode-banner').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModeModal(); }
 });
 
@@ -3864,9 +3996,17 @@ function applyEvent(evt){
   noteSequence(evt);
   if (evt.type === 'topology') { launchState.online = true; applyTopology(evt); renderLaunchSystem(); }
   else if (evt.type === 'launch') {
+    /* `offline:true` = l'interrupteur violet de la mallette est baissé. Elle n'est plus
+       alimentée : la pastille s'éteint au lieu de rester allumée sur de vieilles valeurs. */
+    if (evt.offline) {
+      launchState.online = false;
+      renderLaunchSystem();
+      return;
+    }
     if (typeof evt.battery === 'number') launchState.battery = evt.battery;
     if (typeof evt.start === 'boolean') launchState.start = evt.start;
-    if (typeof evt.stop === 'boolean') launchState.stop = evt.stop;
+    if (typeof evt.lasers === 'boolean') launchState.lasers = evt.lasers;
+    if (typeof evt.smoke === 'boolean') launchState.smokeArmed = evt.smoke;
     launchState.online = true;
     renderLaunchSystem();
   }

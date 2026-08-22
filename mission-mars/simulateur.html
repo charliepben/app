@@ -92,82 +92,67 @@
   .start-node .led{ width:52px; height:52px; margin:0; border-radius:50%; }
   .start-node:active .start-cap{ transform:translateY(2px); }
 
-  /* --- Arrêt d'urgence : interrupteur à bascule lumineux sous capot de sécurité
-         relevable, comme dans un cockpit. Deux gestes : on relève le capot, puis on
-         bascule. Impossible de couper les lasers par mégarde. --- */
-  .estop{
-    flex:0 0 auto; min-width:150px; padding:14px 18px 12px; border-radius:14px;
-    border:2px solid var(--line); background:var(--panel); cursor:pointer;
-    -webkit-tap-highlight-color:transparent; display:flex; flex-direction:column; align-items:center; gap:9px;
-  }
-  .estop-stage{ position:relative; width:66px; height:74px; perspective:340px; }
-  /* la platine et sa fente */
-  .estop-plate{
-    position:absolute; inset:0; border-radius:9px;
-    background:linear-gradient(#2b3543, #1a222d);
-    box-shadow:inset 0 0 0 1px #3a4658, 0 4px 12px -6px #000;
-    display:flex; align-items:center; justify-content:center;
-  }
-  .estop-slot{
-    position:relative; width:26px; height:50px; border-radius:13px;
-    background:#0b1017; box-shadow:inset 0 2px 6px rgba(0,0,0,.8);
-    display:flex; align-items:flex-end; justify-content:center; padding-bottom:4px;
-  }
-  /* le levier : en bas au repos, il claque vers le haut quand on coupe */
-  .estop-lever{
-    width:18px; height:30px; border-radius:9px;
-    background:linear-gradient(#f2f5f9, #aeb8c6 55%, #6f7b8b);
-    box-shadow:0 2px 5px rgba(0,0,0,.6);
-    transform-origin:50% 100%; transition:transform .14s cubic-bezier(.3,1.5,.5,1);
-  }
-  .estop.fired .estop-lever{
-    transform:translateY(-20px) scaleY(1.05);
-    background:linear-gradient(#ffd9dd, #ff6b78 55%, #c11d2b);
-    box-shadow:0 0 10px 2px rgba(232,50,63,.85), 0 0 22px 6px rgba(232,50,63,.4);
-  }
-  /* le témoin lumineux de la platine */
-  .estop-lamp{
-    position:absolute; top:6px; left:50%; transform:translateX(-50%);
-    width:9px; height:9px; border-radius:50%; background:#3a1b1f; box-shadow:inset 0 0 0 1px #4a2a2e;
-  }
-  .estop.fired .estop-lamp{ background:#ff4d5e; box-shadow:0 0 8px 2px rgba(255,77,94,.9); animation:estopBlink .3s steps(1) infinite; }
-  @keyframes estopBlink{ 50%{ opacity:.25; } }
-  /* le capot de sécurité : bandes de danger, charnière en haut */
-  .estop-guard{
-    position:absolute; inset:-4px -5px -4px -5px; border-radius:10px; transform-origin:50% 0%;
-    transition:transform .3s cubic-bezier(.25,1.25,.45,1);
-    background:repeating-linear-gradient(45deg, #d8232f 0 9px, #f0b429 9px 18px);
-    box-shadow:inset 0 0 0 2px #7d1319, 0 5px 14px -6px #000;
-    display:flex; align-items:flex-end; justify-content:center; padding-bottom:5px;
-  }
-  .estop-guard .eg-grip{ width:26px; height:5px; border-radius:3px; background:rgba(0,0,0,.45); }
-  .estop.open .estop-guard{ transform:rotateX(-118deg); }
-  .estop .lbl{ font-family:'Orbitron'; font-weight:700; font-size:11px; letter-spacing:1.2px; color:#ff8a95; }
-  .estop .st{ font-family:'JetBrains Mono'; font-size:9px; color:var(--dim); letter-spacing:.3px; }
-  .estop.fired .st{ color:#ff8a95; }
-
-  /* Les 3 boutons physiques présents sur la mallette de commande */
+  /* --- Les 3 commandes de la mallette ---
+     Ce sont des interrupteurs à bascule lumineux sous capot de sécurité relevable.
+     Les trois ont le même rôle : un coupe-circuit. Allumé, l'appareil peut fonctionner ;
+     éteint, il est hors service. Le capot rabattu force le levier vers le bas — c'est ce
+     qui rend la coupure franche et impossible à faire par mégarde. --- */
   .case-row{ display:flex; gap:12px; max-width:560px; flex-wrap:wrap; }
-  .case-btn{
-    flex:1; min-width:150px; padding:14px 12px 12px; border-radius:14px; cursor:pointer;
+  .tsw{
+    flex:1; min-width:140px; padding:14px 12px 12px; border-radius:14px; cursor:pointer;
     border:2px solid var(--line); background:var(--panel); -webkit-tap-highlight-color:transparent;
-    display:flex; flex-direction:column; align-items:center; gap:8px;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+    transition:border-color .15s;
   }
-  .case-btn .cap{ width:46px; height:46px; border-radius:50%; box-shadow:inset 0 -4px 9px rgba(0,0,0,.5), inset 0 3px 7px rgba(255,255,255,.22); }
-  .case-btn .lbl{ font-family:'Orbitron'; font-weight:700; font-size:10px; letter-spacing:1.1px; color:var(--dim); }
-  .case-btn .st{ font-family:'JetBrains Mono'; font-size:9px; color:var(--dim); }
-  .case-btn:active .cap{ transform:translateY(2px); }
-  .case-btn.violet .cap{ background:radial-gradient(circle at 38% 30%, #d9c6ff, #9d7bff 45%, #4a2f8f 100%); }
-  .case-btn.white  .cap{ background:radial-gradient(circle at 38% 30%, #ffffff, #cfd8e6 45%, #6d7787 100%); }
-  .case-btn.red    .cap{ background:radial-gradient(circle at 38% 30%, #ff9aa4, #e8323f 45%, #8c1019 100%); }
-  /* allumé = le bouton est lumineux et son cadre prend la couleur */
-  .case-btn.on.violet{ border-color:#9d7bff; box-shadow:0 0 22px -6px #9d7bff; }
-  .case-btn.on.violet .cap{ box-shadow:0 0 16px 3px #9d7bff, inset 0 3px 7px rgba(255,255,255,.35); }
-  .case-btn.on.white{ border-color:#fff; box-shadow:0 0 22px -6px #fff; }
-  .case-btn.on.white .cap{ box-shadow:0 0 16px 3px #fff, inset 0 3px 7px rgba(255,255,255,.4); }
-  .case-btn.on.red{ border-color:#ff5b6a; box-shadow:0 0 22px -6px #ff5b6a; }
-  .case-btn.on.red .cap{ box-shadow:0 0 16px 3px #ff5b6a, inset 0 3px 7px rgba(255,255,255,.3); }
-  .case-btn.on .lbl, .case-btn.on .st{ color:var(--text); }
+  .tsw.on{ border-color:var(--sw); }
+  .tsw-stage{ position:relative; width:58px; height:74px; perspective:300px; }
+  /* embase noire + écrou chromé, comme sur la photo */
+  .tsw-base{
+    position:absolute; left:50%; bottom:0; transform:translateX(-50%);
+    width:46px; height:20px; border-radius:4px;
+    background:linear-gradient(#333c48, #171d25);
+    box-shadow:inset 0 1px 0 #4b5563, 0 3px 9px -4px #000;
+  }
+  .tsw-nut{
+    position:absolute; left:50%; bottom:17px; transform:translateX(-50%);
+    width:24px; height:11px; border-radius:3px;
+    background:linear-gradient(#d8dee6, #8d97a4 60%, #6a737f);
+  }
+  /* le levier : penché vers le bas au repos, il claque vers le haut quand on arme */
+  .tsw-bat{
+    position:absolute; left:50%; bottom:24px; width:13px; height:32px; border-radius:7px;
+    margin-left:-6.5px; transform-origin:50% 100%; transform:rotate(20deg);
+    background:linear-gradient(#f2f5f9, #a3aebc 55%, #6d7784);
+    box-shadow:0 2px 5px rgba(0,0,0,.55);
+    transition:transform .13s cubic-bezier(.3,1.5,.5,1), background .13s, box-shadow .13s;
+  }
+  .tsw.on .tsw-bat{
+    transform:rotate(-18deg);
+    background:linear-gradient(#ffffff, var(--sw) 45%, color-mix(in srgb, var(--sw) 55%, #000));
+    box-shadow:0 0 10px 2px var(--sw), 0 0 24px 6px color-mix(in srgb, var(--sw) 45%, transparent);
+  }
+  /* le capot translucide, charnière en bas à l'arrière */
+  .tsw-cover{
+    position:absolute; left:50%; bottom:16px; margin-left:-24px;
+    width:48px; height:56px; border-radius:9px 9px 4px 4px; transform-origin:50% 100%;
+    transition:transform .28s cubic-bezier(.25,1.2,.45,1), box-shadow .2s;
+    background:linear-gradient(155deg,
+      color-mix(in srgb, var(--sw) 55%, transparent),
+      color-mix(in srgb, var(--sw) 22%, transparent) 48%,
+      rgba(0,0,0,.35));
+    box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--sw) 70%, transparent),
+               inset 0 6px 14px rgba(255,255,255,.18), 0 5px 14px -7px #000;
+  }
+  .tsw.on .tsw-cover{ box-shadow:inset 0 0 0 2px var(--sw), inset 0 6px 14px rgba(255,255,255,.25), 0 0 18px -2px var(--sw); }
+  .tsw.open .tsw-cover{ transform:rotateX(-108deg); }
+  .tsw-cover::after{   /* la petite languette qu'on soulève */
+    content:""; position:absolute; left:50%; top:5px; transform:translateX(-50%);
+    width:22px; height:4px; border-radius:3px; background:rgba(0,0,0,.35);
+  }
+  .tsw .lbl{ font-family:'Orbitron'; font-weight:700; font-size:11px; letter-spacing:1.2px; color:var(--dim); }
+  .tsw.on .lbl{ color:var(--sw); }
+  .tsw .st{ font-family:'JetBrains Mono'; font-size:9px; color:var(--dim); letter-spacing:.3px; text-align:center; }
+
   /* mallette éteinte : tout le reste du simulateur est inerte */
   body.case-off .grid, body.case-off .console-row, body.case-off .sys-row, body.case-off .batt-row{
     opacity:.28; pointer-events:none; filter:grayscale(.7);
@@ -227,29 +212,30 @@
       </div>
       <div class="state" id="start-state">éteint</div>
     </div>
-    <button class="estop" id="btn-estop">
-      <span class="estop-stage">
-        <span class="estop-plate">
-          <span class="estop-lamp"></span>
-          <span class="estop-slot"><span class="estop-lever"></span></span>
-        </span>
-        <span class="estop-guard"><span class="eg-grip"></span></span>
-      </span>
-      <span class="lbl">ARRÊT D'URGENCE</span>
-      <span class="st" id="estop-st">capot fermé</span>
-    </button>
   </div>
 
   <div class="section-label">Interrupteurs de la mallette</div>
   <div class="case-row">
-    <button class="case-btn violet" id="case-power">
-      <span class="cap"></span><span class="lbl">MALLETTE</span><span class="st" id="case-power-st">éteinte</span>
+    <button class="tsw" id="case-power" style="--sw:#9d7bff">
+      <span class="tsw-stage">
+        <span class="tsw-base"></span><span class="tsw-nut"></span>
+        <span class="tsw-bat"></span><span class="tsw-cover"></span>
+      </span>
+      <span class="lbl">MALLETTE</span><span class="st" id="case-power-st">hors service</span>
     </button>
-    <button class="case-btn white" id="case-smoke">
-      <span class="cap"></span><span class="lbl">FUMÉE</span><span class="st" id="case-smoke-st">éteinte</span>
+    <button class="tsw" id="case-smoke" style="--sw:#e8eef7">
+      <span class="tsw-stage">
+        <span class="tsw-base"></span><span class="tsw-nut"></span>
+        <span class="tsw-bat"></span><span class="tsw-cover"></span>
+      </span>
+      <span class="lbl">FUMÉE</span><span class="st" id="case-smoke-st">—</span>
     </button>
-    <button class="case-btn red" id="case-kill">
-      <span class="cap"></span><span class="lbl">COUPE-CIRCUIT</span><span class="st" id="case-kill-st">lasers armés</span>
+    <button class="tsw" id="case-laser" style="--sw:#ff4d5e">
+      <span class="tsw-stage">
+        <span class="tsw-base"></span><span class="tsw-nut"></span>
+        <span class="tsw-bat"></span><span class="tsw-cover"></span>
+      </span>
+      <span class="lbl">LASER</span><span class="st" id="case-laser-st">—</span>
     </button>
   </div>
 
@@ -471,61 +457,55 @@ wireHold(startNode, {
   onStart: () => { startNode.style.borderColor = '#fff'; sendLaunchState({ start:true }); send({ type:'start' }); },
   onEnd: () => { startNode.style.borderColor = ''; sendLaunchState({ start:false }); }
 });
-/* Deux gestes, comme sur le vrai boîtier : relever le capot, puis basculer. */
-const estop = document.getElementById('btn-estop');
-const estopSt = document.getElementById('estop-st');
-let estopOpen = false;
-let estopTimer = null;
-function resetEstop(){
-  clearTimeout(estopTimer);
-  estopOpen = false;
-  estop.classList.remove('open', 'fired');
-  estopSt.textContent = 'capot fermé';
-}
-estop.addEventListener('click', () => {
-  if (estop.classList.contains('fired')) return;   /* déjà en train de couper */
-  if (!estopOpen) {
-    estopOpen = true;
-    estop.classList.add('open');
-    estopSt.textContent = 'capot ouvert — armé';
-    log('Capot de sécurité relevé', 'out');
-    /* si on n'y touche plus, le capot se referme tout seul */
-    clearTimeout(estopTimer);
-    estopTimer = setTimeout(resetEstop, 6000);
-    return;
-  }
-  estop.classList.add('fired');
-  estopSt.textContent = 'COUPURE ENVOYÉE';
-  log('ARRÊT D' + String.fromCharCode(39) + 'URGENCE', 'out');
-  send({ type:'stop' });
-  sendLaunchState({ stop:true });
-  clearTimeout(estopTimer);
-  estopTimer = setTimeout(() => {
-    sendLaunchState({ stop:false });
-    resetEstop();
-  }, 1600);
-});
-
 /* ===== Les 3 interrupteurs physiques de la mallette =====
    - violet : allume la mallette (rien ne fonctionne tant qu'elle est éteinte)
    - blanc  : allume la machine à fumée (l'allume, ne déclenche pas un jet)
    - rouge  : coupe-circuit des lasers (les désarme tous d'un coup)             */
-const caseState = { power:false, smoke:false, kill:false };
+/* Les 3 interrupteurs sont des COUPE-CIRCUIT, tous dans le même sens :
+   allumé = l'appareil est alimenté et peut fonctionner ; éteint = hors service.
+   `open` = capot relevé. Rabattre le capot force le levier vers le bas : c'est la
+   coupure franche, et c'est ce qui rend une coupure accidentelle impossible. */
+const caseState = { power:false, smoke:false, laser:false };
+const caseOpen  = { power:false, smoke:false, laser:false };
 
 function renderCase(){
-  document.getElementById('case-power').classList.toggle('on', caseState.power);
-  document.getElementById('case-smoke').classList.toggle('on', caseState.smoke && caseState.power);
-  document.getElementById('case-kill').classList.toggle('on', caseState.kill && caseState.power);
-  document.getElementById('case-power-st').textContent = caseState.power ? 'ALLUMÉE' : 'éteinte';
-  document.getElementById('case-smoke-st').textContent = !caseState.power ? '—' : (caseState.smoke ? 'ALLUMÉE' : 'éteinte');
-  document.getElementById('case-kill-st').textContent = !caseState.power ? '—' : (caseState.kill ? 'LASERS COUPÉS' : 'lasers armés');
+  [['power','MALLETTE'], ['smoke','FUMÉE'], ['laser','LASER']].forEach(([key]) => {
+    const el = document.getElementById('case-' + key);
+    const live = caseState[key] && (key === 'power' || caseState.power);
+    el.classList.toggle('on', live);
+    el.classList.toggle('open', caseOpen[key]);
+  });
+  const st = (key, on, off) => document.getElementById('case-' + key + '-st').textContent =
+    caseOpen[key] && !caseState[key] ? 'capot ouvert — prêt' : (caseState[key] ? on : off);
+  st('power', 'ALIMENTÉE', 'hors service');
+  document.getElementById('case-smoke-st').textContent = !caseState.power ? '—'
+    : (caseOpen.smoke && !caseState.smoke ? 'capot ouvert — prêt'
+       : (caseState.smoke ? 'ALIMENTÉE' : 'hors service'));
+  document.getElementById('case-laser-st').textContent = !caseState.power ? '—'
+    : (caseOpen.laser && !caseState.laser ? 'capot ouvert — prêt'
+       : (caseState.laser ? 'ARMÉS' : 'COUPÉS'));
   document.body.classList.toggle('case-off', !caseState.power);
 }
 
-document.getElementById('case-power').addEventListener('click', () => {
-  caseState.power = !caseState.power;
+/* Un clic fait avancer le switch d'un cran : capot fermé → capot ouvert → armé →
+   (on rabat le capot, ce qui coupe). Trois gestes, comme sur le vrai. */
+function cycleSwitch(key, onChange){
+  if (caseState[key]) {                 /* armé : on rabat le capot, ça coupe */
+    caseState[key] = false;
+    caseOpen[key] = false;
+  } else if (caseOpen[key]) {           /* capot ouvert : on bascule */
+    caseState[key] = true;
+  } else {                              /* capot fermé : on le relève */
+    caseOpen[key] = true;
+    renderCase();
+    return;
+  }
   renderCase();
-  log(`Mallette → ${caseState.power ? 'allumée' : 'éteinte'}`, 'out');
+  onChange();
+}
+
+document.getElementById('case-power').addEventListener('click', () => cycleSwitch('power', () => {
+  log(`Mallette → ${caseState.power ? 'alimentée' : 'hors service'}`, 'out');
   if (caseState.power) {
     /* à l'allumage, le boîtier se présente : topologie, batteries, état */
     announceTopology();
@@ -533,34 +513,40 @@ document.getElementById('case-power').addEventListener('click', () => {
     sendAllBatteries();
     sendLaunchState();
   } else {
-    caseState.smoke = false; caseState.kill = false;
+    /* la mallette s'éteint : tout retombe, capots rabattus */
+    caseState.smoke = false; caseState.laser = false;
+    caseOpen.smoke = false; caseOpen.laser = false;
     renderCase();
     send({ type:'launch', offline:true });
   }
-});
+}));
 
 document.getElementById('case-smoke').addEventListener('click', () => {
   if (!caseState.power) return;
-  caseState.smoke = !caseState.smoke;
-  sysConnected.smoke = true;
-  sysActive.smoke = caseState.smoke;
-  renderCase();
-  renderSystem('smoke');
-  send({ type:'system', key:'smoke', state: caseState.smoke ? 'active' : 'idle' });
-  log(`Machine à fumée → ${caseState.smoke ? 'allumée' : 'éteinte'}`, 'out');
+  cycleSwitch('smoke', () => {
+    /* Coupe-circuit de la machine à fumée : allumé, l'appli peut la déclencher ;
+       éteint, elle n'existe plus pour l'appli (état 'absent' du protocole). */
+    sysConnected.smoke = caseState.smoke;
+    if (!caseState.smoke) sysActive.smoke = false;
+    renderSystem('smoke');
+    send({ type:'system', key:'smoke', state: caseState.smoke ? 'idle' : 'absent' });
+    sendLaunchState();
+    log(`Machine à fumée → ${caseState.smoke ? 'alimentée' : 'hors service'}`, 'out');
+  });
 });
 
-document.getElementById('case-kill').addEventListener('click', () => {
+document.getElementById('case-laser').addEventListener('click', () => {
   if (!caseState.power) return;
-  caseState.kill = !caseState.kill;
-  renderCase();
-  /* coupe-circuit : tous les faisceaux passent hors jeu d'un coup */
-  BEAMS.forEach(b => {
-    beamOn[b.id] = !caseState.kill;
-    send({ type:'beam', id:b.id, on: beamOn[b.id] });
+  cycleSwitch('laser', () => {
+    /* Allumé, les faisceaux sont armés ; éteint, ils passent tous hors jeu d'un coup. */
+    BEAMS.forEach(b => {
+      beamOn[b.id] = caseState.laser;
+      send({ type:'beam', id:b.id, on: beamOn[b.id] });
+    });
+    renderBeams();
+    sendLaunchState();
+    log(`Lasers → ${caseState.laser ? 'ARMÉS' : 'COUPÉS'}`, 'out');
   });
-  renderBeams();
-  log(`Coupe-circuit → lasers ${caseState.kill ? 'COUPÉS' : 'réarmés'}`, 'out');
 });
 
 /* ===== Effets : état reçu + simulation de déconnexion ===== */
@@ -665,7 +651,12 @@ function announceTopology(){
 /* État du boîtier lui-même : sa batterie et ses deux boutons physiques. */
 let consoleBattery = 82;
 function sendLaunchState(extra){
-  send(Object.assign({ type:'launch', battery:consoleBattery, start:false, stop:false }, extra || {}));
+  /* `lasers` et `smoke` disent si les coupe-circuits sont armés : l'appli l'affiche dans
+     « Launch System », pour qu'on sache d'un coup d'œil pourquoi rien ne se passe. */
+  send(Object.assign({
+    type:'launch', battery:consoleBattery, start:false,
+    lasers: caseState.laser, smoke: caseState.smoke
+  }, extra || {}));
 }
 
 if (!channel) {
