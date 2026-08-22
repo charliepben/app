@@ -2723,9 +2723,14 @@ function buildArenaBus(){
   const conv = audioCtx.createConvolver(); conv.buffer = ir;
   const wet = audioCtx.createGain(); wet.gain.value = 0.5;
   const dry = audioCtx.createGain(); dry.gain.value = 0.85;
-  /* un coup de grave, pour le coffre */
+  /* Le coffre de l'annonceur. Deux réglages, et ce sont les seuls à toucher si un jour
+     tu veux plus ou moins de grave :
+       GRAVE_HZ  — jusqu'où on remonte. Plus haut = plus de poitrine, mais ça s'empâte.
+       GRAVE_DB  — de combien. Au-delà de ~14 dB ça sature et ça devient boueux. */
+  const GRAVE_HZ = 270;
+  const GRAVE_DB = 10;
   const basse = audioCtx.createBiquadFilter();
-  basse.type = 'lowshelf'; basse.frequency.value = 240; basse.gain.value = 7;
+  basse.type = 'lowshelf'; basse.frequency.value = GRAVE_HZ; basse.gain.value = GRAVE_DB;
   const entree = audioCtx.createGain();
   entree.connect(basse);
   basse.connect(dry).connect(audioCtx.destination);
