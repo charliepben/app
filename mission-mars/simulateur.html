@@ -103,11 +103,16 @@
     background:#0a0d12; box-shadow:inset 0 0 0 1px #1b232e, inset 0 3px 12px rgba(0,0,0,.8);
   }
   .seg-digit{ width:34px; height:56px; }
-  .seg-digit polygon{ fill:#1a1010; transition:fill .1s, filter .1s; }
-  .seg-digit polygon.on{ fill:#ff3b30; filter:drop-shadow(0 0 3px #ff3b30) drop-shadow(0 0 8px rgba(255,59,48,.6)); }
+  .seg-node.compact{ flex:0 0 auto; min-width:0; }
+  .seg-node.compact .seg-digit{ width:28px; height:46px; }
+  .seg-node.compact .seg-colon i{ width:5px; height:5px; }
+  .seg-digit polygon{ fill:var(--seg-off, #1a1010); transition:fill .1s, filter .1s; }
+  .seg-digit polygon.on{ fill:var(--seg, #ff3b30); filter:drop-shadow(0 0 3px var(--seg, #ff3b30)) drop-shadow(0 0 8px var(--seg-halo, rgba(255,59,48,.6))); }
+  /* le vrai afficheur de la mallette sera BLEU */
+  .seg-panel.blue{ --seg:#3ba7ff; --seg-halo:rgba(59,167,255,.6); --seg-off:#0d1723; }
   .seg-colon{ display:flex; flex-direction:column; gap:13px; padding:0 1px; }
-  .seg-colon i{ width:6px; height:6px; border-radius:50%; background:#1a1010; }
-  .seg-colon.on i{ background:#ff3b30; box-shadow:0 0 4px #ff3b30, 0 0 10px rgba(255,59,48,.6); }
+  .seg-colon i{ width:6px; height:6px; border-radius:50%; background:var(--seg-off, #1a1010); }
+  .seg-colon.on i{ background:var(--seg, #ff3b30); box-shadow:0 0 4px var(--seg, #ff3b30), 0 0 10px var(--seg-halo, rgba(255,59,48,.6)); }
   .seg-node .state{ font-family:'JetBrains Mono'; font-size:9px; color:var(--dim); }
 
   /* --- Les 3 commandes de la mallette ---
@@ -219,6 +224,11 @@
 
   <div class="section-label">Console</div>
   <div class="console-row">
+    <div class="seg-node compact">
+      <div class="name">CHRONO</div>
+      <div class="seg-panel blue" id="seg-panel"></div>
+      <div class="state" id="seg-state">—</div>
+    </div>
     <div class="start-node" id="start-node">
       <div class="name">BOUTON DÉPART</div>
       <div class="start-cap">
@@ -229,15 +239,6 @@
         <div class="led" id="start-led"></div>
       </div>
       <div class="state" id="start-state">éteint</div>
-    </div>
-  </div>
-
-  <div class="section-label">Afficheur de la mallette</div>
-  <div class="console-row">
-    <div class="seg-node">
-      <div class="name">CHRONO 4 CHIFFRES</div>
-      <div class="seg-panel" id="seg-panel"></div>
-      <div class="state" id="seg-state">—</div>
     </div>
   </div>
 
@@ -687,15 +688,21 @@ const SEG_MAP = {
   '5':'acdfg', '6':'acdefg', '7':'abc', '8':'abcdefg', '9':'abcdfg',
   '-':'g', ' ':'', '':''
 };
-/* géométrie d'un digit : 7 polygones dans un viewBox 0 0 40 70 */
+/* Géométrie d'un digit, viewBox 0 0 40 70. Segments bien DROITS (aucune inclinaison),
+   avec des bouts biseautés à 45° comme sur un vrai afficheur.
+       a          horizontales : a (haut), g (milieu), d (bas)
+     f   b        verticales   : f/b (haut), e/c (bas)
+       g
+     e   c
+       d                                                          */
 const SEG_SHAPE = {
-  a:'6,3 34,3 29,8 11,8',
-  b:'35,4 37,31 32,35 30,10',
-  c:'32,38 35,66 30,61 28,42',
-  d:'29,63 33,68 6,68 2,63',
-  e:'7,38 10,61 5,66 3,38',
-  f:'9,4 12,10 10,35 5,31',
-  g:'11,36 29,36 33,36.5 29,41 11,41 7,36.5'
+  a:'8,3  32,3  28,7  12,7',
+  b:'33,8  33,32 29,35 29,11',
+  c:'33,38 33,62 29,59 29,35',
+  d:'8,67 32,67 28,63 12,63',
+  e:'7,38  7,62 11,59 11,35',
+  f:'7,8   7,32 11,35 11,11',
+  g:'8,35 12,32 28,32 32,35 28,38 12,38'
 };
 function digitSvg(){
   return '<svg class="seg-digit" viewBox="0 0 40 70">' +

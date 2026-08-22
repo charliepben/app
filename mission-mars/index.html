@@ -128,20 +128,22 @@
   .scores-scroll{ flex:1; min-height:0; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--line) transparent; display:flex; flex-direction:column; gap:9px; }
   /* Écran large : matériel / classement / équipes, côte à côte. */
   @container device (min-width: 760px){
-    .scores-scroll{ flex-direction:row; align-items:stretch; }
+    .scores-scroll{ flex-direction:row; align-items:stretch; min-height:clamp(150px, 26vh, 340px); }
     .scores-scroll > *{ flex:1 1 0; min-width:0; }
-    .scores-scroll > .hw-col{ flex:1.15 1 0; }
-    /* côte à côte, les 3 colonnes sont courtes : on leur garantit une hauteur lisible */
-    .scores-scroll{ min-height:clamp(120px, 22vh, 300px); }
   }
-  .hw-col{
-    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:9px 10px 11px;
-    display:flex; flex-direction:column; gap:8px;
+  /* Colonne matériel : trois sections titrées, comme dans le simulateur. Les titres
+     font le travail de séparation — plus besoin d'un cadre par bloc. */
+  .hw-col{ display:flex; flex-direction:column; gap:10px; }
+  .rank-col{ display:flex; flex-direction:column; gap:9px; min-width:0; }
+  .hw-sec{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .sec-title{
+    font-family:'JetBrains Mono'; font-size:clamp(9px, 2cqw, 11px); color:var(--dim);
+    letter-spacing:.14em; padding-left:2px;
   }
-  .hw-col .lbl{
-    font-size:clamp(9.5px, 2.1cqw, 11.5px); font-family:'JetBrains Mono'; color:var(--dim);
-    letter-spacing:.09em;
-  }
+  .hw-sec .systems-row{ margin:0; }
+  .hw-sec .systems-row + .systems-row{ margin-top:6px; }
+  /* dans une colonne étroite, les tuiles ne s'étalent pas sur toute la largeur */
+  .hw-col .beam-grid, .hw-col .buttons-grid{ justify-content:flex-start; }
 
   /* ===== Bandeau du mode de mission =====
      Les visuels sont composés pour ça : la matière est à droite, la traînée s'efface vers
@@ -1223,12 +1225,43 @@
            Le matériel descend ici : il n'a pas besoin de deux rangées à lui seul, et la
            hauteur récupérée est exactement celle qui manquait en paysage. -->
       <div class="scores-scroll">
+        <!-- Colonne gauche : tout le matériel, groupé par nature. -->
         <div class="hw-col">
-          <div class="lbl">MATÉRIEL</div>
-          <div class="beam-grid" id="beam-grid"></div>
-          <div class="buttons-grid" id="buttons-grid"></div>
+          <section class="hw-sec">
+            <div class="sec-title" id="lbl-beams">FAISCEAUX</div>
+            <div class="beam-grid" id="beam-grid"></div>
+          </section>
+          <section class="hw-sec">
+            <div class="sec-title" id="lbl-buttons">BOUTONS</div>
+            <div class="buttons-grid" id="buttons-grid"></div>
+          </section>
+          <section class="hw-sec">
+            <div class="sec-title">CONSOLE</div>
+            <div class="systems-row" id="systems-row">
+              <div class="system-chip launch" id="sys-launch">
+                <span class="sdot"></span>LAUNCH SYSTEM
+                <span class="launch-info"><span id="launch-batt">--%</span></span>
+                <div class="battery"><i id="launch-batt-bar" style="width:0%"></i></div>
+              </div>
+              <div class="system-chip music-chip" id="music-bar" role="button" tabindex="0" title="Couper / remettre la musique">
+                <span class="waveform" id="waveform"><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="music-txt">
+                  <span class="t1" id="music-title">Thème de mission</span>
+                  <span class="t2" id="music-sub"></span>
+                </span>
+                <span class="music-time" id="music-time"></span>
+                <i class="music-progress" id="music-progress"></i>
+              </div>
+            </div>
+            <div class="systems-row">
+              <div class="system-chip" id="sys-gyro"><span class="sdot"></span>GYROPHARE</div>
+              <div class="system-chip" id="sys-smoke"><span class="sdot"></span>FUMÉE</div>
+            </div>
+          </section>
         </div>
 
+        <!-- Colonne droite : les deux classements, l'un sous l'autre. -->
+        <div class="rank-col">
         <div class="live-scores">
           <div class="lbl" id="lbl-live-ranking">CLASSEMENT EN DIRECT</div>
           <div id="live-scores-body"></div>
@@ -1247,26 +1280,7 @@
             <span class="team-val" id="team-val-b">0</span>
           </div>
         </div>
-      </div>
-
-      <!-- Rangée des systèmes : la mallette, la musique, puis les deux effets. -->
-      <div class="systems-row" id="systems-row">
-        <div class="system-chip launch" id="sys-launch">
-          <span class="sdot"></span>LAUNCH SYSTEM
-          <span class="launch-info"><span id="launch-batt">--%</span></span>
-          <div class="battery"><i id="launch-batt-bar" style="width:0%"></i></div>
-        </div>
-        <div class="system-chip music-chip" id="music-bar" role="button" tabindex="0" title="Couper / remettre la musique">
-          <span class="waveform" id="waveform"><i></i><i></i><i></i><i></i><i></i></span>
-          <span class="music-txt">
-            <span class="t1" id="music-title">Thème de mission</span>
-            <span class="t2" id="music-sub"></span>
-          </span>
-          <span class="music-time" id="music-time"></span>
-          <i class="music-progress" id="music-progress"></i>
-        </div>
-        <div class="system-chip" id="sys-gyro"><span class="sdot"></span>GYROPHARE</div>
-        <div class="system-chip" id="sys-smoke"><span class="sdot"></span>FUMÉE</div>
+        </div><!-- /rank-col -->
       </div>
 
       <div class="mission-controls">
@@ -3335,14 +3349,8 @@ function renderRoundTrack(){
       '</span>');
   }
 
-  /* Qui passe après ? C'est ici qu'on le dit maintenant, et on le dit franchement. */
-  const nextCrew = playersAt(queueIndex + n, n);
-  const nextHtml = nextCrew.length
-    ? `<div class="rt-next"><span class="rt-next-lbl">${w('next').toUpperCase()}</span>` +
-      nextCrew.map(p => `<span class="rt-next-one">${avatarHtml(p, 'pip')}` +
-        `<b style="color:${colorOf(p)}">${p.name}</b></span>`).join('<span class="rt-next-sep">' +
-        (n === 2 ? 'vs' : '&amp;') + '</span>') + '</div>'
-    : '';
+  /* Pas de ligne « suivant » : les pastilles ci-dessus disent déjà qui passe quand. */
+  const nextHtml = '';
 
   const total = roundsTarget > 0 ? '/' + roundsTarget : '';
   el.innerHTML =
