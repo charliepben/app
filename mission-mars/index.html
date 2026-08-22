@@ -432,9 +432,14 @@
   .peer-name i{ color:var(--dim); font-size:.85em; }
   .peer-role{ font-family:'JetBrains Mono'; font-size:.85em; color:var(--dim); flex-shrink:0; }
   .peer.pilot .peer-role{ color:var(--green); }
-  /* Un écran qui suit peut demander, pas décider : son bouton reste actif mais transmet. */
-  body.is-follower .btn-toggle{ filter:saturate(.55); }
-  body.is-follower .btn-toggle::after{ content:" · via le pilote"; font-size:.72em; opacity:.75; }
+  .peer.self{ cursor:pointer; }
+  .peer.self:hover{ border-color:var(--dim); }
+  .peer-rename{
+    flex:1; min-width:0; background:#141b25; border:1px solid var(--green); border-radius:7px;
+    color:var(--text); font-family:inherit; font-size:inherit; padding:2px 7px;
+  }
+  /* Un écran secondaire commande exactement comme le pilote : rien ne le distingue ici.
+     Qui pilote se lit dans le badge de l'en-tête et la liste des écrans, ça suffit. */
 
   /* Réglages en deux onglets : ce qui sert à jouer, et le reste. */
   .sheet-tabs{ display:flex; gap:4px; background:#141b25; border:1px solid var(--line); border-radius:11px; padding:3px; }
@@ -622,7 +627,7 @@
      Plus de croix ni de note : ce sont LES BARRES qui disent tout — violettes quand la
      musique est active, grises quand elle est coupée, animées pendant la lecture. */
   .system-chip.music-chip{
-    flex:1.7; position:relative; overflow:hidden; gap:7px; padding-bottom:11px;
+    flex:1.7; position:relative; overflow:hidden; gap:9px; padding:8px 12px 11px;
     justify-content:flex-start; text-align:left;
   }
   .system-chip.music-chip .music-txt{ flex:1; min-width:0; display:flex; flex-direction:column; line-height:1.15; }
@@ -767,17 +772,20 @@
   .wizard-player-team{ font-family:'JetBrains Mono'; font-size:clamp(11px, 2.6cqw, 14px); margin-top:3px; opacity:.85; }
   /* Transition entre étapes : le contenu arrive de loin, en tournant légèrement et en
      grandissant. 26 px de glissement, ça ne se voyait pas — là, ça se voit. */
+  /* Une translation franche, et rien d'autre : la rotation et le flou faisaient
+     « mystique », ce n'est pas le sujet. Le contenu entre du côté d'où on vient,
+     dépasse légèrement, et se pose. */
   @keyframes stepInNext{
-    0%{ opacity:0; transform:translateX(90px) scale(.9) rotate(2.2deg); filter:blur(6px); }
-    55%{ opacity:1; filter:blur(0); }
-    75%{ transform:translateX(-10px) scale(1.02) rotate(-.4deg); }
-    100%{ opacity:1; transform:none; filter:blur(0); }
+    0%{ opacity:0; transform:translateX(150px); }
+    60%{ opacity:1; }
+    78%{ transform:translateX(-14px); }
+    100%{ opacity:1; transform:none; }
   }
   @keyframes stepInPrev{
-    0%{ opacity:0; transform:translateX(-90px) scale(.9) rotate(-2.2deg); filter:blur(6px); }
-    55%{ opacity:1; filter:blur(0); }
-    75%{ transform:translateX(10px) scale(1.02) rotate(.4deg); }
-    100%{ opacity:1; transform:none; filter:blur(0); }
+    0%{ opacity:0; transform:translateX(-150px); }
+    60%{ opacity:1; }
+    78%{ transform:translateX(14px); }
+    100%{ opacity:1; transform:none; }
   }
   .wizard-body.step-next{ animation:stepInNext .52s cubic-bezier(.18,.85,.28,1); }
   .wizard-body.step-prev{ animation:stepInPrev .52s cubic-bezier(.18,.85,.28,1); }
@@ -975,7 +983,7 @@
     font-family:'JetBrains Mono'; font-size:clamp(12px, 2.8cqw, 15px); color:var(--dim);
   }
   .run-hud.show{ display:block; }
-  .run-hud .hud-big{ font-family:'Orbitron'; font-weight:900; font-size:clamp(22px, 6cqw, 32px); color:#fff; vertical-align:middle; }
+  .run-hud .hud-big{ font-family:'Orbitron'; font-weight:900; font-size:clamp(22px, 6cqw, 32px); color:#fff; line-height:1.15; margin-top:2px; }
   .run-hud .hud-lost{ color:var(--red); }
   .run-hud .hud-warn{ color:var(--amber); }
   .run-hud .hud-bad{ color:var(--red); font-weight:700; }
@@ -2695,6 +2703,49 @@ document.getElementById('music-bar').addEventListener('click', () => {
   else renderMusicBar(false);
 });
 
+/* ===== La voix de l'annonceur =====
+   Le fichier brut est une voix d'homme neutre. Ce qui fait le grain « annonceur d'arène »,
+   ce n'est pas la voix elle-même : c'est ce qu'on met dessus. On la descend d'un demi-ton
+   pour la rendre plus grave, et on la passe dans une grande réverbération synthétique.
+   Le résultat sonne comme une annonce dans un hangar, pas comme un message vocal. */
+let arenaBus = null;
+function buildArenaBus(){
+  if (arenaBus || !audioCtx) return arenaBus;
+  const dur = 2.2, sr = audioCtx.sampleRate;
+  const ir = audioCtx.createBuffer(2, Math.floor(sr * dur), sr);
+  for (let c = 0; c < 2; c++) {
+    const d = ir.getChannelData(c);
+    for (let i = 0; i < d.length; i++) {
+      /* bruit qui décroît : une réverbération de grande salle, en trois lignes */
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.6);
+    }
+  }
+  const conv = audioCtx.createConvolver(); conv.buffer = ir;
+  const wet = audioCtx.createGain(); wet.gain.value = 0.5;
+  const dry = audioCtx.createGain(); dry.gain.value = 0.85;
+  /* un coup de grave, pour le coffre */
+  const basse = audioCtx.createBiquadFilter();
+  basse.type = 'lowshelf'; basse.frequency.value = 240; basse.gain.value = 7;
+  const entree = audioCtx.createGain();
+  entree.connect(basse);
+  basse.connect(dry).connect(audioCtx.destination);
+  basse.connect(conv).connect(wet).connect(audioCtx.destination);
+  arenaBus = entree;
+  return arenaBus;
+}
+function playAnnouncer(name){
+  const buf = soundBuffers[name];
+  if (!buf || !audioCtx) return false;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const bus = buildArenaBus();
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  src.playbackRate.value = 0.86;   /* plus grave, plus lent : plus imposant */
+  src.connect(bus);
+  src.start(0);
+  return true;
+}
+
 /* Voix de l'annonceur : playVoice(5)… playVoice(1), puis playVoice('go').
    Si le fichier manque, on retombe sur un bip — le décompte reste audible. */
 function playVoice(key){
@@ -2702,7 +2753,7 @@ function playVoice(key){
   preloadSounds();
   if (!soundOn) return;
   const name = key === 'go' ? 'voiceGo' : 'voice' + key;
-  if (playBuffer(name, 1)) return;
+  if (playAnnouncer(name)) return;
   if (key === 'go') {
     tone({ type:'sawtooth', from:200, to:620, dur:0.45, vol:0.35 });
     noise({ dur:0.4, vol:0.28, filterFrom:400, filterTo:3200, type:'bandpass' });
@@ -2844,7 +2895,8 @@ const RULES = {
       runCountdown(5, () => {
         r.phase = 'launch';
         go();
-        play('liftoff');
+        /* pas de son par-dessus le « GO » de l'annonceur : il se suffit à lui-même.
+           Le `liftoff` qui traînait ici était un sifflement de cinq secondes. */
         flashScoreBanner('GO !', 'good');
         syncLamps();
         renderRunHud();
@@ -3048,8 +3100,10 @@ function renderRunHud(){
     return;
   }
   if (lastResult) {
-    el.innerHTML = `<span class="hud-done">${lastResult.who}</span> ` +
-                   `<span class="hud-big">${lastResult.label}</span>`;
+    /* deux lignes : qui a joué, puis ce qui s'est passé. Sur une seule ligne
+       « Timéo vs Robin Victoire de Robin » se lisait mal. */
+    el.innerHTML = `<div class="hud-done">${lastResult.who}</div>` +
+                   `<div class="hud-big">${lastResult.label}</div>`;
     el.classList.add('show');
     return;
   }
@@ -3186,8 +3240,36 @@ function guessDeviceName(){
   if (/Android/.test(ua)) return touch ? 'Tablette Android' : 'Téléphone Android';
   return 'Ordinateur';
 }
-const DEVICE_NAME = guessDeviceName();
-const JOINED_AT = Date.now();
+/* Le navigateur ne connaît PAS le nom de la machine : aucune API ne l'expose, et c'est
+   volontaire (ce serait un identifiant de plus). On devine donc le TYPE d'appareil, et on
+   laisse renommer — le nom choisi reste sur l'appareil. */
+let DEVICE_NAME = (function(){
+  try { return localStorage.getItem('mission-mars-nom') || guessDeviceName(); }
+  catch (e) { return guessDeviceName(); }
+})();
+
+/* L'ancienneté survit à un rafraîchissement : sinon l'ordinateur qui recharge sa page
+   redevenait le plus jeune et cédait le pilotage au téléphone. Elle est propre à l'onglet,
+   donc elle disparaît quand on ferme vraiment l'écran — ce qui est le bon comportement. */
+const JOINED_AT = (function(){
+  try {
+    let t = parseInt(sessionStorage.getItem('mission-mars-depuis') || '', 10);
+    if (!t) { t = Date.now(); sessionStorage.setItem('mission-mars-depuis', String(t)); }
+    return t;
+  } catch (e) { return Date.now(); }
+})();
+
+/* Au chargement, on se tait quelques instants : le temps de recevoir l'état de celui qui
+   pilotait pendant notre absence. On reprend la main ensuite, avec les données à jour —
+   et pas avec celles, périmées, qu'on avait avant de recharger. */
+let adopting = true;
+function endAdoption(){
+  if (!adopting) return;
+  adopting = false;
+  renderPeers();
+  updateMissionControls();
+}
+setTimeout(endAdoption, 2000);
 
 /* id -> { id, name, since, seen } */
 const peers = {};
@@ -3200,7 +3282,36 @@ function livePeers(){
 }
 /* Le pilote est le plus ancien connecté. Rien à négocier, tout le monde tombe d'accord. */
 function pilotId(){ const l = livePeers(); return l.length ? l[0].id : DEVICE_ID; }
-function isPilot(){ return pilotId() === DEVICE_ID; }
+function isPilot(){ return !adopting && pilotId() === DEVICE_ID; }
+
+/* Renommer son écran : « iPad » devient « iPad de la mallette » si on veut. */
+function renommerEcran(){
+  const host = document.getElementById('peers-list');
+  const ligne = host.querySelector('.peer.self');
+  if (!ligne || ligne.querySelector('input')) return;
+  const champ = document.createElement('input');
+  champ.className = 'peer-rename';
+  champ.value = DEVICE_NAME;
+  champ.maxLength = 24;
+  ligne.querySelector('.peer-name').replaceWith(champ);
+  champ.focus();
+  champ.select();
+  const valider = () => {
+    const nom = champ.value.trim().slice(0, 24);
+    if (nom) {
+      DEVICE_NAME = nom;
+      peers[DEVICE_ID].name = nom;
+      try { localStorage.setItem('mission-mars-nom', nom); } catch (e) {}
+      announceSelf();
+    }
+    renderPeers();
+  };
+  champ.addEventListener('blur', valider);
+  champ.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); champ.blur(); }
+    if (e.key === 'Escape') { champ.value = DEVICE_NAME; champ.blur(); }
+  });
+}
 
 function announceSelf(){
   broadcastToSim({ type:'peer', id:DEVICE_ID, name:DEVICE_NAME, since:JOINED_AT });
@@ -3223,11 +3334,13 @@ function renderPeers(){
   const list = livePeers();
   const pid = pilotId();
   host.innerHTML = list.map(p => `
-    <div class="peer ${p.id === pid ? 'pilot' : ''}${p.self ? ' self' : ''}">
+    <div class="peer ${p.id === pid ? 'pilot' : ''}${p.self ? ' self' : ''}"${p.self ? ' title="Toucher pour renommer cet écran"' : ''}>
       <span class="peer-dot"></span>
       <span class="peer-name">${p.name}${p.self ? ' <i>(cet écran)</i>' : ''}</span>
       <span class="peer-role">${p.id === pid ? 'pilote' : 'suit'}</span>
     </div>`).join('');
+  const moi = host.querySelector('.peer.self');
+  if (moi) moi.addEventListener('click', renommerEcran);
   const badge = document.getElementById('role-badge');
   if (badge) {
     badge.textContent = isPilot() ? 'PILOTE' : 'ÉCRAN SECONDAIRE';
@@ -3339,6 +3452,10 @@ function applySnapshot(evt){
   renderScoresTab();
   setStatus();
   updateMissionControls();
+
+  /* On tenait l'état de celui qui pilotait : si c'est nous le plus ancien, on reprend
+     la main tout de suite, avec ses données. */
+  if (adopting && pilotId() === DEVICE_ID) endAdoption();
 }
 /* Le chrono d'un écran secondaire avance seul, et se recale à chaque snapshot. */
 setInterval(() => {
@@ -3350,10 +3467,11 @@ setInterval(() => {
   document.getElementById('timer-cs').textContent = t.cs;
 }, 40);
 
-/* Un écran secondaire ne décide pas : il demande. Le pilote exécute. */
+/* Un écran secondaire commande comme les autres : le geste est le même, c'est juste le
+   pilote qui exécute — parce que lui seul tient les comptes. Rien à signaler à l'écran :
+   l'effet arrive par le snapshot suivant, en une fraction de seconde. */
 function sendIntent(action){
   broadcastToSim({ type:'intent', action, from:DEVICE_ID });
-  flashScoreBanner('Demande envoyée au pilote', 'warn');
 }
 function applyIntent(evt){
   if (!isPilot()) return;
