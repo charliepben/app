@@ -70,10 +70,12 @@
   }
   .start-node .name{ font-family:'Orbitron'; font-size:12px; letter-spacing:1.2px; color:var(--dim); }
   /* l'embase reste stable ; seul le dôme intérieur est piloté par l'appli */
+  /* Une seule auréole : l'embase. L'anneau LED est déjà un cercle lumineux, deux
+     cercles concentriques de plus rendaient le bouton illisible. */
   .start-cap{
     position:relative;
     width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    background:#0c1119; box-shadow:inset 0 0 0 5px #171f2a, 0 6px 16px -6px #000;
+    background:#0c1119; box-shadow:0 6px 16px -6px #000;
   }
   /* Anneau LED autour du bouton : l'appli s'en sert de barre de chargement pendant
      un décompte, puis le fait clignoter pour donner le départ. */
@@ -103,7 +105,7 @@
     background:#0a0d12; box-shadow:inset 0 0 0 1px #1b232e, inset 0 3px 12px rgba(0,0,0,.8);
   }
   .seg-digit{ width:34px; height:56px; }
-  .seg-node.compact{ flex:0 0 auto; min-width:0; }
+  .seg-node.compact{ flex:1; min-width:180px; }   /* même largeur que le bouton de départ */
   .seg-node.compact .seg-digit{ width:28px; height:46px; }
   .seg-node.compact .seg-colon i{ width:5px; height:5px; }
   .seg-digit polygon{ fill:var(--seg-off, #1a1010); transition:fill .1s, filter .1s; }

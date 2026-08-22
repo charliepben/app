@@ -318,16 +318,27 @@
   .rt-head .rt-count{ margin-left:auto; }
   .rt-bar{ height:3px; border-radius:3px; background:#1c2836; margin-top:6px; overflow:hidden; }
   .rt-bar i{ display:block; height:100%; border-radius:3px; background:var(--green); box-shadow:0 0 8px var(--green); transition:width .35s ease; }
-  .rt-pips{ display:flex; align-items:center; gap:clamp(4px, 1.2cqw, 8px); margin-top:8px; flex-wrap:wrap; }
-  .rt-pip{ position:relative; display:flex; align-items:center; gap:3px; transition:transform .2s, opacity .2s; }
+  .rt-pips{ display:flex; align-items:flex-start; gap:clamp(6px, 1.6cqw, 12px); margin:12px 0 10px; flex-wrap:wrap; }
+  .rt-pip{
+    position:relative; display:flex; flex-direction:column; align-items:center; gap:4px;
+    transition:transform .2s, opacity .2s; min-width:0;
+  }
+  /* le prénom sous la photo : on sait qui est qui sans survoler */
+  .rt-pip .rt-nom{
+    font-size:clamp(8.5px, 1.9cqw, 10.5px); font-family:'JetBrains Mono'; color:var(--dim);
+    max-width:clamp(34px, 8cqw, 56px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .rt-pip.now .rt-nom{ color:var(--text); font-weight:700; }
+  .rt-pip .rt-photos{ display:flex; gap:2px; }
   .rt-pip .avatar.pip{
-    width:clamp(20px, 5cqw, 30px); height:clamp(20px, 5cqw, 30px); border-radius:8px;
-    font-size:clamp(9px, 2.2cqw, 13px);
+    width:clamp(22px, 5.4cqw, 34px); height:clamp(22px, 5.4cqw, 34px); border-radius:8px;
+    font-size:clamp(10px, 2.4cqw, 14px);
   }
   .rt-pip.done{ opacity:.4; }
   .rt-pip.done::after{
-    content:"✓"; position:absolute; right:-2px; bottom:-3px; font-size:9px; line-height:1;
-    color:var(--green); text-shadow:0 0 4px var(--bg), 0 0 4px var(--bg);
+    content:"✓"; position:absolute; right:-4px; top:calc(100% - 1.35em - 14px);
+    font-size:clamp(15px, 3.4cqw, 20px); line-height:1; font-weight:700;
+    color:var(--green); text-shadow:0 0 5px var(--bg), 0 0 5px var(--bg), 0 0 9px var(--bg);
   }
   .rt-pip.todo{ opacity:.62; }
   .rt-pip.now{ transform:scale(1.16); }
@@ -390,7 +401,15 @@
   .beam.knob.on.r .led{ background:radial-gradient(circle at 35% 30%, #fff0f0 0%, var(--red) 55%, rgba(255,77,94,0) 78%); box-shadow:0 0 7px 2px var(--red), 0 0 18px 5px rgba(255,77,94,.4); }
   .beam.knob.on.b .led{ background:radial-gradient(circle at 35% 30%, #ecf8ff 0%, var(--blue) 55%, rgba(77,195,255,0) 78%); box-shadow:0 0 7px 2px var(--blue), 0 0 18px 5px rgba(77,195,255,.4); }
   .beam.knob.off .led{ background:#1c2836; box-shadow:inset 0 0 0 1px #2a3644; }
-  .beam.knob.pressed .led{ box-shadow:0 0 0 5px rgba(255,255,255,0.3), 0 0 16px 5px #fff !important; }
+  /* L'appui se voyait sur `.led`… que l'on masque depuis que la FORME est la lampe.
+     Autrement dit : appuyer sur un bouton n'avait plus aucun effet visible. */
+  .beam.knob.pressed{ transform:scale(.93); }
+  .beam.knob.pressed .role-icon{
+    color:#fff !important; opacity:1 !important;
+    filter:drop-shadow(0 0 5px #fff) drop-shadow(0 0 16px rgba(255,255,255,.85)) !important;
+  }
+  .beam.knob.pressed .start-ring{ color:#fff !important; }
+  .beam.knob{ transition:transform .08s; }
   .beam.knob.unused{ opacity:.32; filter:grayscale(1); }
   .beam.knob.unused .led{ background:#1c2836 !important; box-shadow:inset 0 0 0 1px #2a3644 !important; }
   .beam.knob.arrival{ border-color:var(--amber); }
@@ -545,10 +564,15 @@
   @keyframes ringBlink{ 0%,49%{ opacity:1; } 50%,100%{ opacity:.12; } }
   .start-ring circle{ fill:none; stroke-width:4.5; stroke-linecap:round; }
   .start-ring .ring-bg{ stroke:#1b2532; }
+  /* Le halo est porté par le CERCLE, pas par le <svg>. Un filtre posé sur le SVG
+     s'applique à toute sa surface carrée et peut laisser voir un rectangle de
+     compositing ; posé sur le tracé, sa zone d'effet épouse l'anneau. */
   .start-ring .ring-fg{
-    stroke:currentColor; stroke-dasharray:125.7; stroke-dashoffset:125.7;
+    stroke:currentColor; fill:none; stroke-dasharray:125.7; stroke-dashoffset:125.7;
     transition:stroke-dashoffset .12s linear;
+    filter:drop-shadow(0 0 2.5px currentColor) drop-shadow(0 0 8px currentColor);
   }
+  .start-ring.eteint .ring-fg{ filter:none; }
 
   /* Pastille "Launch System" : état de la mallette. Elle est VIOLETTE, comme
      l'interrupteur qui l'alimente — et elle s'éteint avec lui. */
@@ -1382,7 +1406,7 @@
           <span class="ic">↺</span><span><b>Recommencer la manche</b><i>même joueur, tout repart à zéro</i></span>
         </button>
         <button class="stop-choice next" id="stop-next">
-          <span class="ic">→</span><span><b>Joueur suivant</b><i>la manche est enregistrée telle quelle</i></span>
+          <span class="ic">■</span><span><b>Arrêter la mission</b><i>la manche est enregistrée telle quelle</i></span>
         </button>
       </div>
     </div>
@@ -1822,6 +1846,9 @@ function startLamp(){
 
 /* Envoie l'état de TOUTES les lampes au boîtier et met l'affichage local en accord. */
 function syncLamps(){
+  /* Seul le pilote commande le matériel. Un écran secondaire reçoit les lampes déjà
+     calculées dans le snapshot — sinon il en calculerait d'autres, faute de manche. */
+  if (typeof isPilot === 'function' && !isPilot()) return;
   buttonIds().forEach(id => {
     const lamp = buttonLampFor(id);
     broadcastToSim({ type:'lamp', target:'button', id, ...lamp });
@@ -2062,14 +2089,13 @@ function applyStartLamp(lamp){
   const ring = el.querySelector('.start-ring');
   const fg = el.querySelector('.ring-fg');
   const c = off ? '38,49,63' : `${lamp.r},${lamp.g},${lamp.b}`;
-  const a = off ? 0 : (lamp.brightness || 0) / 100;
   const filled = off ? 0 : (lamp.mode === 'bar' ? Math.max(0, Math.min(1, lamp.ratio || 0)) : 1);
 
   if (fg) fg.style.strokeDashoffset = String(RING_LEN * (1 - filled));
   if (ring) {
+    /* on ne pose ici QUE la couleur : le halo est décrit en CSS, sur le tracé lui-même */
     ring.style.color = off ? '#26313f' : `rgb(${c})`;
-    ring.style.filter = off ? 'none'
-      : `drop-shadow(0 0 ${2 + 3 * a}px rgba(${c},.9)) drop-shadow(0 0 ${8 + 10 * a}px rgba(${c},.5))`;
+    ring.classList.toggle('eteint', off);
     ring.style.animation = (lamp.mode === 'blink' && !off)
       ? `ringBlink ${lamp.periodMs || 200}ms steps(1, end) infinite` : 'none';
   }
@@ -2727,8 +2753,8 @@ function buildArenaBus(){
      tu veux plus ou moins de grave :
        GRAVE_HZ  — jusqu'où on remonte. Plus haut = plus de poitrine, mais ça s'empâte.
        GRAVE_DB  — de combien. Au-delà de ~14 dB ça sature et ça devient boueux. */
-  const GRAVE_HZ = 270;
-  const GRAVE_DB = 10;
+  const GRAVE_HZ = 300;
+  const GRAVE_DB = 14;
   const basse = audioCtx.createBiquadFilter();
   basse.type = 'lowshelf'; basse.frequency.value = GRAVE_HZ; basse.gain.value = GRAVE_DB;
   const entree = audioCtx.createGain();
@@ -2738,6 +2764,21 @@ function buildArenaBus(){
   arenaBus = entree;
   return arenaBus;
 }
+/* Les enregistrements commencent par un souffle de silence. Joué tel quel, le mot tombe
+   APRÈS le chiffre affiché — d'où l'impression de décalage. On cherche donc le premier
+   vrai son du fichier et on démarre la lecture là, pas au début. Mesuré une fois par
+   fichier, puis gardé. */
+const debutsUtiles = {};
+function debutUtile(name, buf){
+  if (debutsUtiles[name] !== undefined) return debutsUtiles[name];
+  const d = buf.getChannelData(0);
+  let i = 0;
+  while (i < d.length && Math.abs(d[i]) < 0.012) i++;
+  /* on garde 10 ms avant l'attaque, sinon le mot claque */
+  debutsUtiles[name] = Math.max(0, i / buf.sampleRate - 0.01);
+  return debutsUtiles[name];
+}
+
 function playAnnouncer(name){
   const buf = soundBuffers[name];
   if (!buf || !audioCtx) return false;
@@ -2745,15 +2786,16 @@ function playAnnouncer(name){
   const bus = buildArenaBus();
   const src = audioCtx.createBufferSource();
   src.buffer = buf;
-  src.playbackRate.value = 0.86;   /* plus grave, plus lent : plus imposant */
+  src.playbackRate.value = 0.78;   /* plus grave, plus lent : plus imposant */
   src.connect(bus);
-  src.start(0);
+  src.start(0, debutUtile(name, buf));   /* pile sur l'attaque du mot */
   return true;
 }
 
 /* Voix de l'annonceur : playVoice(5)… playVoice(1), puis playVoice('go').
    Si le fichier manque, on retombe sur un bip — le décompte reste audible. */
 function playVoice(key){
+  if (!isPilot()) return;   /* voir play() : un seul écran fait du bruit */
   initAudio();
   preloadSounds();
   if (!soundOn) return;
@@ -2768,6 +2810,9 @@ function playVoice(key){
 }
 
 function play(name, arg){
+  /* UN SEUL écran fait du bruit : celui qui pilote. Sinon deux appareils jouent le même
+     son à quelques dizaines de millisecondes d'écart, et ça part en cacophonie. */
+  if (!isPilot()) return;
   initAudio();
   preloadSounds();
   if (!soundOn) return;
@@ -3032,7 +3077,10 @@ function clearCountdown(){
   showCountdown(null);
   setStartRing('auto');
 }
+let countdownShown = null;
 function showCountdown(n){
+  countdownShown = n;
+  if (isPilot()) broadcastState(false);   /* le décompte doit apparaître sur tous les écrans */
   const el = document.getElementById('countdown-overlay');
   if (n === null) { el.classList.remove('show', 'go'); return; }
   el.classList.toggle('go', typeof n === 'string');
@@ -3384,11 +3432,38 @@ function snapshotMessage(){
     /* les réglages qui changent ce qu'on AFFICHE doivent suivre : sans la durée du mode,
        un écran secondaire décompterait à partir d'une autre valeur que le pilote */
     modeDurations, beamRelightSec, fireExtinguisherId, hardBeams,
+    countdown: countdownShown,   /* pour que le décompte s'affiche partout, pas que sur le pilote */
+    /* ----- l'état du MATÉRIEL, tel que le pilote le connaît -----
+       Un écran secondaire ne peut pas le deviner : il n'a pas forcément reçu les messages
+       envoyés avant son arrivée. C'est exactement ce qui produisait « PRÊT — DÉPART ARMÉ »
+       d'un côté et « LASERS COUPÉS » de l'autre. Le pilote fait foi, un point c'est tout. */
+    launch: launchState,
+    systems: systemState,
+    topology: TOPOLOGY,
+    beams: beamStateSnapshot(),
+    lamps: lampSnapshot(),
     elapsedMs: running ? Math.round(performance.now() - startTime) : null,
     hud: (run && rules().hud) ? rules().hud(run) : null,
     lastResult, liveScores, teamTally
   };
 }
+/* L'état visuel de chaque faisceau ('on' / 'off' / 'hit'), tel qu'affiché. */
+function beamStateSnapshot(){
+  const out = {};
+  document.querySelectorAll('.beam-grid .beam').forEach(el => {
+    out[el.dataset.beam] = el.classList.contains('hit') ? 'hit'
+                         : (el.classList.contains('off') ? 'off' : 'on');
+  });
+  return out;
+}
+/* Les lampes telles que le pilote les commande. Un écran secondaire n'a pas de manche en
+   cours : sans ça, il afficherait les lampes du repos pendant que le pilote joue. */
+function lampSnapshot(){
+  const out = { start: startLamp() };
+  buttonIds().forEach(id => { out[id] = buttonLampFor(id); });
+  return out;
+}
+
 function broadcastState(full){
   if (!isPilot()) return;
   if (full) broadcastToSim(rosterMessage());
@@ -3444,6 +3519,31 @@ function applySnapshot(evt){
     running = false;
     renderTimerIdle();
   }
+
+  /* ----- le matériel, recopié du pilote ----- */
+  if (evt.topology && Array.isArray(evt.topology.beams) &&
+      evt.topology.beams.length !== TOPOLOGY.beams.length) {
+    applyTopology(evt.topology);
+  }
+  if (evt.launch) { launchState = evt.launch; renderLaunchSystem(); }
+  if (evt.systems) {
+    Object.keys(evt.systems).forEach(k => {
+      systemState[k] = evt.systems[k];
+      const el = document.getElementById('sys-' + k);
+      if (el) {
+        el.classList.toggle('active', evt.systems[k] === 'active');
+        el.classList.toggle('absent', evt.systems[k] === 'absent');
+      }
+    });
+  }
+  if (evt.beams) Object.keys(evt.beams).forEach(id => setBeamState(+id, evt.beams[id]));
+  if (evt.lamps) {
+    if (evt.lamps.start) applyStartLamp(evt.lamps.start);
+    buttonIds().forEach(id => { if (evt.lamps[id]) applyButtonLamp(id, evt.lamps[id]); });
+  }
+
+  /* le décompte du duel, sur cet écran aussi */
+  if (evt.countdown !== countdownShown) showCountdown(evt.countdown === undefined ? null : evt.countdown);
 
   const hud = document.getElementById('run-hud');
   if (evt.hud) { hud.innerHTML = evt.hud; hud.classList.add('show'); }
@@ -3583,6 +3683,7 @@ function printScore(name, meta, time, note){
    à 30 Hz pour un afficheur qui bouge une fois par seconde. */
 let lastDisplay = null;
 function sendDisplay(text){
+  if (!isPilot()) return;   /* un seul écran commande le matériel */
   const t = String(text).slice(0, 5);
   if (t === lastDisplay) return;
   lastDisplay = t;
@@ -3701,7 +3802,8 @@ function renderRoundTrack(){
     const crew = playersAt(roundStartIndex + i * n, n);
     const cls = i < done ? 'done' : (i === nowSlot ? 'now' : 'todo');
     slots.push(`<span class="rt-pip ${cls}">` +
-      crew.map(p => avatarHtml(p, 'pip', `title="${p.name}"`)).join('') +
+      `<span class="rt-photos">${crew.map(p => avatarHtml(p, 'pip', `title="${p.name}"`)).join('')}</span>` +
+      `<span class="rt-nom">${crew.map(p => p.name).join(' · ')}</span>` +
       '</span>');
   }
 
@@ -4615,6 +4717,14 @@ function askStopChoice(){
   document.getElementById('stop-overlay').classList.add('show');
 }
 function closeStopChoice(){ document.getElementById('stop-overlay').classList.remove('show'); }
+
+/* Cliquer à côté des trois choix = « en fait, non » : on reprend là où on en était.
+   C'est le geste naturel pour annuler, et il ne coûte rien puisque rien n'était décidé. */
+document.getElementById('stop-overlay').addEventListener('click', (e) => {
+  if (e.target.id !== 'stop-overlay') return;   /* un clic SUR un choix ne compte pas ici */
+  closeStopChoice();
+  if (missionState === 'paused') togglePause();
+});
 
 document.getElementById('stop-resume').addEventListener('click', () => {
   closeStopChoice();
