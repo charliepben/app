@@ -2117,6 +2117,7 @@ function applyStartLamp(lamp){
    jusqu'au vrai bouton. Le choix est mémorisé d'une manche à l'autre. */
 function pickExtinguisher(id){
   if (currentModeKey !== 'fire' || !buttonIds().includes(id)) return;
+  if (!isPilot()) { sendIntent('ext:' + id); return; }   /* en manche : le pilote décide */
   fireExtinguisherId = id;
   if (run && run.extinguisher != null && !run.failed) run.extinguisher = id;
   saveState();
@@ -3588,17 +3589,39 @@ setInterval(() => {
   document.getElementById('timer-cs').textContent = t.cs;
 }, 40);
 
-/* Un écran secondaire commande comme les autres : le geste est le même, c'est juste le
-   pilote qui exécute — parce que lui seul tient les comptes. Rien à signaler à l'écran :
-   l'effet arrive par le snapshot suivant, en une fraction de seconde. */
+/* ===== AGIR DEPUIS UN ÉCRAN SECONDAIRE =====
+   Une seule règle, plutôt que dix cas particuliers :
+
+     HORS MANCHE — toucher une commande donne le pilotage à cet écran. Celui qui règle la
+     partie la tient ; sinon il réglerait dans le vide, le pilote lui réécrivant son état
+     une demi-seconde plus tard. C'est intercepté EN AMONT du gestionnaire, donc tout
+     fonctionne ensuite normalement, sans rien câbler bouton par bouton.
+
+     PENDANT UNE MANCHE — on ne retire pas le matériel des mains de l'écran principal au
+     milieu d'un tour : la commande lui est transmise, et il l'exécute.                  */
+
+/* Ce qui ne prend PAS le pilotage : naviguer, regarder, renommer son écran. */
+const SANS_PILOTAGE = '#open-config, #open-scores, .sheet-close, .sheet-tab, .peer, ' +
+                      '#mode-banner, .btn-print, #music-bar, .mp-play, .scores-scroll';
+
+document.addEventListener('pointerdown', (e) => {
+  if (isPilot() || inMissionNow()) return;
+  const cible = e.target.closest('button, input, select, .switch, .mcard, .beam.knob, .agent-row, .roster-chip');
+  if (!cible || cible.closest(SANS_PILOTAGE)) return;
+  claimPilot();
+}, true);   /* capture : on passe avant le gestionnaire, qui s'exécutera en pilote */
+
 function sendIntent(action){
   broadcastToSim({ type:'intent', action, from:DEVICE_ID });
 }
 function applyIntent(evt){
-  if (!isPilot()) return;
-  if (evt.action === 'next') { if (missionState === 'finished') armNext(); }
-  else if (evt.action === 'stop') { if (missionState === 'countdown') cancelLaunch(); else askStopChoice(); }
-  else if (evt.action === 'scores') { if (gameIsOver()) showGameOver(); }
+  if (!isPilot() || !evt.action) return;
+  const [nom, arg] = String(evt.action).split(':');
+  if (nom === 'next')        { if (missionState === 'finished') armNext(); }
+  else if (nom === 'stop')   { if (missionState === 'countdown') cancelLaunch(); else askStopChoice(); }
+  else if (nom === 'scores') { if (gameIsOver()) showGameOver(); }
+  else if (nom === 'gyro')   { document.getElementById('sys-gyro').click(); }
+  else if (nom === 'ext')    { pickExtinguisher(+arg); }
 }
 
 /* Détection des messages perdus : un trou dans la numérotation veut dire qu'on a raté
@@ -4925,6 +4948,7 @@ function setSystemState(key, state, fromHardware){
 }
 
 document.getElementById('sys-gyro').addEventListener('click', function(){
+  if (!isPilot()) { sendIntent('gyro'); return; }
   if (systemState.gyro === 'absent') return;
   /* Allumage FORCÉ : il reste allumé jusqu'à ce qu'on le rééteigne, ou que le jeu
      reprenne la main au démarrage d'une mission. */
