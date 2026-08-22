@@ -92,21 +92,59 @@
   .start-node .led{ width:52px; height:52px; margin:0; border-radius:50%; }
   .start-node:active .start-cap{ transform:translateY(2px); }
 
-  /* --- Arrêt d'urgence : champignon rouge sur embase jaune --- */
+  /* --- Arrêt d'urgence : interrupteur à bascule lumineux sous capot de sécurité
+         relevable, comme dans un cockpit. Deux gestes : on relève le capot, puis on
+         bascule. Impossible de couper les lasers par mégarde. --- */
   .estop{
-    flex:0 0 auto; min-width:150px; padding:14px 18px 16px; border-radius:14px;
+    flex:0 0 auto; min-width:150px; padding:14px 18px 12px; border-radius:14px;
     border:2px solid var(--line); background:var(--panel); cursor:pointer;
-    -webkit-tap-highlight-color:transparent; display:flex; flex-direction:column; align-items:center; gap:10px;
+    -webkit-tap-highlight-color:transparent; display:flex; flex-direction:column; align-items:center; gap:9px;
   }
-  .estop .cap{
-    width:62px; height:62px; border-radius:50%;
-    background:radial-gradient(circle at 38% 30%, #ff8a95 0%, #e8323f 45%, #9c1220 100%);
-    box-shadow:
-      inset 0 -6px 12px rgba(0,0,0,.45), inset 0 4px 10px rgba(255,255,255,.25),
-      0 0 0 5px #d8b42a, 0 0 0 7px #7a6414, 0 6px 14px -4px rgba(0,0,0,.8);
+  .estop-stage{ position:relative; width:66px; height:74px; perspective:340px; }
+  /* la platine et sa fente */
+  .estop-plate{
+    position:absolute; inset:0; border-radius:9px;
+    background:linear-gradient(#2b3543, #1a222d);
+    box-shadow:inset 0 0 0 1px #3a4658, 0 4px 12px -6px #000;
+    display:flex; align-items:center; justify-content:center;
   }
+  .estop-slot{
+    position:relative; width:26px; height:50px; border-radius:13px;
+    background:#0b1017; box-shadow:inset 0 2px 6px rgba(0,0,0,.8);
+    display:flex; align-items:flex-end; justify-content:center; padding-bottom:4px;
+  }
+  /* le levier : en bas au repos, il claque vers le haut quand on coupe */
+  .estop-lever{
+    width:18px; height:30px; border-radius:9px;
+    background:linear-gradient(#f2f5f9, #aeb8c6 55%, #6f7b8b);
+    box-shadow:0 2px 5px rgba(0,0,0,.6);
+    transform-origin:50% 100%; transition:transform .14s cubic-bezier(.3,1.5,.5,1);
+  }
+  .estop.fired .estop-lever{
+    transform:translateY(-20px) scaleY(1.05);
+    background:linear-gradient(#ffd9dd, #ff6b78 55%, #c11d2b);
+    box-shadow:0 0 10px 2px rgba(232,50,63,.85), 0 0 22px 6px rgba(232,50,63,.4);
+  }
+  /* le témoin lumineux de la platine */
+  .estop-lamp{
+    position:absolute; top:6px; left:50%; transform:translateX(-50%);
+    width:9px; height:9px; border-radius:50%; background:#3a1b1f; box-shadow:inset 0 0 0 1px #4a2a2e;
+  }
+  .estop.fired .estop-lamp{ background:#ff4d5e; box-shadow:0 0 8px 2px rgba(255,77,94,.9); animation:estopBlink .3s steps(1) infinite; }
+  @keyframes estopBlink{ 50%{ opacity:.25; } }
+  /* le capot de sécurité : bandes de danger, charnière en haut */
+  .estop-guard{
+    position:absolute; inset:-4px -5px -4px -5px; border-radius:10px; transform-origin:50% 0%;
+    transition:transform .3s cubic-bezier(.25,1.25,.45,1);
+    background:repeating-linear-gradient(45deg, #d8232f 0 9px, #f0b429 9px 18px);
+    box-shadow:inset 0 0 0 2px #7d1319, 0 5px 14px -6px #000;
+    display:flex; align-items:flex-end; justify-content:center; padding-bottom:5px;
+  }
+  .estop-guard .eg-grip{ width:26px; height:5px; border-radius:3px; background:rgba(0,0,0,.45); }
+  .estop.open .estop-guard{ transform:rotateX(-118deg); }
   .estop .lbl{ font-family:'Orbitron'; font-weight:700; font-size:11px; letter-spacing:1.2px; color:#ff8a95; }
-  .estop:active .cap{ transform:translateY(3px); box-shadow:inset 0 -2px 8px rgba(0,0,0,.6), 0 0 0 5px #d8b42a, 0 0 0 7px #7a6414; }
+  .estop .st{ font-family:'JetBrains Mono'; font-size:9px; color:var(--dim); letter-spacing:.3px; }
+  .estop.fired .st{ color:#ff8a95; }
 
   /* Les 3 boutons physiques présents sur la mallette de commande */
   .case-row{ display:flex; gap:12px; max-width:560px; flex-wrap:wrap; }
@@ -189,7 +227,17 @@
       </div>
       <div class="state" id="start-state">éteint</div>
     </div>
-    <button class="estop" id="btn-estop"><span class="cap"></span><span class="lbl">ARRÊT D'URGENCE</span></button>
+    <button class="estop" id="btn-estop">
+      <span class="estop-stage">
+        <span class="estop-plate">
+          <span class="estop-lamp"></span>
+          <span class="estop-slot"><span class="estop-lever"></span></span>
+        </span>
+        <span class="estop-guard"><span class="eg-grip"></span></span>
+      </span>
+      <span class="lbl">ARRÊT D'URGENCE</span>
+      <span class="st" id="estop-st">capot fermé</span>
+    </button>
   </div>
 
   <div class="section-label">Interrupteurs de la mallette</div>
@@ -413,11 +461,39 @@ wireHold(startNode, {
   onStart: () => { startNode.style.borderColor = '#fff'; sendLaunchState({ start:true }); send({ type:'start' }); },
   onEnd: () => { startNode.style.borderColor = ''; sendLaunchState({ start:false }); }
 });
+/* Deux gestes, comme sur le vrai boîtier : relever le capot, puis basculer. */
 const estop = document.getElementById('btn-estop');
+const estopSt = document.getElementById('estop-st');
+let estopOpen = false;
+let estopTimer = null;
+function resetEstop(){
+  clearTimeout(estopTimer);
+  estopOpen = false;
+  estop.classList.remove('open', 'fired');
+  estopSt.textContent = 'capot fermé';
+}
 estop.addEventListener('click', () => {
+  if (estop.classList.contains('fired')) return;   /* déjà en train de couper */
+  if (!estopOpen) {
+    estopOpen = true;
+    estop.classList.add('open');
+    estopSt.textContent = 'capot ouvert — armé';
+    log('Capot de sécurité relevé', 'out');
+    /* si on n'y touche plus, le capot se referme tout seul */
+    clearTimeout(estopTimer);
+    estopTimer = setTimeout(resetEstop, 6000);
+    return;
+  }
+  estop.classList.add('fired');
+  estopSt.textContent = 'COUPURE ENVOYÉE';
+  log('ARRÊT D' + String.fromCharCode(39) + 'URGENCE', 'out');
   send({ type:'stop' });
   sendLaunchState({ stop:true });
-  setTimeout(() => sendLaunchState({ stop:false }), 900);
+  clearTimeout(estopTimer);
+  estopTimer = setTimeout(() => {
+    sendLaunchState({ stop:false });
+    resetEstop();
+  }, 1600);
 });
 
 /* ===== Les 3 interrupteurs physiques de la mallette =====

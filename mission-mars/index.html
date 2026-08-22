@@ -393,7 +393,7 @@
 
   /* Bouton DÉPART : même tuile que les autres, mais entouré de son anneau LED.
      L'anneau sert aussi de barre de chargement pendant un décompte. */
-  .beam.knob.start-knob .role-icon{ width:clamp(11px, 26cqw, 32px); height:clamp(16px, 38cqw, 46px); }
+  .beam.knob.start-knob .role-icon{ width:clamp(13px, 31cqw, 38px); height:clamp(19px, 44cqw, 54px); }
   .start-ring{
     position:absolute; left:50%; top:50%;
     transform:translate(-50%,-50%) rotate(-90deg);
@@ -4045,6 +4045,7 @@ document.getElementById('teams-block').style.display = teamMode ? '' : 'none';
 document.getElementById('team-scores').style.display = teamMode ? 'flex' : 'none';
 renderThemePicker();
 renderMusicPicker();
+renderMusicBar(false);   /* le thème choisi s'affiche déjà au repos */
 renderModes();
 updateModeChip();
 renderHardware();
