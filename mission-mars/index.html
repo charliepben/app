@@ -54,8 +54,8 @@
   }
   .screen{ height:100%; display:flex; flex-direction:column; overflow:hidden; }
 
-  .app-header{ padding-left:clamp(14px, 3.5cqw, 34px); padding-right:clamp(14px, 3.5cqw, 34px); }
   .app-header{
+    padding-left:clamp(14px, 3.5cqw, 34px); padding-right:clamp(14px, 3.5cqw, 34px);
     display:flex; align-items:center; gap:9px;
     padding: 14px 18px 10px;
     border-bottom: 1px solid var(--line);
@@ -207,12 +207,6 @@
   /* quelque chose empêche de partir : on le dit en rouge, et rien ne clignote */
   .status-badge.bad{ color:var(--red); background:rgba(255,77,94,0.12); border-color:rgba(255,77,94,0.45); }
   .status-badge.bad .dot-live{ background:var(--red); box-shadow:none; animation:none; }
-  .mode-chip{
-    font-family:'JetBrains Mono'; font-size:clamp(9.5px, 2.3cqw, 12px); letter-spacing:1px; text-transform:uppercase;
-    color:var(--amber); background:rgba(255,179,71,0.1); border:1px solid rgba(255,179,71,0.4);
-    padding:3px 10px; border-radius:20px; white-space:nowrap; cursor:pointer;
-    box-shadow:0 0 16px -4px currentColor; text-shadow:0 0 10px currentColor;
-  }
   .mode-desc{
     max-height:0; overflow:hidden; transition:max-height .25s ease; position:relative; z-index:1;
     font-size:clamp(11px, 2.5cqw, 13px); color:var(--dim); line-height:1.5; text-align:left;
@@ -236,8 +230,7 @@
   .players-now{
     background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:9px 12px; flex-shrink:0;
   }
-  .now-row{ display:flex; align-items:center; gap:10px; }
-  .now-row{ flex-direction:column; align-items:stretch; gap:12px; }
+  .now-row{ display:flex; flex-direction:column; align-items:stretch; gap:12px; }
   .now-lbl{ font-size:clamp(11px, 2.6cqw, 14px); font-weight:700; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.3px; flex-shrink:0; }
   .now-players{ display:flex; align-items:center; justify-content:center; gap:12px; min-width:0; padding:2px 0; }
   /* Entrée du joueur suivant : la PHOTO grandit vraiment (width/height animées), donc
@@ -299,14 +292,8 @@
     box-shadow:0 0 12px -2px currentColor; text-shadow:0 0 10px currentColor;
   }
   .vs{ font-family:'Orbitron'; font-size:clamp(12px, 2.8cqw, 16px); color:var(--dim); flex-shrink:0; }
-  .next-row{ display:flex; align-items:center; flex-wrap:nowrap; gap:8px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--line); min-width:0; }
-  .next-lbl{ font-size:clamp(11px, 2.6cqw, 14px); font-weight:700; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.3px; flex-shrink:0; }
-  .next-arrow{ color:var(--dim); font-size:clamp(12px, 2.8cqw, 16px); flex-shrink:0; }
-  .next-names{ display:inline-flex; align-items:center; flex-wrap:nowrap; gap:10px; font-size:clamp(16px, 4.2cqw, 22px); font-weight:700; color:var(--text); min-width:0; white-space:nowrap; }
   /* l'anneau d'équipe est un box-shadow : il déborde de l'avatar, il lui faut de la marge */
   .next-names .avatar.mini{ width:clamp(32px, 8cqw, 44px); height:clamp(32px, 8cqw, 44px); border-radius:9px; font-size:clamp(13px, 3.2cqw, 17px); flex-shrink:0; margin:5px; }
-  .next-names span{ overflow:hidden; text-overflow:ellipsis; }
-  .next-names .next-amp{ color:var(--dim); font-weight:400; }
 
   /* ===== Suivi de la manche : où en est-on, et qui passe ensuite ===== */
   .round-track{ margin-top:10px; padding-top:9px; border-top:1px solid var(--line); }
@@ -350,14 +337,7 @@
     display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:9px; padding-top:8px;
     border-top:1px dashed var(--line);
   }
-  .rt-next-lbl{
-    font-family:'JetBrains Mono'; font-size:clamp(9px, 2cqw, 11px); color:var(--dim);
-    letter-spacing:.12em; flex-shrink:0;
-  }
-  .rt-next-one{ display:inline-flex; align-items:center; gap:7px; min-width:0; }
-  .rt-next-one b{ font-size:clamp(14px, 3.4cqw, 20px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .rt-next-one .avatar.pip{ width:clamp(26px, 6cqw, 38px); height:clamp(26px, 6cqw, 38px); border-radius:9px; font-size:clamp(12px, 2.8cqw, 17px); }
-  .rt-next-sep{ color:var(--dim); font-size:.85em; }
 
   .beam-grid{
     display:flex; justify-content:center; gap:9px; flex-shrink:0;
@@ -480,20 +460,6 @@
 
   /* ===== Paramètres avancés : présents, mais discrets et repliés ===== */
   .advanced{ margin-top:22px; border-top:1px solid var(--line); padding-top:14px; }
-  .advanced > summary{
-    display:flex; align-items:baseline; gap:8px; cursor:pointer; list-style:none;
-    padding:6px 2px; border-radius:10px; -webkit-tap-highlight-color:transparent;
-  }
-  .advanced > summary::-webkit-details-marker{ display:none; }
-  .advanced > summary:hover .adv-title{ color:var(--text); }
-  .adv-chev{ color:var(--dim); font-size:11px; transition:transform .18s; display:inline-block; }
-  .advanced[open] .adv-chev{ transform:rotate(90deg); }
-  .adv-title{
-    font-family:'JetBrains Mono'; font-size:clamp(11px, 2.5cqw, 13px); color:var(--dim);
-    letter-spacing:.08em; text-transform:uppercase; transition:color .15s;
-  }
-  .adv-hint{ font-size:clamp(9.5px, 2.1cqw, 11.5px); color:#3d4a5c; font-style:italic; margin-left:auto; }
-  .adv-body{ padding-top:4px; }
 
   /* choix du thème musical de chaque mission */
   .mpick-row{ display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px 12px; margin-bottom:7px; }
@@ -716,15 +682,6 @@
     box-shadow:0 0 8px 2px rgba(255,255,255,.75);
     animation:readyGlow 1.5s ease-in-out infinite;
   }
-  .btn-pause{
-    flex:0 0 auto; width:clamp(52px, 13cqw, 68px); border:1px solid var(--line); border-radius:14px;
-    background:linear-gradient(180deg, #1b2431, #131a24); color:var(--text); cursor:pointer;
-    display:flex; align-items:center; justify-content:center; gap:4px;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 6px 16px -10px #000;
-    transition:border-color .15s, box-shadow .15s;
-  }
-  .btn-pause:hover{ border-color:var(--amber); }
-  .btn-pause:active{ transform:translateY(1px); }
   /* deux barres (pause) ou un triangle (reprendre), dessinés, pas des caractères */
   .btn-pause .bar{ display:block; width:clamp(4px,1cqw,6px); height:clamp(15px,3.4cqw,20px); border-radius:2px; background:var(--amber); box-shadow:0 0 10px -2px var(--amber); }
   .btn-pause .play{
@@ -826,8 +783,7 @@
   .wizard-sub{ font-size:clamp(14px, 3.1cqw, 17px); color:var(--dim); margin-bottom:18px; line-height:1.55; }
   /* champ d'étoiles derrière l'étape finale : l'écran ne reste jamais figé */
   .wizard-body.centered{ position:relative; }
-  .wizard-stars{ position:absolute; inset:0; z-index:0; }
-  .wizard-body.centered > *:not(.wizard-stars){ position:relative; z-index:1; }
+  .wizard-body.centered > *{ position:relative; z-index:1; }
 
   /* combien de manches ? */
   .rounds-row{ display:flex; align-items:center; justify-content:center; gap:7px; flex-wrap:wrap; margin:6px 0 18px; }
@@ -897,10 +853,9 @@
   .mcard-head{ display:flex; align-items:center; gap:14px; margin-bottom:8px; }
   .mcard-titles{ min-width:0; }
   .mcard .mcard-icon{ font-size:clamp(30px, 8cqw, 42px); line-height:1; flex-shrink:0; }
-  .mcard h3{ margin:0; }
-  .mcard .tagline{ margin-bottom:0; }
-  .mcard h3{ font-family:'Orbitron'; font-size:clamp(20px, 4.6cqw, 26px); color:#fff; margin:8px 0 4px; }
-  .mcard .tagline{ font-size:clamp(15px, 3.3cqw, 18px); color:#dbe6f2; font-style:italic; margin-bottom:8px; }
+  /* icône à gauche du titre : la carte est compacte, d'où les marges nulles */
+  .mcard h3{ font-family:'Orbitron'; font-size:clamp(20px, 4.6cqw, 26px); color:#fff; margin:0; }
+  .mcard .tagline{ font-size:clamp(15px, 3.3cqw, 18px); color:#dbe6f2; font-style:italic; margin-bottom:0; }
   .mcard p{ font-size:clamp(14px, 3cqw, 17px); color:var(--dim); line-height:1.6; }
   .mcard .req{
     position:absolute; top:14px; right:14px; font-size:clamp(10px, 2.2cqw, 12px); font-family:'JetBrains Mono';
@@ -1149,13 +1104,9 @@
   .switch.on i{ left:20px; background:var(--green); box-shadow:0 0 8px var(--green); }
 
   .mode-grid{ display:grid; grid-template-columns:1fr; gap:9px; }
-  .mode-card{ background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:13px 14px; cursor:pointer; }
   .mode-card.selected{ border-color:var(--green); background:rgba(53,242,163,0.06); box-shadow:0 0 0 1px var(--green) inset, 0 0 26px -6px var(--green); }
-  .mode-card .mtop{ display:flex; align-items:center; gap:10px; }
   .mode-card .icon{ font-size:clamp(20px, 4.4cqw, 25px); flex-shrink:0; }
-  .mode-card h3{ font-size:clamp(14px, 3.2cqw, 17px); font-weight:700; }
   .mode-card .req{ margin-left:auto; font-size:clamp(9px, 2cqw, 11px); font-family:'JetBrains Mono'; color:var(--amber); }
-  .mode-card p{ font-size:clamp(13px, 3cqw, 16px); color:var(--dim); line-height:1.55; margin-top:6px; }
 
   /* ===== SCORES TAB ===== */
   #tab-scores{ overflow-y:auto; }
@@ -1215,14 +1166,12 @@
     .player-chip{ gap:5px; }
     .round-track{ margin-top:7px; padding-top:7px; }
     .rt-pips{ margin-top:6px; }
-    .rt-next{ margin-top:6px; padding-top:6px; }
     .scores-scroll{ min-height:clamp(110px, 18vh, 230px); }
   }
   /* Téléphone : le bandeau prend moins de hauteur, l'écran est déjà chargé. */
   @media (max-width: 760px){
     .mode-banner{ min-height:clamp(76px, 12vh, 120px); }
   }
-
 
 </style>
 </head>
@@ -2225,13 +2174,20 @@ function renderHardBeamsConfig(){
   }));
 }
 /* Envoie l'état d'armement au matériel selon le joueur en piste. */
+/* Deux garde-fous, et les deux comptent :
+   - SEUL LE PILOTE commande le matériel. Cette fonction est appelée depuis
+     renderPlayers(), lui-même appelé à chaque snapshot sur un écran secondaire : sans le
+     garde, chaque écran secondaire renvoyait des ordres de faisceaux à tout le monde.
+   - on n'émet QUE si l'armement change vraiment. Sinon c'étaient six messages à chaque
+     rendu, pour ne rien dire de neuf. */
+let armementEnvoye = null;
 function applyHardBeams(){
   const rookie = livePlayers().some(p => p && p.rookie);
-  beamIds().forEach(id => {
-    const off = rookie && hardBeams.includes(id);
-    setBeamState(id, off ? 'off' : 'on');
-    broadcastToSim({ type:'beam', id, on: !off });
-  });
+  const etat = beamIds().map(id => (rookie && hardBeams.includes(id)) ? 0 : 1).join('');
+  beamIds().forEach((id, i) => setBeamState(id, etat[i] === '1' ? 'on' : 'off'));
+  if (!isPilot() || etat === armementEnvoye) return;
+  armementEnvoye = etat;
+  beamIds().forEach((id, i) => broadcastToSim({ type:'beam', id, on: etat[i] === '1' }));
 }
 
 const SMOKE_CHOICES = [0, 2, 3, 5, 8];
