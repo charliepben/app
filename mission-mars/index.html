@@ -1156,7 +1156,7 @@ const MODES = [
     key:'fire', icon:'🔥', name:'Fire', req:null,
     obstacleName:'Flamme', obstacleIcon:'🔥', targetName:'Extincteur', targetIcon:'🧯',
     playersUsed:1, timed:false,
-    hasArrival:true, arrivalLabel:'Extincteur', arrivalIcon:'🧯',
+    hasArrival:false, arrivalLabel:'Extincteur', arrivalIcon:'🧯',   /* désigné en cours de partie */
     tagline:"La navette brûle. Un seul bouton peut tout arrêter.",
     desc:"Sirène hurlante, gyrophare rouge : le feu a pris dans la navette. Une seule commande d'extinction, tout au fond de la salle, et un mur de flammes entre elle et toi. Traverse sans te brûler — le plus rapide sauve l'équipage."
   },
@@ -1281,11 +1281,14 @@ function buttonLampFor(id){
 
   /* ---- FIRE : seul le bouton d'arrivée (l'extincteur) est allumé ---- */
   if (m.key === 'fire') {
-    if (id !== arrivalButtonId) return LAMP_OFF;
-    /* l'extincteur est en ROUGE (couleur du feu), pas en blanc */
-    return inMission
+    /* Hors mission : on montre juste où se trouvent les boutons, en veille rouge.
+       En mission : tous allumés faiblement tant que l'extincteur n'est pas trouvé,
+       puis seul l'extincteur désigné reste allumé, en rouge pulsé. */
+    if (!inMission || !run) return { r:255, g:60, b:40, mode:'solid', brightness:18 };
+    if (run.extinguisher === null) return { r:255, g:60, b:40, mode:'solid', brightness:35 };
+    return id === run.extinguisher
       ? { r:255, g:60, b:40, mode:'glow', brightness:100, brightnessMin:30, periodMs:1200 }
-      : { r:255, g:60, b:40, mode:'solid', brightness:22 };
+      : LAMP_OFF;
   }
 
   /* ---- DUEL ORBITAL : les 2 bases aux couleurs des joueurs, éteintes si éliminé ---- */
@@ -1457,8 +1460,12 @@ function buttonRoleFor(id){
   }
 
   if (m.key === 'fire') {
-    if (isArrival) return { label:m.arrivalLabel, shape:'extinguisher', used:true };
-    return { label:`Bouton ${id}`, shape:'plain', used:false };
+    const inRun = (missionState === 'running' || missionState === 'paused') && run;
+    if (!inRun) return { label:`Bouton ${id}`, shape:'extinguisher', used:false };
+    if (run.extinguisher === null) return { label:'Extincteur ?', shape:'extinguisher', used:true };
+    return id === run.extinguisher
+      ? { label:m.arrivalLabel, shape:'extinguisher', used:true }
+      : { label:`Bouton ${id}`, shape:'plain', used:false };
   }
 
   if (m.key === 'duel-orbital') {
@@ -1963,11 +1970,14 @@ const RULES = {
   'fire': {
     init(){
       const p = livePlayers()[0];
-      return { hits:0, allowance:allowanceFor(p), failed:false };
+      /* extinguisher : aucun bouton n'est l'extincteur au départ. Le premier bouton
+         touché le devient — et si on en touche un autre, c'est lui qui prend le rôle. */
+      return { hits:0, allowance:allowanceFor(p), failed:false, extinguisher:null };
     },
     onStart(){
       play('siren');
       setSystemState('gyro', 'active');   /* gyrophare pendant toute la mission */
+      syncLamps();
     },
     onBeamHit(r, id){
       if (r.failed) return;
@@ -1986,16 +1996,35 @@ const RULES = {
       renderRunHud();
     },
     onButtonPress(r, id){
-      if (id === arrivalButtonId && !r.failed) stopMission();  /* feu éteint */
+      if (r.failed) return;
+      if (r.extinguisher === null) {
+        /* c'est ce bouton-là qui devient l'extincteur, et il s'allume en conséquence */
+        r.extinguisher = id;
+        play('beep', true);
+        flashScoreBanner('Extincteur repéré !', 'good');
+        syncLamps();
+        renderRunHud();
+        return;
+      }
+      if (id === r.extinguisher) { stopMission(); return; }   /* feu éteint */
+      /* on change d'avis : c'est ce bouton qui devient l'extincteur */
+      r.extinguisher = id;
+      play('beep', true);
+      syncLamps();
+      renderRunHud();
     },
     score(r){
       return { value:r.failed ? 0 : 1, label:r.failed ? 'Mission perdue' : 'Feu éteint', win:!r.failed };
     },
     hud(r){
       if (r.failed) return '<span class="hud-bad">MISSION PERDUE</span>';
-      return r.allowance > 0
+      const garde = r.allowance > 0
         ? '<span class="hud-warn">🛡 1 contact toléré</span>'
         : '<span class="hud-warn">⚠ le moindre contact est fatal</span>';
+      const ext = r.extinguisher === null
+        ? ` · <span class="hud-warn">trouve l'extincteur</span>`
+        : ' · <span style="color:var(--green)">extincteur : bouton ' + r.extinguisher + '</span>';
+      return garde + ext;
     }
   },
 
