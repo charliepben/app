@@ -228,14 +228,20 @@
   .mission-top .players-now{ flex:1 1 430px; min-width:0; display:flex; flex-direction:column; justify-content:center; }
   /* Le chrono ne s'écrase pas : s'il n'a pas la place, il passe à la ligne du dessous
      (flex-wrap) et reprend toute la largeur. */
-  .mission-top .timer-block{ flex:1 1 320px; display:flex; flex-direction:column; justify-content:center; }
+  .mission-top .timer-block{ flex:1 1 380px; display:flex; flex-direction:column; justify-content:center; }
 
   .players-now{
     background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:9px 12px; flex-shrink:0;
   }
   .now-row{ display:flex; flex-direction:column; align-items:stretch; gap:12px; }
   .now-lbl{ font-size:clamp(11px, 2.6cqw, 14px); font-weight:700; font-family:'JetBrains Mono'; color:var(--dim); letter-spacing:1.3px; flex-shrink:0; }
-  .now-players{ display:flex; align-items:center; justify-content:center; gap:12px; min-width:0; padding:2px 0; }
+  .now-players{
+    --av: clamp(180px, 46cqw, 284px);   /* la taille des photos, lue aussi par le VS */
+    display:flex; justify-content:center; gap:12px; min-width:0; padding:2px 0;
+    /* Les photos s'alignent par le HAUT, pas par le milieu. Avec `center`, un prénom qui
+       passe sur deux lignes rendait sa photo plus haute que celle d'en face. */
+    align-items:flex-start;
+  }
   /* Entrée du joueur suivant : la PHOTO grandit vraiment (width/height animées), donc
      son cadre et l'encart suivent — au lieu d'un scale qui déborderait du conteneur. */
   @keyframes avatarPop{
@@ -269,8 +275,15 @@
   }
   .player-chip > div{ min-width:0; }
   /* photo au-dessus, nom et équipe en dessous, le tout centré */
-  .player-chip{ flex-direction:column; text-align:center; gap:8px; }
-  .player-chip .pident{ display:flex; flex-direction:column; align-items:center; gap:2px; max-width:100%; }
+  /* Photo à gauche, identité à droite : l'encart est bien plus compact en largeur utile,
+     et le regard va de l'image au nom sans redescendre. */
+  .player-chip{ flex-direction:row; align-items:center; text-align:left; gap:clamp(18px, 4.5cqw, 34px); }
+  /* Le prénom et l'équipe côte à côte, centrés sous la photo. `wrap` pour qu'un prénom
+     long ne pousse pas l'étiquette hors du cadre : elle repasse dessous, centrée. */
+  .player-chip .pident{
+    display:flex; flex-direction:column; align-items:flex-start; justify-content:center;
+    gap:clamp(4px, 1.2cqw, 8px); min-width:0;
+  }
   .avatar{
     width:clamp(38px, 9.5cqw, 56px); height:clamp(38px, 9.5cqw, 56px); border-radius:11px; display:flex; align-items:center; justify-content:center;
     font-family:'Orbitron'; font-weight:700; font-size:clamp(15px, 3.6cqw, 21px); color:#05070a; flex-shrink:0;
@@ -279,7 +292,6 @@
   .avatar.mini{ width:clamp(19px, 4.5cqw, 26px); height:clamp(19px, 4.5cqw, 26px); border-radius:6px; font-size:clamp(9px, 2.1cqw, 11px); }
   .avatar.clickable{ cursor:pointer; }
   .now-players .avatar{
-    --av: clamp(92px, 24cqw, 145px);
     --av-big: calc(var(--av) * 1.6);
     width:var(--av); height:var(--av); border-radius:20px; font-size:clamp(38px, 9cqw, 55px);
   }
@@ -288,18 +300,27 @@
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   .player-chip .prole{
-    display:inline-block; max-width:100%; margin-top:5px; padding:2px 9px; border-radius:20px;
+    display:inline-block; max-width:100%; padding:2px 9px; border-radius:20px;
     font-size:clamp(11.5px, 2.9cqw, 15px); font-weight:600; font-style:italic; font-family:'Rajdhani';
     border:1px solid currentColor; background:rgba(255,255,255,0.05);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     box-shadow:0 0 12px -2px currentColor; text-shadow:0 0 10px currentColor;
   }
   .vs{ font-family:'Orbitron'; font-size:clamp(12px, 2.8cqw, 16px); color:var(--dim); flex-shrink:0; }
+  /* Le VS se cale sur le milieu des PHOTOS, pas sur le milieu des blocs : sous chaque photo
+     il y a le prénom et l'équipe, qui tiraient le centre vers le bas. On part donc du haut
+     de la rangée et on descend d'une demi-photo. `line-height:1` rend le .5em exact. */
+  .now-players .vs{ line-height:1; margin-top:calc(var(--av) / 2 - .5em); }
   /* l'anneau d'équipe est un box-shadow : il déborde de l'avatar, il lui faut de la marge */
   .next-names .avatar.mini{ width:clamp(32px, 8cqw, 44px); height:clamp(32px, 8cqw, 44px); border-radius:9px; font-size:clamp(13px, 3.2cqw, 17px); flex-shrink:0; margin:5px; }
 
   /* ===== Suivi de la manche : où en est-on, et qui passe ensuite ===== */
-  .round-track{ margin-top:10px; padding-top:9px; border-top:1px solid var(--line); }
+  /* Le suivi de la manche vit maintenant en HAUT du bloc chrono : plus de trait au-dessus
+     (il n'a plus rien à séparer), mais un trait EN DESSOUS, qui le détache du chrono. */
+  .round-track{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:9px 14px 4px; margin:9px 0 0; flex-shrink:0;
+  }
   .rt-head{
     display:flex; align-items:baseline; gap:8px; font-family:'JetBrains Mono';
     font-size:clamp(9.5px, 2.1cqw, 11.5px); color:var(--dim); letter-spacing:.06em;
@@ -308,7 +329,10 @@
   .rt-head .rt-count{ margin-left:auto; }
   .rt-bar{ height:3px; border-radius:3px; background:#1c2836; margin-top:6px; overflow:hidden; }
   .rt-bar i{ display:block; height:100%; border-radius:3px; background:var(--green); box-shadow:0 0 8px var(--green); transition:width .35s ease; }
-  .rt-pips{ display:flex; align-items:flex-start; gap:clamp(6px, 1.6cqw, 12px); margin:12px 0 10px; flex-wrap:wrap; }
+  .rt-pips{
+    display:flex; align-items:flex-start; gap:clamp(10px, 2.4cqw, 18px);
+    margin:22px 0 12px; flex-wrap:wrap; row-gap:clamp(14px, 3cqw, 22px);
+  }
   .rt-pip{
     position:relative; display:flex; flex-direction:column; align-items:center; gap:4px;
     transition:transform .2s, opacity .2s; min-width:0;
@@ -319,10 +343,10 @@
     max-width:clamp(34px, 8cqw, 56px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   .rt-pip.now .rt-nom{ color:var(--text); font-weight:700; }
-  .rt-pip .rt-photos{ display:flex; gap:2px; }
+  .rt-pip .rt-photos{ display:flex; gap:4px; }
   .rt-pip .avatar.pip{
-    width:clamp(22px, 5.4cqw, 34px); height:clamp(22px, 5.4cqw, 34px); border-radius:8px;
-    font-size:clamp(10px, 2.4cqw, 14px);
+    width:clamp(44px, 10.8cqw, 68px); height:clamp(44px, 10.8cqw, 68px); border-radius:14px;
+    font-size:clamp(20px, 4.8cqw, 28px);
   }
   .rt-pip.done{ opacity:.4; }
   .rt-pip.done::after{
@@ -334,7 +358,6 @@
   .rt-pip.now{ transform:scale(1.16); }
   .rt-pip.now .avatar.pip{ animation:pipPulse 1.6s ease-in-out infinite; }
   @keyframes pipPulse{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.35); } }
-  .rt-sep{ width:5px; height:1px; background:#26313f; flex-shrink:0; }
   /* Le joueur suivant, annoncé ici et pas dans un encart à part. */
   .rt-next{
     display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:9px; padding-top:8px;
@@ -406,9 +429,16 @@
      qu'on voyait derrière le cristal. La forme EST la lampe — on enlève le cadre, et on
      laisse la lumière déborder sur les voisines, comme le ferait une vraie lampe.
      La tuile reste carrée et à sa place : seul son décor disparaît. */
-  .buttons-grid .beam.knob{ background:transparent; border-color:transparent; overflow:visible; }
-  /* éteinte, elle garde un liseré discret : on doit voir où sont les boutons */
-  .buttons-grid .beam.knob.off{ border-color:#141c26; }
+  /* Le cadre revient — c'est `overflow:hidden` qui dessinait le rectangle, pas lui. La tuile
+     retrouve donc le fond et le liseré des lasers du dessus, mais la lumière continue de
+     déborder. */
+  .buttons-grid .beam.knob{ overflow:visible; }
+  /* …et pour qu'elle déborde VRAIMENT : sans ça, le fond de la tuile suivante (dessinée
+     après, donc au-dessus) recouperait le halo de sa voisine — le rectangle reviendrait
+     par la bande. */
+  .buttons-grid .beam.knob .role-icon{ z-index:2; }
+  /* éteinte, le liseré s'assombrit : on voit où sont les boutons sans qu'ils s'imposent */
+  .buttons-grid .beam.knob.off{ border-color:#1b2531; }
   .buttons-grid .beam.knob.arrival{ border-color:var(--amber); }
   .setting-row{ display:flex; align-items:center; justify-content:space-between; gap:14px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; flex-wrap:wrap; }
   .setting-row .lbl{ font-size:clamp(13px, 2.9cqw, 15.5px); font-weight:600; }
@@ -774,7 +804,10 @@
     flex:0 0 auto; padding:0 16px; border-radius:14px; border:1px solid var(--line); background:var(--panel);
     color:var(--dim); font-family:'JetBrains Mono'; font-size:clamp(11px, 2.5cqw, 13px); cursor:pointer;
   }
-  .wizard-crew{ display:flex; align-items:center; justify-content:center; gap:20px; padding:10px 0 4px; flex-wrap:wrap; }
+  .wizard-crew{ display:flex; align-items:flex-start; justify-content:center; gap:20px; padding:10px 0 4px; flex-wrap:wrap; }
+  /* Comme sur l'écran de jeu : le VS se cale sur le milieu des PHOTOS, pas des blocs. */
+  .wizard-crew.duo{ --wav: clamp(120px, 34cqw, 190px); }
+  .wizard-crew .vs{ line-height:1; margin-top:calc(var(--wav) / 2 - .5em); }
   .wizard-player{ text-align:center; }
   .avatar.huge{
     width:clamp(180px, 56cqw, 300px); height:clamp(180px, 56cqw, 300px); border-radius:32px;
@@ -782,7 +815,7 @@
   }
   /* en duel, deux avatars côte à côte : on les réduit pour qu'ils tiennent */
   .wizard-crew.duo .avatar.huge{
-    width:clamp(120px, 34cqw, 190px); height:clamp(120px, 34cqw, 190px); border-radius:24px;
+    width:var(--wav); height:var(--wav); border-radius:24px;
     font-size:clamp(48px, 14cqw, 76px);
   }
   .wizard-player-name{ font-family:'Orbitron'; font-weight:700; font-size:clamp(18px, 5cqw, 26px); margin-top:14px; }
@@ -843,7 +876,7 @@
   .wteam .wt-list{ display:flex; align-items:center; justify-content:center; gap:9px; flex-wrap:wrap; margin-top:12px; }
   .wteam .wt-one{ display:inline-flex; flex-direction:column; align-items:center; gap:4px; }
   .wteam .wt-one span{ font-size:clamp(11px, 2.5cqw, 14px); font-weight:600; }
-  .wteam .avatar.pip{ width:clamp(38px, 9cqw, 62px); height:clamp(38px, 9cqw, 62px); border-radius:13px; font-size:clamp(16px, 4cqw, 26px); }
+  .wteam .avatar.pip{ width:clamp(57px, 13.5cqw, 93px); height:clamp(57px, 13.5cqw, 93px); border-radius:19px; font-size:clamp(24px, 6cqw, 39px); }
 
   /* ===== Écran de fin de partie ===== */
   .gover-podium{ display:flex; align-items:flex-end; justify-content:center; gap:clamp(8px, 3cqw, 22px); margin:6px 0 18px; }
@@ -1191,7 +1224,8 @@
      ils mangent toute la place et le classement se retrouve écrasé à 50 px.
      Le seuil couvre toutes les tablettes et portables en paysage, iPad Pro 13" compris. */
   @media (min-width: 900px) and (max-height: 1200px){
-    .now-players .avatar{ --av: clamp(72px, 13vh, 120px); font-size:clamp(26px, 6vh, 46px); }
+    .now-players{ --av: clamp(141px, 25vh, 234px); }
+    .now-players .avatar{ font-size:clamp(26px, 6vh, 46px); }
     .player-chip .pname{ font-size:clamp(15px, 3.2vh, 24px); }
     .timer-display .main, .timer-display .ms{ font-size:clamp(34px, 9vh, 74px); }
     .mode-banner{ min-height:clamp(72px, 11vh, 112px); }
@@ -1199,9 +1233,9 @@
     /* on resserre les espacements : 25 px gagnés ici, c'est la barre du bas qui rentre */
     .players-now{ padding:7px 12px; }
     .now-row{ gap:6px; }
-    .player-chip{ gap:5px; }
-    .round-track{ margin-top:7px; padding-top:7px; }
-    .rt-pips{ margin-top:6px; }
+    .player-chip{ gap:clamp(14px, 2.4vh, 26px); }
+    .round-track{ margin-top:7px; padding:7px 14px 2px; }
+    .rt-pips{ margin-top:16px; }
     .scores-scroll{ min-height:clamp(110px, 18vh, 230px); }
   }
   /* Téléphone : le bandeau prend moins de hauteur, l'écran est déjà chargé. */
@@ -1248,7 +1282,6 @@
             <span class="now-lbl">EN&nbsp;PISTE</span>
             <div class="now-players" id="now-players"></div>
           </div>
-          <div class="round-track" id="round-track"></div>
         </div>
 
         <div class="timer-block">
@@ -1261,6 +1294,10 @@
           <div class="mode-desc" id="mode-desc"></div>
         </div>
       </div>
+
+      <!-- Le suivi de la manche : sous les deux encarts, sur toute la largeur. Il y respire,
+           et il ne vole plus de hauteur ni au joueur en piste ni au chrono. -->
+      <div class="round-track" id="round-track"></div>
 
       <!-- Trois colonnes : l'état du matériel, le classement, les équipes.
            Le matériel descend ici : il n'a pas besoin de deux rangées à lui seul, et la
@@ -3653,6 +3690,9 @@ let adopting = true;
 function endAdoption(){
   if (!adopting) return;
   adopting = false;
+  /* On sort de la période d'écoute. Si personne d'autre ne pilotait, c'est nous — et on
+     n'a peut-être jamais entendu la mallette. On lui demande plutôt que de supposer. */
+  if (isPilot()) demanderEtatMateriel();
   renderPeers();
   updateMissionControls();
 }
@@ -3675,6 +3715,14 @@ function isPilot(){ return !adopting && pilotId() === DEVICE_ID; }
    écran secondaire : celui qui compose la partie doit la tenir, sinon il configure dans le
    vide — le pilote lui réécrirait son état une demi-seconde plus tard.
    On se déclare simplement plus ancien que tout le monde ; l'élection fait le reste. */
+/* En prenant le pilotage, on redemande son état à la mallette : on va se mettre à le
+   diffuser aux autres écrans, autant diffuser le vrai. Sans ça, un écran fraîchement
+   ouvert qui devient pilote annonce « mallette éteinte » à tout le monde — alors qu'il
+   ne le sait pas, il ne l'a simplement jamais entendue. */
+function demanderEtatMateriel(){
+  broadcastToSim({ type:'resync', id:DEVICE_ID });
+}
+
 function claimPilot(){
   if (isPilot()) return;
   const plusAncien = livePeers().reduce((m, p) => Math.min(m, p.since), Date.now());
@@ -3683,6 +3731,7 @@ function claimPilot(){
   peers[DEVICE_ID].since = JOINED_AT;
   adopting = false;
   announceSelf();
+  demanderEtatMateriel();
   renderPeers();
   flashScoreBanner('Cet écran prend le pilotage', 'good');
 }
@@ -4190,7 +4239,7 @@ function renderRoundTrack(){
     `<div class="rt-head">${w('round').toUpperCase()} <b>${roundIndex}${total}</b>` +
     `<span class="rt-count">${m.icon} ${done} / ${per}</span></div>` +
     `<div class="rt-bar"><i style="width:${Math.round(100 * done / per)}%"></i></div>` +
-    `<div class="rt-pips">${slots.join('<span class="rt-sep"></span>')}</div>` +
+    `<div class="rt-pips">${slots.join('')}</div>` +
     nextHtml;
 }
 

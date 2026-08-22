@@ -669,9 +669,14 @@ if (channel) {
   channel.onmessage = (e) => {
     const evt = e.data;
     if (!evt) return;
-    if (evt.type === 'resync') {
-      /* l'appli a raté un message : on lui réannonce tout ce qu'on sait de nous-mêmes */
-      log('← resync demandé par l' + String.fromCharCode(39) + 'appli', 'in');
+    if (evt.type === 'resync' || evt.type === 'hello') {
+      /* `resync` = l'appli a raté un message. `hello` = un écran vient d'arriver et ne sait
+         RIEN de nous. Dans les deux cas la réponse est la même : on se réannonce.
+         Sans le `hello`, un écran ouvert après l'allumage de la mallette restait
+         indéfiniment sur « MALLETTE ÉTEINTE » : il attendait un message que personne
+         n'avait de raison de renvoyer. */
+      if (!caseState.power) return;   /* éteinte, on n'a rien à annoncer */
+      log('← ' + evt.type + ' : on se réannonce', 'in');
       announceTopology();
       sendAllBatteries();
       sendLaunchState();
