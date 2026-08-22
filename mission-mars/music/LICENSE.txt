@@ -16,3 +16,20 @@ d'attribution. Ces credits sont conserves par courtoisie.
 
   duel-orbital.mp3  "Interstellar Fleet 1"  par Zane Little Music
                     https://opengameart.org/content/interstellar-fleet-1
+
+Themes supplementaires (choisissables dans Reglages > Parametres avances)
+--------------------------------------------------------------------------
+Tous CC0 (domaine public), source OpenGameArt.org.
+Fichiers issus des versions "audio_preview" du site : meme morceau complet,
+encode plus leger (17 Mo au total au lieu de 35).
+
+  cristal-rush-2.ogg  Speedier than Photons  - Joth
+  cristal-rush-3.ogg  Outer Space Loop       - wipics
+  fire-2.mp3          Unstable Field         - centurionofwar
+  fire-3.ogg          Tower Defense Theme    - DST
+  duel-orbital-2.mp3  Spacecrusher           - yd
+  duel-orbital-3.ogg  Singularity            - vitalezzz
+
+Nota : "Fast Fight" (fire.ogg) ne dure que 25 secondes. C'est cette boucle
+tres courte, repetee en continu, qui la rendait agacante -- elle reste
+disponible dans la liste.

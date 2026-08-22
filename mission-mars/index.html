@@ -316,6 +316,36 @@
   .setting-row .lbl{ font-size:clamp(13px, 2.9cqw, 15.5px); font-weight:600; }
   .setting-row .sub{ font-size:clamp(10px, 2.3cqw, 12px); color:var(--dim); font-family:'JetBrains Mono'; }
   .relight-row{ display:flex; gap:6px; flex-wrap:wrap; }
+
+  /* ===== Paramètres avancés : présents, mais discrets et repliés ===== */
+  .advanced{ margin-top:22px; border-top:1px solid var(--line); padding-top:14px; }
+  .advanced > summary{
+    display:flex; align-items:baseline; gap:8px; cursor:pointer; list-style:none;
+    padding:6px 2px; border-radius:10px; -webkit-tap-highlight-color:transparent;
+  }
+  .advanced > summary::-webkit-details-marker{ display:none; }
+  .advanced > summary:hover .adv-title{ color:var(--text); }
+  .adv-chev{ color:var(--dim); font-size:11px; transition:transform .18s; display:inline-block; }
+  .advanced[open] .adv-chev{ transform:rotate(90deg); }
+  .adv-title{
+    font-family:'JetBrains Mono'; font-size:clamp(11px, 2.5cqw, 13px); color:var(--dim);
+    letter-spacing:.08em; text-transform:uppercase; transition:color .15s;
+  }
+  .adv-hint{ font-size:clamp(9.5px, 2.1cqw, 11.5px); color:#3d4a5c; font-style:italic; margin-left:auto; }
+  .adv-body{ padding-top:4px; }
+
+  /* choix du thème musical de chaque mission */
+  .mpick-row{ display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px 12px; margin-bottom:7px; }
+  .mpick-row .mp-mode{ display:flex; align-items:center; gap:7px; font-size:clamp(12px, 2.7cqw, 14px); font-weight:600; flex:0 0 auto; }
+  .mpick-row select{
+    flex:1; min-width:0; background:#141b25; color:var(--text); border:1px solid var(--line); border-radius:10px;
+    padding:8px 9px; font-family:'JetBrains Mono'; font-size:clamp(10.5px, 2.4cqw, 12.5px);
+  }
+  .mpick-row .mp-play{
+    flex:0 0 auto; width:34px; height:34px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel); color:var(--violet); font-size:14px; cursor:pointer;
+  }
+  .mpick-row .mp-play.on{ border-color:var(--violet); color:#fff; background:rgba(157,123,255,.2); }
   .arrival-row{ display:flex; gap:7px; flex-wrap:wrap; margin-bottom:6px; }
   .arrival-btn{
     min-width:42px; padding:9px 12px; border-radius:11px; border:1px solid var(--line); background:var(--panel);
@@ -1151,17 +1181,30 @@
         <div class="arrival-row" id="arrival-row"></div>
       </div>
 
-      <div class="section-label">Faisceaux</div>
-      <div class="setting-row">
-        <div>
-          <div class="lbl">Rallumage après un contact</div>
-          <div class="sub">temps avant qu'un faisceau touché ne revienne</div>
-        </div>
-        <div class="relight-row" id="relight-row"></div>
-      </div>
+      <!-- Réglages fins : rangés à part, et repliés. On n'en a pas besoin pour jouer. -->
+      <details class="advanced" id="advanced-block">
+        <summary>
+          <span class="adv-chev">▸</span>
+          <span class="adv-title">Paramètres avancés</span>
+          <span class="adv-hint">réglages fins — inutiles pour jouer</span>
+        </summary>
+        <div class="adv-body">
+          <div class="section-label">Faisceaux</div>
+          <div class="setting-row">
+            <div>
+              <div class="lbl">Rallumage après un contact</div>
+              <div class="sub">temps avant qu'un faisceau touché ne revienne</div>
+            </div>
+            <div class="relight-row" id="relight-row"></div>
+          </div>
 
-      <div class="section-label">Thème</div>
-      <div class="theme-row" id="theme-row"></div>
+          <div class="section-label">Musique des missions</div>
+          <div id="music-picker"></div>
+
+          <div class="section-label">Thème</div>
+          <div class="theme-row" id="theme-row"></div>
+        </div>
+      </details>
       </div>
     </div>
 
@@ -1193,12 +1236,20 @@ function openSheet(id){
 function closeSheet(id){
   const el = document.getElementById(id);
   if (el) el.classList.remove('show');
+  stopMusicPreview();   /* on ne laisse pas une écoute tourner derrière */
 }
-document.getElementById('open-config').addEventListener('click', () => { restoreConfigTab(); openSheet('tab-config'); });
+document.getElementById('open-config').addEventListener('click', () => {
+  restoreConfigTab();
+  renderMusicPicker();
+  openSheet('tab-config');
+});
 document.getElementById('open-scores').addEventListener('click', () => { renderScoresTab(); renderHistory(); openSheet('tab-scores'); });
 document.querySelectorAll('.sheet-close').forEach(b => b.addEventListener('click', () => closeSheet(b.dataset.close)));
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') document.querySelectorAll('.sheet.show').forEach(el => el.classList.remove('show'));
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.sheet.show').forEach(el => el.classList.remove('show'));
+    stopMusicPreview();
+  }
 });
 /* ===== THÈMES =====
    Tout l'habillage (nom, palette, icônes, vocabulaire, libellés de boutons) vit ici.
@@ -1858,7 +1909,7 @@ function saveState(){
       teams:TEAMS, players:PLAYERS, roster:ROSTER,
       queueIndex, liveScores, teamTally, roundIndex, roundsTarget, roundsChoice, playedThisRound, roundStartIndex,
       currentModeKey, arrivalButtonId,
-      teamMode, modeDurations, currentTheme, history:HISTORY, soundOn, musicOn, beamRelightSec
+      teamMode, modeDurations, currentTheme, history:HISTORY, soundOn, musicOn, beamRelightSec, musicChoice
     }));
   }catch(e){ /* stockage plein ou indisponible, tant pis */ }
 }
@@ -2095,14 +2146,35 @@ function playBuffer(name, vol){
 /* ===== MUSIQUES DE MISSION (OpenGameArt, CC0 — voir music/LICENSE.txt) =====
    Un thème par mode de jeu, joué en boucle pendant la manche. */
 const MUSIC = {
-  'cristal-rush': { file:'music/cristal-rush.mp3', title:'Party Sector',      author:'Joth' },
-  'fire':         { file:'music/fire.ogg',         title:'Fast Fight',        author:'xcvg' },
-  'duel-orbital': { file:'music/duel-orbital.mp3', title:'Interstellar Fleet', author:'Zane Little Music' }
+  'cristal-rush': [
+    { file:'music/cristal-rush.mp3',   title:'Party Sector',          author:'Joth' },
+    { file:'music/cristal-rush-2.ogg', title:'Speedier than Photons', author:'Joth' },
+    { file:'music/cristal-rush-3.ogg', title:'Outer Space Loop',      author:'wipics' }
+  ],
+  'fire': [
+    /* l'originale ne dure que 25 s : c'est la boucle courte qui finit par agacer */
+    { file:'music/fire.ogg',   title:'Fast Fight',          author:'xcvg', note:'boucle de 25 s' },
+    { file:'music/fire-2.mp3', title:'Unstable Field',      author:'centurionofwar' },
+    { file:'music/fire-3.ogg', title:'Tower Defense Theme', author:'DST' }
+  ],
+  'duel-orbital': [
+    { file:'music/duel-orbital.mp3',   title:'Interstellar Fleet', author:'Zane Little Music' },
+    { file:'music/duel-orbital-2.mp3', title:'Spacecrusher',       author:'yd' },
+    { file:'music/duel-orbital-3.ogg', title:'Singularity',        author:'vitalezzz' }
+  ]
 };
+/* quel thème pour quelle mission — un choix par mode, gardé d'une soirée à l'autre */
+let musicChoice = (saved && saved.musicChoice && typeof saved.musicChoice === 'object') ? saved.musicChoice : {};
+function tracksFor(key){ return MUSIC[key] || []; }
+function trackIndexFor(key){
+  const list = tracksFor(key);
+  const i = musicChoice[key];
+  return (typeof i === 'number' && i >= 0 && i < list.length) ? i : 0;
+}
 let musicEl = null;
 let musicOn = (saved && typeof saved.musicOn === 'boolean') ? saved.musicOn : true;
 
-function currentTrack(){ return MUSIC[currentModeKey] || null; }
+function currentTrack(){ return tracksFor(currentModeKey)[trackIndexFor(currentModeKey)] || null; }
 
 function renderMusicBar(playing){
   const t = currentTrack();
@@ -2132,7 +2204,54 @@ function mmss(sec){
   return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 }
 
+/* Sélecteur de thème par mission, avec écoute : on choisit une musique en l'entendant,
+   pas en lisant son titre. */
+let previewEl = null;
+function stopMusicPreview(){
+  if (previewEl) { previewEl.pause(); previewEl = null; }
+  document.querySelectorAll('.mp-play.on').forEach(b => b.classList.remove('on'));
+}
+function renderMusicPicker(){
+  const host = document.getElementById('music-picker');
+  if (!host) return;
+  host.innerHTML = MODES.map(m => {
+    const list = tracksFor(m.key);
+    const sel = trackIndexFor(m.key);
+    return `<div class="mpick-row" data-mode="${m.key}">
+      <span class="mp-mode">${m.icon} ${m.name}</span>
+      <select data-mode="${m.key}">
+        ${list.map((t, i) => `<option value="${i}" ${i === sel ? 'selected' : ''}>${t.title} — ${t.author}${t.note ? ' (' + t.note + ')' : ''}</option>`).join('')}
+      </select>
+      <button class="mp-play" data-mode="${m.key}" title="Écouter">▶</button>
+    </div>`;
+  }).join('');
+
+  host.querySelectorAll('select').forEach(sel => {
+    sel.addEventListener('change', () => {
+      musicChoice[sel.dataset.mode] = +sel.value;
+      saveState();
+      stopMusicPreview();
+      renderMusicBar(missionState === 'running');
+    });
+  });
+  host.querySelectorAll('.mp-play').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const wasOn = btn.classList.contains('on');
+      stopMusicPreview();
+      if (wasOn) return;
+      const t = tracksFor(btn.dataset.mode)[trackIndexFor(btn.dataset.mode)];
+      if (!t) return;
+      previewEl = new Audio(t.file);
+      previewEl.volume = 0.45;
+      previewEl.play().catch(() => {});
+      btn.classList.add('on');
+      previewEl.addEventListener('ended', stopMusicPreview);
+    });
+  });
+}
+
 function startMissionMusic(){
+  stopMusicPreview();   /* on ne lance pas une mission par-dessus une écoute */
   const t = currentTrack();
   if (!t) return;
   stopMissionMusic();
@@ -3925,6 +4044,7 @@ document.querySelector('.team-toggle .switch').classList.toggle('on', teamMode);
 document.getElementById('teams-block').style.display = teamMode ? '' : 'none';
 document.getElementById('team-scores').style.display = teamMode ? 'flex' : 'none';
 renderThemePicker();
+renderMusicPicker();
 renderModes();
 updateModeChip();
 renderHardware();
