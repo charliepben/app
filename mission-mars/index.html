@@ -4341,6 +4341,27 @@ renderScoresTab();
 renderHistory();
 applyTheme();
 
+/* ===== L'écran ne doit pas s'éteindre =====
+   L'iPad posé dans le couvercle est l'écran de contrôle : s'il se met en veille au milieu
+   d'une manche, on perd le chrono de vue et il faut le réveiller à la main. On garde donc
+   un verrou de veille tant que la page est affichée. Le navigateur le lâche dès qu'on
+   change d'onglet — on le reprend au retour. Safari 16.4+ et Chrome le savent faire ;
+   ailleurs, on ne fait rien de plus qu'avant. */
+let wakeLock = null;
+async function keepScreenAwake(){
+  if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch (e) { /* refusé (batterie faible, onglet caché) : sans gravité */ }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !wakeLock) keepScreenAwake();
+});
+/* certains navigateurs n'accordent le verrou qu'après une interaction */
+document.addEventListener('pointerdown', () => { if (!wakeLock) keepScreenAwake(); }, { once:true });
+keepScreenAwake();
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch(() => {});
