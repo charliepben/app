@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#0b0f16"/>
+  <!-- pupitre : trois boutons de la mallette -->
+  <circle cx="20" cy="24" r="9" fill="#9d7bff"/>
+  <circle cx="44" cy="24" r="9" fill="#e9eef7"/>
+  <circle cx="32" cy="45" r="10" fill="#ff4d5e"/>
+  <circle cx="17.5" cy="21" r="3" fill="#fff" opacity=".45"/>
+  <circle cx="41.5" cy="21" r="3" fill="#fff" opacity=".7"/>
+  <circle cx="29" cy="41.5" r="3.4" fill="#fff" opacity=".4"/>
+</svg>

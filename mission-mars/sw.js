@@ -1,9 +1,11 @@
-const CACHE_NAME = "mission-mars-v3";
+const CACHE_NAME = "mission-mars-v4";
 const ASSETS = [
   "./",
   "./index.html",
   "./simulateur.html",
   "./manifest.json",
+  "./icons/favicon.svg",
+  "./icons/favicon-simulateur.svg",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   // Sons pre-charges : le jour de la fete le telephone peut tres bien
