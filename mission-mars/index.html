@@ -239,6 +239,33 @@
   .next-names span{ overflow:hidden; text-overflow:ellipsis; }
   .next-names .next-amp{ color:var(--dim); font-weight:400; }
 
+  /* ===== Suivi de la manche : où en est-on, et qui passe ensuite ===== */
+  .round-track{ margin-top:10px; padding-top:9px; border-top:1px solid var(--line); }
+  .rt-head{
+    display:flex; align-items:baseline; gap:8px; font-family:'JetBrains Mono';
+    font-size:clamp(9.5px, 2.1cqw, 11.5px); color:var(--dim); letter-spacing:.06em;
+  }
+  .rt-head b{ color:var(--text); font-size:clamp(11px, 2.5cqw, 13.5px); }
+  .rt-head .rt-count{ margin-left:auto; }
+  .rt-bar{ height:3px; border-radius:3px; background:#1c2836; margin-top:6px; overflow:hidden; }
+  .rt-bar i{ display:block; height:100%; border-radius:3px; background:var(--green); box-shadow:0 0 8px var(--green); transition:width .35s ease; }
+  .rt-pips{ display:flex; align-items:center; gap:clamp(4px, 1.2cqw, 8px); margin-top:8px; flex-wrap:wrap; }
+  .rt-pip{ position:relative; display:flex; align-items:center; gap:3px; transition:transform .2s, opacity .2s; }
+  .rt-pip .avatar.pip{
+    width:clamp(20px, 5cqw, 30px); height:clamp(20px, 5cqw, 30px); border-radius:8px;
+    font-size:clamp(9px, 2.2cqw, 13px);
+  }
+  .rt-pip.done{ opacity:.4; }
+  .rt-pip.done::after{
+    content:"✓"; position:absolute; right:-2px; bottom:-3px; font-size:9px; line-height:1;
+    color:var(--green); text-shadow:0 0 4px var(--bg), 0 0 4px var(--bg);
+  }
+  .rt-pip.todo{ opacity:.62; }
+  .rt-pip.now{ transform:scale(1.16); }
+  .rt-pip.now .avatar.pip{ animation:pipPulse 1.6s ease-in-out infinite; }
+  @keyframes pipPulse{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.35); } }
+  .rt-sep{ width:5px; height:1px; background:#26313f; flex-shrink:0; }
+
   .beam-grid{
     display:flex; justify-content:center; gap:9px; flex-shrink:0;
   }
@@ -561,6 +588,48 @@
   .wizard-body.centered .wizard-title{ font-size:clamp(22px, 5.5cqw, 34px); margin-bottom:8px; }
   .wizard-body.centered .wizard-sub{ font-size:clamp(14px, 3.4cqw, 19px); margin-bottom:22px; }
   .wizard-sub{ font-size:clamp(14px, 3.1cqw, 17px); color:var(--dim); margin-bottom:18px; line-height:1.55; }
+  /* champ d'étoiles derrière l'étape finale : l'écran ne reste jamais figé */
+  .wizard-body.centered{ position:relative; }
+  .wizard-stars{ position:absolute; inset:0; z-index:0; }
+  .wizard-body.centered > *:not(.wizard-stars){ position:relative; z-index:1; }
+
+  /* combien de manches ? */
+  .rounds-row{ display:flex; align-items:center; justify-content:center; gap:7px; flex-wrap:wrap; margin:6px 0 18px; }
+  .rounds-lbl{ font-family:'JetBrains Mono'; font-size:clamp(10px, 2.3cqw, 12.5px); color:var(--dim); letter-spacing:.06em; }
+  .round-btn{
+    min-width:clamp(38px, 9cqw, 48px); padding:8px 10px; border-radius:12px; border:1px solid var(--line);
+    background:var(--panel); color:var(--dim); font-family:'Orbitron'; font-weight:700;
+    font-size:clamp(13px, 3cqw, 16px); cursor:pointer; transition:.15s;
+  }
+  .round-btn.selected{ border-color:var(--green); color:var(--green); background:rgba(53,242,163,.12); box-shadow:0 0 14px -4px var(--green); }
+
+  /* les deux équipes au complet, à l'étape finale */
+  .wizard-teams{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:4px; }
+  .wteam{ flex:1 1 200px; max-width:340px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px 12px; }
+  .wteam .wt-name{
+    font-family:'JetBrains Mono'; font-style:italic; font-weight:700; letter-spacing:.04em;
+    font-size:clamp(11px, 2.5cqw, 13px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .wteam .wt-list{ display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-top:8px; }
+  .wteam .avatar.pip{ width:clamp(22px, 5.5cqw, 32px); height:clamp(22px, 5.5cqw, 32px); border-radius:8px; font-size:clamp(10px, 2.4cqw, 14px); }
+
+  /* ===== Écran de fin de partie ===== */
+  .gover-podium{ display:flex; align-items:flex-end; justify-content:center; gap:clamp(8px, 3cqw, 22px); margin:6px 0 18px; }
+  .gpod{ text-align:center; min-width:0; }
+  .gpod .avatar{ margin:0 auto; }
+  .gpod .gp-name{ font-family:'Orbitron'; font-weight:700; font-size:clamp(12px, 3cqw, 16px); margin-top:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .gpod .gp-pts{ font-family:'JetBrains Mono'; font-size:clamp(10px, 2.3cqw, 12.5px); color:var(--dim); }
+  .gpod .gp-medal{ font-size:clamp(16px, 4cqw, 22px); line-height:1; }
+  .gpod.p1 .avatar{ width:clamp(78px, 22cqw, 130px); height:clamp(78px, 22cqw, 130px); border-radius:22px; font-size:clamp(30px, 9cqw, 52px); }
+  .gpod.p2 .avatar, .gpod.p3 .avatar{ width:clamp(54px, 15cqw, 92px); height:clamp(54px, 15cqw, 92px); border-radius:16px; font-size:clamp(21px, 6cqw, 36px); }
+  .gpod.p1 .gp-name{ color:#ffd54a; text-shadow:0 0 22px rgba(255,213,74,.55); font-size:clamp(15px, 3.8cqw, 20px); }
+  .gover-rest{ text-align:left; max-width:520px; margin:0 auto; }
+  .gover-teams{ display:flex; gap:10px; justify-content:center; margin:14px auto 0; max-width:520px; }
+  .gteam{ flex:1; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px 12px; text-align:center; }
+  .gteam.win{ border-color:#ffd54a; box-shadow:0 0 22px -10px #ffd54a; }
+  .gteam .gt-name{ font-family:'JetBrains Mono'; font-style:italic; font-weight:700; font-size:clamp(10px, 2.3cqw, 12.5px); }
+  .gteam .gt-val{ font-family:'Orbitron'; font-weight:900; font-size:clamp(20px, 5cqw, 28px); margin-top:4px; }
+  .gteam .gt-sub{ font-family:'JetBrains Mono'; font-size:clamp(9px, 2cqw, 11px); color:var(--dim); }
 
   /* cartes de mission "qui font rêver" */
   .mcard{
@@ -894,6 +963,7 @@
             <span class="next-arrow">→</span>
             <span class="next-names" id="next-players"></span>
           </div>
+          <div class="round-track" id="round-track"></div>
         </div>
 
         <div class="timer-block">
@@ -961,11 +1031,12 @@
 
     <!-- ===================== ASSISTANT DE DÉMARRAGE (3 étapes) ===================== -->
     <div class="wizard" id="wizard">
-      <div class="wizard-head">
+      <div class="wizard-head" id="wizard-head-wrap">
         <div class="wizard-steps" id="wizard-steps"></div>
       </div>
       <div class="wizard-body" id="wizard-body"></div>
       <div class="wizard-foot">
+        <button class="wizard-back" id="wizard-alt" style="display:none">PROLONGER</button>
         <button class="btn-toggle go" id="wizard-next">SUITE →</button>
       </div>
     </div>
@@ -1187,6 +1258,7 @@ const MODES = [
     key:'cristal-rush', icon:'💎', name:'Cristal Rush', req:null,
     obstacleName:'Météore', obstacleIcon:'☄️', targetName:'Cristal', targetIcon:'💎',
     playersUsed:'all', timed:true, defaultDuration:120,
+    rankScope:'round',  /* tout le monde joue le même parcours : on classe toute la manche */
     hasArrival:false,   /* pas d'arrivée : la manche s'arrête au chrono */
     tagline:"Une pluie de cristaux dans le noir. Attrape-les tous.",
     desc:"Les cristaux scintillent dans l'obscurité — rose, violet, vert, bleu glacier. Touche-en le plus possible avant la fin du compte à rebours, pendant que les météores balaient la salle. Chaque impact te coûte un cristal… mais un nouveau se rallume toujours quelque part."
@@ -1195,6 +1267,7 @@ const MODES = [
     key:'fire', icon:'🔥', name:'Fire', req:null,
     obstacleName:'Flamme', obstacleIcon:'🔥', targetName:'Extincteur', targetIcon:'🧯',
     playersUsed:1, timed:false,
+    rankScope:'round',  /* chacun son passage, mais tous comparés sur la même manche */
     hasArrival:false, arrivalLabel:'Extincteur', arrivalIcon:'🧯',   /* désigné en cours de partie */
     tagline:"La navette brûle. Un seul bouton peut tout arrêter.",
     desc:"Sirène hurlante, gyrophare rouge : le feu a pris dans la navette. Une seule commande d'extinction, tout au fond de la salle, et un mur de flammes entre elle et toi. Traverse sans te brûler — le plus rapide sauve l'équipage."
@@ -1203,6 +1276,7 @@ const MODES = [
     key:'duel-orbital', icon:'🚀', name:'Duel orbital', req:'2 ÉQUIPES',
     obstacleName:'Astéroïde', obstacleIcon:'☄️', targetName:'Base', targetIcon:'🛸',
     playersUsed:2, timed:false,
+    rankScope:'heat',   /* un duel ne se compare qu'à lui-même : gagnant devant, perdant derrière */
     hasArrival:true, arrivalLabel:'Arrivée', arrivalIcon:'🛸',
     tagline:"Five… four… three… two… one… ignition!",
     desc:"Deux navettes, deux bases opposées, un champ d'astéroïdes entre les deux. Le décompte tombe, l'annonceur crie GO, et chacun s'élance vers la base d'en face — celle qui porte son nom. Le premier arrivé gagne, le premier touché explose."
@@ -1782,7 +1856,8 @@ function saveState(){
   try{
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       teams:TEAMS, players:PLAYERS, roster:ROSTER,
-      queueIndex, liveScores, teamTally, roundIndex, currentModeKey, arrivalButtonId,
+      queueIndex, liveScores, teamTally, roundIndex, roundsTarget, roundsChoice, playedThisRound, roundStartIndex,
+      currentModeKey, arrivalButtonId,
       teamMode, modeDurations, currentTheme, history:HISTORY, soundOn, musicOn, beamRelightSec
     }));
   }catch(e){ /* stockage plein ou indisponible, tant pis */ }
@@ -1795,6 +1870,11 @@ function isValidPlayers(p, teams){
 }
 
 const saved = loadState();
+/* Sauvegardes d'avant les manches : `round` y comptait les missions, pas les manches.
+   Les points s'en trouveraient faussés (chacun seul dans sa « manche » = 10 points).
+   On repart donc sur une partie neuve — joueurs, équipes, photos et historique
+   sont conservés, seule la partie en cours est abandonnée. */
+const legacySave = !!(saved && typeof saved.roundsTarget !== 'number');
 let TEAMS = isValidTeams(saved && saved.teams) ? saved.teams : { a:{ ...DEFAULT_TEAMS.a }, b:{ ...DEFAULT_TEAMS.b } };
 let PLAYERS = isValidPlayers(saved && saved.players, TEAMS) ? saved.players : DEFAULT_PLAYERS.map(p => ({ ...p }));
 let ROSTER = Array.isArray(saved && saved.roster) ? saved.roster : PLAYERS.map(p => ({ name:p.name, photo:p.photo }));
@@ -2427,13 +2507,36 @@ function renderRunHud(){
 let simChannel = null;
 function broadcastToSim(evt){ if (simChannel) simChannel.postMessage(evt); }
 
-let queueIndex = (saved && typeof saved.queueIndex === 'number') ? saved.queueIndex : 0;
+let queueIndex = (!legacySave && saved && typeof saved.queueIndex === 'number') ? saved.queueIndex : 0;
 let running = false;
 let startTime = 0;
 let tickId = null;
-let liveScores = Array.isArray(saved && saved.liveScores) ? saved.liveScores : [];
+let liveScores = (!legacySave && Array.isArray(saved && saved.liveScores)) ? saved.liveScores : [];
 let teamTally = (saved && saved.teamTally && typeof saved.teamTally.a === 'number') ? saved.teamTally : { a:0, b:0 };
-let roundIndex = (saved && typeof saved.roundIndex === 'number') ? saved.roundIndex : 0;
+/* ===== MANCHES =====
+   Une manche = tout le monde passe une fois dans la mission choisie. C'est l'unité qui
+   compte : les joueurs d'une même manche sont classés ENTRE EUX, et c'est ce classement
+   qui donne les points. Une partie vaut `roundsTarget` manches (0 = illimité). */
+let roundIndex = (!legacySave && saved && typeof saved.roundIndex === 'number' && saved.roundIndex > 0) ? saved.roundIndex : 1;
+/* `roundsChoice` est la PRÉFÉRENCE (ce qu'on a choisi à l'étape 3), `roundsTarget` la
+   cible de la partie en cours. « +1 manche » prolonge la partie sans changer la
+   préférence : la partie suivante repart sur le nombre choisi. */
+let roundsChoice = (saved && typeof saved.roundsChoice === 'number') ? saved.roundsChoice : 3;
+let roundsTarget = (saved && typeof saved.roundsTarget === 'number') ? saved.roundsTarget : roundsChoice;
+let playedThisRound = (!legacySave && saved && typeof saved.playedThisRound === 'number') ? saved.playedThisRound : 0;
+let roundStartIndex = (!legacySave && saved && typeof saved.roundStartIndex === 'number') ? saved.roundStartIndex : 0;
+
+/* Combien de missions faut-il pour que tout le monde soit passé une fois ? */
+function missionsPerRound(){
+  return Math.max(1, Math.ceil(PLAYERS.length / modePlayerCount()));
+}
+const ROUNDS_CHOICES = [1, 2, 3, 5, 0];   /* 0 = illimité */
+function roundsLabel(n){ return n === 0 ? '∞' : String(n); }
+function roundsTitle(n){
+  return n === 0
+    ? 'Sans fin : on joue tant qu' + String.fromCharCode(39) + 'on veut'
+    : n + ' manche' + (n > 1 ? 's' : '');
+}
 
 /* Remet à zéro la partie (scores, file de joueurs) sans toucher aux joueurs ni aux équipes. */
 /* Remet la partie à zéro sans toucher aux joueurs ni aux équipes. */
@@ -2444,13 +2547,16 @@ function resetGame(){
   renderTimerIdle();
   lastResult = null;
   queueIndex = 0;
+  roundStartIndex = 0;
   liveScores = [];
-  roundIndex = 0;
+  roundIndex = 1;
+  roundsTarget = roundsChoice;   /* la nouvelle partie repart sur le nombre choisi */
+  playedThisRound = 0;
   teamTally = { a:0, b:0 };
   missionState = 'ready';
   saveState();
   renderPlayers(); renderLiveScores(); renderTeamScores();
-  renderScoresTab(); renderRunHud();
+  renderScoresTab(); renderRunHud(); renderRoundTrack();
   setStatus(); updateMissionControls();
 }
 
@@ -2560,6 +2666,36 @@ function renderPlayers(){
   document.getElementById('next-players').innerHTML = next
     .map(p => `${avatarHtml(p, 'mini')} <span style="color:${colorOf(p)};">${p.name}</span>`)
     .join(` <span class="next-amp">${modePlayerCount() === 2 ? 'vs' : '&amp;'}</span> `);
+  renderRoundTrack();   /* la file affichée et le suivi de manche disent la même chose */
+}
+
+/* ===== Suivi de la manche =====
+   La file interne n'a de valeur que si on la voit. On déroule la manche en cours :
+   qui est déjà passé, qui y est, qui attend. */
+function renderRoundTrack(){
+  const el = document.getElementById('round-track');
+  if (!el) return;
+  const n = modePlayerCount();
+  const per = missionsPerRound();
+  const m = currentMode();
+  const done = Math.min(playedThisRound, per);
+  const nowSlot = Math.min(done, per - 1);
+
+  const slots = [];
+  for (let i = 0; i < per; i++) {
+    const crew = playersAt(roundStartIndex + i * n, n);
+    const cls = i < done ? 'done' : (i === nowSlot ? 'now' : 'todo');
+    slots.push(`<span class="rt-pip ${cls}">` +
+      crew.map(p => avatarHtml(p, 'pip', `title="${p.name}"`)).join('') +
+      '</span>');
+  }
+
+  const total = roundsTarget > 0 ? '/' + roundsTarget : '';
+  el.innerHTML =
+    `<div class="rt-head">MANCHE <b>${roundIndex}${total}</b>` +
+    `<span class="rt-count">${m.icon} ${done} / ${per}</span></div>` +
+    `<div class="rt-bar"><i style="width:${Math.round(100 * done / per)}%"></i></div>` +
+    `<div class="rt-pips">${slots.join('<span class="rt-sep"></span>')}</div>`;
 }
 
 function renderLiveScores(){
@@ -2666,7 +2802,14 @@ function rankerFor(mode){ return RANKERS[mode] || ((a, b) => a.ms - b.ms); }
 function computeStandings(){
   const rounds = {};
   liveScores.forEach((e, i) => {
-    const key = e.round != null ? e.round : 'x' + i;   /* anciennes parties : 1 manche chacune */
+    /* On ne compare que ce qui est comparable. Par défaut : même manche, même mission —
+       tout le monde a couru le même parcours. En duel, seuls les deux joueurs qui se
+       sont affrontés sont comparables : chaque duel forme son propre groupe. */
+    if (e.round == null) { (rounds['x' + i] = rounds['x' + i] || []).push(e); return; }
+    const scope = (MODES.find(m => m.key === e.mode) || {}).rankScope || 'round';
+    const key = scope === 'heat'
+      ? e.round + '|' + e.mode + '|' + (e.heat != null ? e.heat : i)
+      : e.round + '|' + e.mode;
     (rounds[key] = rounds[key] || []).push(e);
   });
 
@@ -3173,10 +3316,24 @@ let pausedAt = 0;
    continue d'afficher celui qui vient de jouer (avec son résultat). */
 function armNext(){
   if (missionState !== 'finished') return;
+  /* La manche est-elle bouclée ? Si oui, on passe à la suivante — et si c'était la
+     dernière, la partie s'arrête ici sur le classement général. */
+  if (playedThisRound >= missionsPerRound()) {
+    playedThisRound = 0;
+    roundIndex++;
+    if (roundsTarget > 0 && roundIndex > roundsTarget) {
+      roundIndex = roundsTarget;          /* on reste sur la dernière manche jouée */
+      saveState();
+      showGameOver();
+      return;
+    }
+  }
+  const newRound = (playedThisRound === 0);
   lastResult = null;   /* l'écran repart propre pour le nouveau joueur */
   renderRunHud();
   renderTimerIdle();
   queueIndex = (queueIndex + modePlayerCount()) % PLAYERS.length;
+  if (newRound) roundStartIndex = queueIndex;   /* la manche suivante part d'ici */
   missionState = 'ready';
   saveState();
   renderPlayers();
@@ -3186,6 +3343,7 @@ function armNext(){
   np.classList.add('pop');
   setStatus();
   updateMissionControls();
+  renderRoundTrack();
 }
 
 function startMission(){
@@ -3257,14 +3415,15 @@ function stopMission(reason){
   if (aborted) result = { ...result, win:false, aborted:true, label:'Mission abandonnée' };
 
   /* En duel, seul le vainqueur marque ; sinon tout le monde enregistre sa manche. */
-  roundIndex++;
+  const heat = playedThisRound;   /* rang de cette mission DANS la manche */
+  playedThisRound++;
   finishers.forEach((p, i) => {
     const isWinner = result.winnerIndex === undefined ? result.win : (i === result.winnerIndex);
     /* On enregistre le RÉSULTAT BRUT. Les points sont recalculés à l'affichage :
        si le barème change, rien n'est perdu et rien n'est faussé. */
     liveScores.push({
       name:p.name, team:p.team, color:p.color, photo:p.photo,
-      ms:Math.round(elapsed), mode:currentModeKey, round:roundIndex,
+      ms:Math.round(elapsed), mode:currentModeKey, round:roundIndex, heat,
       value:result.value, detail:result.label, win:isWinner,
       hits: run ? (run.hitCount || 0) : 0,
       finished: !aborted && isWinner,
@@ -3523,8 +3682,8 @@ if ('BroadcastChannel' in window) {
 /* ===== Assistant de démarrage en 3 étapes ===== */
 let wizardStep = 0;
 
-function startWizard(){
-  wizardStep = 0;
+function startWizard(step){
+  wizardStep = step || 0;
   document.getElementById('wizard').classList.add('show');
   renderWizard();
 }
@@ -3549,7 +3708,12 @@ function renderWizard(){
   const body = document.getElementById('wizard-body');
   const nextBtn = document.getElementById('wizard-next');
 
-  body.classList.toggle('centered', wizardStep === 2);
+  body.classList.toggle('centered', wizardStep >= 2);
+  /* le fil d'Ariane n'a plus de sens sur l'écran de fin de partie */
+  document.getElementById('wizard-head-wrap').style.display = wizardStep === 3 ? 'none' : '';
+  const alt = document.getElementById('wizard-alt');
+  alt.style.display = (wizardStep === 3 && roundsTarget > 0) ? '' : 'none';   /* pas de prolongation en illimité */
+  alt.textContent = '+1 MANCHE';
   /* rejoue l'animation dans le sens du déplacement */
   body.classList.remove('step-next', 'step-prev');
   void body.offsetWidth;
@@ -3571,11 +3735,12 @@ function renderWizard(){
       <div id="wizard-slot"></div>`;
     document.getElementById('wizard-slot').appendChild(document.getElementById('section-mission'));
     nextBtn.textContent = 'SUITE →';
-  } else {
+  } else if (wizardStep === 2) {
     restoreConfigTab();
     const m = MODES.find(x => x.key === currentModeKey) || MODES[0];
     const crew = playersAt(queueIndex, modePlayerCount());
     body.innerHTML = `
+      ${starShowerHtml()}
       <div class="wizard-title">Tout est prêt</div>
       <div class="wizard-sub">${m.icon} ${m.name} — ${m.tagline}</div>
       <div class="wizard-crew ${crew.length > 1 ? 'duo' : ''}">
@@ -3586,9 +3751,109 @@ function renderWizard(){
             ${subtitleOf(p) ? `<div class="wizard-player-team" style="color:${colorOf(p)};">${subtitleOf(p)}</div>` : ''}
           </div>
         `).join('<div class="vs">VS</div>')}
-      </div>`;
+      </div>
+      <div class="rounds-row">
+        <span class="rounds-lbl">MANCHES</span>
+        ${ROUNDS_CHOICES.map(n => `
+          <button class="round-btn ${n === roundsChoice ? 'selected' : ''}" data-rounds="${n}"
+                  title="${roundsTitle(n)}">${roundsLabel(n)}</button>
+        `).join('')}
+      </div>
+      <div class="wizard-teams">${teamsRecapHtml()}</div>`;
+    body.querySelectorAll('.round-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        roundsChoice = +b.dataset.rounds;
+        roundsTarget = roundsChoice;
+        saveState();
+        renderWizard();
+        renderRoundTrack();
+      });
+    });
     nextBtn.textContent = w('startMission').toUpperCase() + ' →';
+  } else {
+    /* ===== Étape finale : la partie est jouée, voici le classement ===== */
+    restoreConfigTab();
+    body.innerHTML = gameOverHtml();
+    nextBtn.textContent = 'NOUVELLE PARTIE →';
   }
+}
+
+/* Les deux équipes au complet — on voit tout de suite qui joue pour qui. */
+function teamsRecapHtml(){
+  const line = (p) => avatarHtml(p, 'pip', `title="${p.name}"`) +
+    `<span style="font-size:.82em;color:${colorOf(p)}">${p.name}</span>`;
+  if (!teamMode) {
+    return `<div class="wteam"><div class="wt-name" style="color:var(--dim)">TOUS LES JOUEURS</div>
+      <div class="wt-list">${PLAYERS.map(line).join('')}</div></div>`;
+  }
+  return ['a','b'].map(key => {
+    const squad = PLAYERS.filter(p => p.team === key);
+    return `<div class="wteam" style="border-color:${TEAMS[key].color}55">
+      <div class="wt-name" style="color:${TEAMS[key].color}">${TEAMS[key].name}</div>
+      <div class="wt-list">${squad.length
+        ? squad.map(line).join('')
+        : '<span style="color:var(--dim);font-size:.85em">personne</span>'}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ===== Fin de partie : le classement général, en grand ===== */
+function showGameOver(){
+  stopMissionMusic();
+  setSystemState('gyro', 'idle');
+  missionState = 'ready';
+  setStatus();
+  updateMissionControls();
+  renderRoundTrack();
+  play('success');
+  startWizard(3);
+}
+
+function gameOverHtml(){
+  const st = computeStandings();
+  const podium = st.slice(0, 3);
+  const rest = st.slice(3);
+  const medals = ['🥇', '🥈', '🥉'];
+  /* le 2e à gauche, le 1er au milieu, le 3e à droite — comme un vrai podium */
+  const order = [1, 0, 2].filter(i => podium[i]);
+  const nb = roundsTarget > 0 ? roundsTarget : roundIndex;
+
+  const teamsBlock = (() => {
+    if (!teamMode) return '';
+    const t = computeTeamStandings();
+    const winner = t.a.moyenne === t.b.moyenne ? null : (t.a.moyenne > t.b.moyenne ? 'a' : 'b');
+    return `<div class="gover-teams">${['a','b'].map(k => `
+      <div class="gteam ${winner === k ? 'win' : ''}">
+        <div class="gt-name" style="color:${TEAMS[k].color}">${TEAMS[k].name}</div>
+        <div class="gt-val" style="color:${TEAMS[k].color}">${t[k].moyenne.toFixed(1)}</div>
+        <div class="gt-sub">moyenne · ${t[k].total} pts / ${t[k].joueurs}</div>
+      </div>`).join('')}</div>`;
+  })();
+
+  return `
+    ${starShowerHtml()}
+    <div class="wizard-title">Partie terminée</div>
+    <div class="wizard-sub">${nb} manche${nb > 1 ? 's' : ''} · ${liveScores.length} passage${liveScores.length > 1 ? 's' : ''}</div>
+    ${st.length ? `
+      <div class="gover-podium">
+        ${order.map(i => `
+          <div class="gpod p${i + 1}">
+            <div class="gp-medal">${medals[i]}</div>
+            ${avatarHtml(podium[i])}
+            <div class="gp-name">${podium[i].name}</div>
+            <div class="gp-pts">${podium[i].points} pts${podium[i].clean ? ' · ' + podium[i].clean + ' sans-faute' : ''}</div>
+          </div>`).join('')}
+      </div>
+      ${rest.length ? `<div class="gover-rest">${rest.map((p, i) => `
+        <div class="live-row">
+          <span class="r">${i + 4}</span>
+          ${avatarHtml(p, 'mini')}
+          <span class="n">${p.name}</span>
+          <span class="gap"></span>
+          <span class="t">${p.points} pts</span>
+        </div>`).join('')}</div>` : ''}
+      ${teamsBlock}
+    ` : '<div class="wizard-sub">Aucune manche jouée.</div>'}`;
 }
 /* remet les sections empruntées par l'assistant dans l'onglet Config */
 function restoreConfigTab(){
@@ -3607,6 +3872,20 @@ document.getElementById('wizard-next').addEventListener('click', () => {
     resetGame();
     closeWizard();
   }
+});
+
+/* « +1 manche » : on prolonge la partie en cours sans rien effacer. */
+document.getElementById('wizard-alt').addEventListener('click', () => {
+  roundsTarget += 1;
+  roundIndex += 1;
+  playedThisRound = 0;
+  queueIndex = (queueIndex + modePlayerCount()) % PLAYERS.length;
+  roundStartIndex = queueIndex;
+  lastResult = null;
+  saveState();
+  closeWizard();
+  renderPlayers(); renderRunHud(); renderTimerIdle(); renderRoundTrack();
+  setStatus(); updateMissionControls();
 });
 
 /* confirmation maison (remplace confirm()) */
