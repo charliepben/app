@@ -312,6 +312,17 @@
   .beam.knob.unused{ opacity:.32; filter:grayscale(1); }
   .beam.knob.unused .led{ background:#1c2836 !important; box-shadow:inset 0 0 0 1px #2a3644 !important; }
   .beam.knob.arrival{ border-color:var(--amber); }
+
+  /* Le halo ne doit RIEN rencontrer.
+     Les tuiles de boutons portaient un fond et une bordure, et surtout un overflow:hidden
+     qui coupait net le halo au bord de la tuile : c'est ce qui dessinait le rectangle sombre
+     qu'on voyait derrière le cristal. La forme EST la lampe — on enlève le cadre, et on
+     laisse la lumière déborder sur les voisines, comme le ferait une vraie lampe.
+     La tuile reste carrée et à sa place : seul son décor disparaît. */
+  .buttons-grid .beam.knob{ background:transparent; border-color:transparent; overflow:visible; }
+  /* éteinte, elle garde un liseré discret : on doit voir où sont les boutons */
+  .buttons-grid .beam.knob.off{ border-color:#141c26; }
+  .buttons-grid .beam.knob.arrival{ border-color:var(--amber); }
   .setting-row{ display:flex; align-items:center; justify-content:space-between; gap:14px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; flex-wrap:wrap; }
   .setting-row .lbl{ font-size:clamp(13px, 2.9cqw, 15.5px); font-weight:600; }
   .setting-row .sub{ font-size:clamp(10px, 2.3cqw, 12px); color:var(--dim); font-family:'JetBrains Mono'; }
