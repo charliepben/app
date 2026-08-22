@@ -1530,13 +1530,66 @@ document.addEventListener('keydown', (e) => {
 const THEMES = {
   mars: {
     name:'Mission Mars', badge:'🛰️', newGameIcon:'🚀',
+    /* ----- l'habillage des missions : noms, icones, vocabulaire, visuels, musiques -----
+       Une cle par mission mecanique. Un theme qui en oublie une la laisse simplement
+       sans habillage : le jeu tourne quand meme, avec la cle brute. */
+    missions: {
+      'cristal-rush': {
+        icon:'💎', name:'Cristal Rush', req:null,
+        obstacleName:'Météore', obstacleIcon:'☄️', targetName:'Cristal', targetIcon:'💎',
+        tagline:"Une pluie de cristaux dans le noir. Attrape-les tous.",
+        desc:"Les cristaux scintillent dans l'obscurité — rose, violet, vert, bleu glacier. Touche-en le plus possible avant la fin du compte à rebours, pendant que les météores balaient la salle. Chaque impact te coûte un cristal… mais un nouveau se rallume toujours quelque part.",
+        art:'img/mode-cristal-rush.png', tint:'#8fb8ff', glow:'rgba(157,123,255,.5)',
+        shape:'crystal', startShape:'plain',
+        gain:'+1 cristal', perte:'−1 cristal',
+        musiques:[
+          { file:'music/cristal-rush.mp3',   title:'Party Sector',          author:'Joth' },
+          { file:'music/cristal-rush-2.ogg', title:'Speedier than Photons', author:'Joth' },
+          { file:'music/cristal-rush-3.ogg', title:'Outer Space Loop',      author:'wipics' }
+        ]
+      },
+      'fire': {
+        icon:'🔥', name:'Fire', req:null,
+        obstacleName:'Flamme', obstacleIcon:'🔥', targetName:'Extincteur', targetIcon:'🧯',
+        arrivalLabel:'Extincteur', arrivalIcon:'🧯',
+        tagline:"La navette brûle. Un seul bouton peut tout arrêter.",
+        desc:"Sirène hurlante, gyrophare rouge : le feu a pris dans la navette. Une seule commande d'extinction, tout au fond de la salle, et un mur de flammes entre elle et toi. Traverse sans te brûler — le plus rapide sauve l'équipage.",
+        art:'img/mode-fire.png', tint:'#ff7a3d', glow:'rgba(255,138,61,.5)',
+        shape:'extinguisher', startShape:'flame',
+        reussite:'Feu éteint', echec:'Mission perdue',
+        musiques:[
+          { file:'music/fire.ogg',   title:'Fast Fight',          author:'xcvg', note:'boucle de 25 s' },
+          { file:'music/fire-2.mp3', title:'Unstable Field',      author:'centurionofwar' },
+          { file:'music/fire-3.ogg', title:'Tower Defense Theme', author:'DST' }
+        ]
+      },
+      'duel-orbital': {
+        icon:'🚀', name:'Duel orbital', req:'2 ÉQUIPES',
+        obstacleName:'Astéroïde', obstacleIcon:'☄️', targetName:'Base', targetIcon:'🛸',
+        arrivalLabel:'Arrivée', arrivalIcon:'🛸',
+        tagline:"Five… four… three… two… one… ignition!",
+        desc:"Deux navettes, deux bases opposées, un champ d'astéroïdes entre les deux. Le décompte tombe, l'annonceur crie GO, et chacun s'élance vers la base d'en face — celle qui porte son nom. Le premier arrivé gagne, le premier touché explose.",
+        art:'img/mode-duel-orbital.png', tint:'#4dc3ff', glow:'rgba(77,195,255,.5)',
+        shape:'rocket', startShape:'rocket',
+        musiques:[
+          { file:'music/duel-orbital.mp3',   title:'Interstellar Fleet', author:'Zane Little Music' },
+          { file:'music/duel-orbital-2.mp3', title:'Spacecrusher',       author:'yd' },
+          { file:'music/duel-orbital-3.ogg', title:'Singularity',        author:'vitalezzz' }
+        ]
+      }
+    },
+    /* les couleurs des cibles, quand la mission en allume plusieurs */
+    couleursCibles:[ {r:255,g:111,b:176}, {r:157,g:123,b:255}, {r:53,g:242,b:163},
+                     {r:77,g:195,b:255}, {r:255,g:224,b:102} ],
     colors:{ bg:'#05070a', panel:'#0d131c', line:'#1c2836', green:'#35f2a3', red:'#ff4d5e', blue:'#4dc3ff', amber:'#ffb347', violet:'#9d7bff', text:'#e7edf5', dim:'#6b7c92' },
     words:{
       startMission:'Démarrer la mission', stopMission:'Arrêter la mission', nextPlayer:'Joueur suivant',
       waitingStart:'Prêt — appuie sur le départ', missionRunning:'Mission en cours', waiting:'En attente',
       success:'Mission accomplie', players:'Joueurs', onTrack:'En piste', next:'Suivant',
       liveRanking:'Classement en direct', teamRanking:'Classement par équipe', missionMode:'Mode de mission',
-      newGameTitle:'Nouvelle partie ?', wizard:['Joueurs','Mission','Go !']
+      newGameTitle:'Nouvelle partie ?', wizard:['Joueurs','Mission','Go !'],
+      victory:'Victoire', round:'Manche', beams:'Faisceaux', buttons:'Boutons', console:'Console',
+      screens:'Écrans connectés', pilot:'Pilote', follower:'Écran secondaire'
     }
   },
   cookie: {
@@ -1547,8 +1600,49 @@ const THEMES = {
       waitingStart:'Prêt — appuie sur le four', missionRunning:'Fournée en cours', waiting:'Au frais',
       success:'Cookie attrapé !', players:'Gourmands', onTrack:'Au fourneau', next:'Ensuite',
       liveRanking:'Classement des gourmands', teamRanking:'Classement par tablée', missionMode:'Type de recette',
-      newGameTitle:'Nouvelle fournée ?', wizard:['Gourmands','Recette','Miam !']
-    }
+      newGameTitle:'Nouvelle fournée ?', wizard:['Gourmands','Recette','Miam !'],
+      victory:'Miam', round:'Fournée', beams:'Pièges', buttons:'Bocaux', console:'Cuisine',
+      screens:'Écrans connectés', pilot:'Chef', follower:'Marmiton'
+    },
+    /* Le meme habillage, mission par mission. Les CLES sont identiques a celles de Mars :
+       ce sont les memes mecaniques, seule la fiction change. Tant que ces cles sont la,
+       rien ne peut casser. */
+    missions: {
+      'cristal-rush': {
+        icon:'🍪', name:'Cookie Rush', req:null,
+        obstacleName:'Miette', obstacleIcon:'💥', targetName:'Cookie', targetIcon:'🍪',
+        tagline:"Une pluie de cookies dans le noir. Attrape-les tous.",
+        desc:"Les cookies sortent du four et scintillent dans la pénombre. Attrape-en le plus possible avant la fin du minuteur, pendant que les miettes brûlantes balaient la cuisine. Chaque miette te coûte un cookie… mais un autre sort toujours du four.",
+        art:'', tint:'#f4a261', glow:'rgba(244,162,97,.5)',
+        shape:'crystal', startShape:'plain',
+        gain:'+1 cookie', perte:'−1 cookie', cible:'cookie', cibles:'cookies',
+        musiques:[{ file:'music/cristal-rush.mp3', title:'Party Sector', author:'Joth' }]
+      },
+      'fire': {
+        icon:'🔥', name:'Le Four', req:null,
+        obstacleName:'Flamme', obstacleIcon:'🔥', targetName:'Minuteur', targetIcon:'⏲️',
+        arrivalLabel:'Minuteur', arrivalIcon:'⏲️',
+        tagline:"Le four s'emballe. Un seul bouton peut l'arrêter.",
+        desc:"La plaque rougit, la fumée monte : la fournée est en train de cramer. Un seul minuteur, tout au fond de la cuisine, et un mur de flammes entre lui et toi. Traverse sans te brûler — le plus rapide sauve les cookies.",
+        art:'', tint:'#ef476f', glow:'rgba(239,71,111,.5)',
+        shape:'extinguisher', startShape:'flame',
+        reussite:'Four coupé', echec:'Fournée cramée', eraflure:'Brûlé ! Encore une chance',
+        musiques:[{ file:'music/fire-3.ogg', title:'Tower Defense Theme', author:'DST' }]
+      },
+      'duel-orbital': {
+        icon:'🥇', name:'Duel de gourmands', req:'2 TABLÉES',
+        obstacleName:'Miette', obstacleIcon:'💥', targetName:'Bocal', targetIcon:'🫙',
+        arrivalLabel:'Bocal', arrivalIcon:'🫙',
+        tagline:"Trois… deux… un… à table !",
+        desc:"Deux gourmands, deux bocaux à l'opposé, un champ de miettes entre les deux. Le décompte tombe, et chacun s'élance vers le bocal d'en face — celui qui porte son nom. Le premier arrivé gagne, le premier touché est éliminé.",
+        art:'', tint:'#c77dff', glow:'rgba(199,125,255,.5)',
+        shape:'rocket', startShape:'rocket',
+        elimine:'a tout renversé',
+        musiques:[{ file:'music/duel-orbital-2.mp3', title:'Spacecrusher', author:'yd' }]
+      }
+    },
+    couleursCibles:[ {r:244,g:162,b:97}, {r:255,g:209,b:102}, {r:239,g:71,b:111},
+                     {r:199,g:125,b:255}, {r:142,g:202,b:230} ]
   }
 };
 let currentTheme = 'mars';
@@ -1568,6 +1662,8 @@ function applyTheme(){
   document.getElementById('lbl-players').textContent = w('players');
   document.getElementById('lbl-mission-mode').textContent = w('missionMode');
   document.querySelector('.now-lbl').textContent = w('onTrack').toUpperCase();
+  document.getElementById('lbl-beams').textContent = w('beams').toUpperCase();
+  document.getElementById('lbl-buttons').textContent = w('buttons').toUpperCase();
   updateMissionControls(); setStatus(); renderModes(); updateModeChip(); renderRoundTrack();
 }
 
@@ -1575,35 +1671,31 @@ function applyTheme(){
    Chaque mode porte son propre vocabulaire (obstacleName / targetName) et ses icônes :
    c'est ce qui permettra de basculer tout l'habillage vers un autre thème (Me Want Cookie…)
    sans toucher à la mécanique. */
-const MODES = [
-  {
-    key:'cristal-rush', icon:'💎', name:'Cristal Rush', req:null,
-    obstacleName:'Météore', obstacleIcon:'☄️', targetName:'Cristal', targetIcon:'💎',
-    playersUsed:'all', timed:true, defaultDuration:120,
-    rankScope:'round',  /* tout le monde joue le même parcours : on classe toute la manche */
-    hasArrival:false,   /* pas d'arrivée : la manche s'arrête au chrono */
-    tagline:"Une pluie de cristaux dans le noir. Attrape-les tous.",
-    desc:"Les cristaux scintillent dans l'obscurité — rose, violet, vert, bleu glacier. Touche-en le plus possible avant la fin du compte à rebours, pendant que les météores balaient la salle. Chaque impact te coûte un cristal… mais un nouveau se rallume toujours quelque part."
-  },
-  {
-    key:'fire', icon:'🔥', name:'Fire', req:null,
-    obstacleName:'Flamme', obstacleIcon:'🔥', targetName:'Extincteur', targetIcon:'🧯',
-    playersUsed:1, timed:false,
-    rankScope:'round',  /* chacun son passage, mais tous comparés sur la même manche */
-    hasArrival:false, arrivalLabel:'Extincteur', arrivalIcon:'🧯',   /* désigné en cours de partie */
-    tagline:"La navette brûle. Un seul bouton peut tout arrêter.",
-    desc:"Sirène hurlante, gyrophare rouge : le feu a pris dans la navette. Une seule commande d'extinction, tout au fond de la salle, et un mur de flammes entre elle et toi. Traverse sans te brûler — le plus rapide sauve l'équipage."
-  },
-  {
-    key:'duel-orbital', icon:'🚀', name:'Duel orbital', req:'2 ÉQUIPES',
-    obstacleName:'Astéroïde', obstacleIcon:'☄️', targetName:'Base', targetIcon:'🛸',
-    playersUsed:2, timed:false,
-    rankScope:'heat',   /* un duel ne se compare qu'à lui-même : gagnant devant, perdant derrière */
-    hasArrival:true, arrivalLabel:'Arrivée', arrivalIcon:'🛸',
-    tagline:"Five… four… three… two… one… ignition!",
-    desc:"Deux navettes, deux bases opposées, un champ d'astéroïdes entre les deux. Le décompte tombe, l'annonceur crie GO, et chacun s'élance vers la base d'en face — celle qui porte son nom. Le premier arrivé gagne, le premier touché explose."
-  }
+/* ===== LES MISSIONS : LA MECANIQUE, ET RIEN QUE LA MECANIQUE =====
+   Ici, aucun mot, aucune couleur, aucune image. Uniquement ce qui change les REGLES :
+   combien de joueurs, chronometre ou non, comment on classe, y a-t-il une arrivee.
+   Un autre theme (Me Want Cookie...) reutilise ces mecaniques telles quelles et n'en
+   rhabille que la fiction. C'est ce qui garantit qu'habiller ne casse rien. */
+const MISSIONS = [
+  { key:'cristal-rush', playersUsed:'all', timed:true, defaultDuration:120,
+    rankScope:'round',   /* tout le monde court le meme parcours : on classe la manche */
+    hasArrival:false },  /* pas d'arrivee : la manche s'arrete au chrono */
+  { key:'fire', playersUsed:1, timed:false,
+    rankScope:'round',
+    hasArrival:false },  /* la cible est designee en cours de partie */
+  { key:'duel-orbital', playersUsed:2, timed:false,
+    rankScope:'heat',    /* un duel ne se compare qu'a lui-meme */
+    hasArrival:true },
 ];
+
+/* La vue que voit le reste de l'appli : mecanique + habillage du theme courant.
+   Personne d'autre n'a besoin de savoir que les deux vivent a des endroits differents. */
+function missionsHabillees(){
+  const skins = theme().missions || {};
+  return MISSIONS.map(m => Object.assign({}, m, skins[m.key] || {}));
+}
+/* MODES reste le nom utilise partout ailleurs : on ne touche pas au reste du code. */
+Object.defineProperty(window, 'MODES', { get: missionsHabillees });
 /* valeurs par défaut ; écrasées plus bas par l'état sauvegardé s'il existe */
 let currentModeKey = 'cristal-rush';
 let arrivalButtonId = 3;
@@ -1640,15 +1732,17 @@ function renderModes(){
   wireDurationButtons(grid);
 }
 
-const MODE_GLOW = { 'cristal-rush':'rgba(157,123,255,.5)', 'fire':'rgba(255,138,61,.5)', 'duel-orbital':'rgba(77,195,255,.5)' };
+/* Ces trois-la ne sont plus des tables figees : elles lisent l'habillage du theme.
+   Un theme qui n'habille pas une mission retombe sur une valeur neutre, sans casser. */
+function skin(key){ return (theme().missions || {})[key] || {}; }
+/* Un mot de fiction propre a la mission en cours. Le second argument est le repli :
+   un theme qui ne dit rien reste jouable, avec un mot neutre. */
+function mot(cle, defaut){ return skin(currentModeKey)[cle] || defaut; }
+const MODE_GLOW = new Proxy({}, { get: (_, k) => skin(k).glow || 'rgba(53,242,163,.35)' });
 /* Un visuel par mission. Comme tout le reste de l'habillage, il est déclaré ici : un autre
    thème n'a qu'à fournir ses propres images, la mécanique ne bouge pas. */
-const MODE_ART = {
-  'cristal-rush': 'img/mode-cristal-rush.png',
-  'fire':         'img/mode-fire.png',
-  'duel-orbital': 'img/mode-duel-orbital.png'
-};
-const MODE_TINT = { 'cristal-rush':'#8fb8ff', 'fire':'#ff7a3d', 'duel-orbital':'#4dc3ff' };
+const MODE_ART = new Proxy({}, { get: (_, k) => skin(k).art || '' });
+const MODE_TINT = new Proxy({}, { get: (_, k) => skin(k).tint || '#35f2a3' });
 
 function renderModeBanner(){
   const m = currentMode();
@@ -1717,7 +1811,10 @@ function updateModeChip(){
    matériel. Les couleurs viennent du mode de jeu, donc changer de thème changera les
    lampes sans toucher à ce code. */
 const LAMP_OFF = { r:0, g:0, b:0, brightness:0, mode:'off' };
-const CRISTAL_COLORS = [ {r:255,g:111,b:176}, {r:157,g:123,b:255}, {r:53,g:242,b:163}, {r:77,g:195,b:255}, {r:255,g:224,b:102} ];
+/* Les couleurs des cibles viennent du theme : des cristaux ici, des cookies ailleurs. */
+function couleursCibles(){
+  return theme().couleursCibles || [ {r:255,g:224,b:102} ];
+}
 
 function hexToRgb(hex){
   const c = (hex || '#ffffff').replace('#','');
@@ -1733,11 +1830,11 @@ function buttonLampFor(id){
   if (m.key === 'cristal-rush') {
     if (!inMission || !run) {
       /* hors mission : tous les cristaux en veille douce, pour montrer lesquels servent */
-      const c0 = CRISTAL_COLORS[(id - 1) % CRISTAL_COLORS.length];
+      const c0 = couleursCibles()[(id - 1) % couleursCibles().length];
       return { ...c0, mode:'solid', brightness:18 };
     }
     if (id !== run.litButton) return LAMP_OFF;
-    const c = CRISTAL_COLORS[(id - 1) % CRISTAL_COLORS.length];
+    const c = couleursCibles()[(id - 1) % couleursCibles().length];
     return { ...c, mode:'twinkle', brightness:100, brightnessMin:40, periodMs:900 };
   }
 
@@ -2004,7 +2101,7 @@ function duelTargetPlayer(id){
 
 /* Le bouton de départ porte le logo de la mission — sauf Cristal Rush, où c'est
    simplement un rond blanc lumineux : ce n'est pas un cristal à attraper. */
-const START_SHAPES = { 'cristal-rush':'plain', 'fire':'flame', 'duel-orbital':'rocket' };
+const START_SHAPES = new Proxy({}, { get: (_, k) => skin(k).startShape || 'plain' });
 function startRoleFor(){
   if (currentModeKey === 'duel-orbital' && duelRunning()) {
     const p = duelTargetPlayer(DUEL_START_ID);
@@ -2552,27 +2649,12 @@ function playBuffer(name, vol){
 /* Point d'entrée unique : fichier réel si disponible, sinon son synthétisé. */
 /* ===== MUSIQUES DE MISSION (OpenGameArt, CC0 — voir music/LICENSE.txt) =====
    Un thème par mode de jeu, joué en boucle pendant la manche. */
-const MUSIC = {
-  'cristal-rush': [
-    { file:'music/cristal-rush.mp3',   title:'Party Sector',          author:'Joth' },
-    { file:'music/cristal-rush-2.ogg', title:'Speedier than Photons', author:'Joth' },
-    { file:'music/cristal-rush-3.ogg', title:'Outer Space Loop',      author:'wipics' }
-  ],
-  'fire': [
-    /* l'originale ne dure que 25 s : c'est la boucle courte qui finit par agacer */
-    { file:'music/fire.ogg',   title:'Fast Fight',          author:'xcvg', note:'boucle de 25 s' },
-    { file:'music/fire-2.mp3', title:'Unstable Field',      author:'centurionofwar' },
-    { file:'music/fire-3.ogg', title:'Tower Defense Theme', author:'DST' }
-  ],
-  'duel-orbital': [
-    { file:'music/duel-orbital.mp3',   title:'Interstellar Fleet', author:'Zane Little Music' },
-    { file:'music/duel-orbital-2.mp3', title:'Spacecrusher',       author:'yd' },
-    { file:'music/duel-orbital-3.ogg', title:'Singularity',        author:'vitalezzz' }
-  ]
-};
+/* Les musiques sont declarees avec l'habillage de chaque mission, dans le theme. */
+function musiquesDe(key){ return skin(key).musiques || []; }
+
 /* quel thème pour quelle mission — un choix par mode, gardé d'une soirée à l'autre */
 let musicChoice = (saved && saved.musicChoice && typeof saved.musicChoice === 'object') ? saved.musicChoice : {};
-function tracksFor(key){ return MUSIC[key] || []; }
+function tracksFor(key){ return musiquesDe(key); }
 function trackIndexFor(key){
   const list = tracksFor(key);
   const i = musicChoice[key];
@@ -2813,18 +2895,18 @@ const RULES = {
       if (id !== r.litButton) return;         /* mauvais bouton : rien */
       r.crystals++;
       play('crystal');
-      flashScoreBanner('+1 cristal', 'good');
+      flashScoreBanner(mot('gain', '+1'), 'good');
       lightRandomCrystal(r);
       renderRunHud();
     },
     onBeamHit(r){
       if (r.crystals > 0) { r.crystals--; r.lost++; }
       play('crystalBreak');
-      flashScoreBanner('−1 cristal', 'bad');
+      flashScoreBanner(mot('perte', '−1'), 'bad');
       renderRunHud();
     },
     score(r){
-      return { value:r.crystals, label:plural(r.crystals, 'cristal', 'cristaux'), win:true };
+      return { value:r.crystals, label:plural(r.crystals, mot('cible', 'point'), mot('cibles', 'points')), win:true };
     },
     hud(r){
       return `<span class="hud-big">${r.crystals}</span> ${currentMode().targetIcon}` +
@@ -2853,12 +2935,12 @@ const RULES = {
       if (r.allowance > 0) {               /* mode débutant : un contact toléré */
         r.allowance--;
         play('flame');
-        flashScoreBanner('Brûlé ! Encore une chance', 'warn');
+        flashScoreBanner(mot('eraflure', 'Touché ! Encore une chance'), 'warn');
         blinkBeam(id);
       } else {
         r.failed = true;
         play('fail');
-        flashScoreBanner('Mission perdue', 'bad');
+        flashScoreBanner(mot('echec', 'Perdu'), 'bad');
         stopMission();
       }
       renderRunHud();
@@ -2870,7 +2952,7 @@ const RULES = {
       if (id === r.extinguisher) stopMission();
     },
     score(r){
-      return { value:r.failed ? 0 : 1, label:r.failed ? 'Mission perdue' : 'Feu éteint',
+      return { value:r.failed ? 0 : 1, label:r.failed ? mot('echec', 'Perdu') : mot('reussite', 'Réussi'),
                win:!r.failed, arrived:!r.failed };
     },
     hud(r){
@@ -2928,12 +3010,12 @@ const RULES = {
       if (r.allowance[idx] > 0) {
         r.allowance[idx]--;
         play('flame');
-        flashScoreBanner('Coque éraflée ! Encore une chance', 'warn');
+        flashScoreBanner(mot('eraflure', 'Touché ! Encore une chance'), 'warn');
         blinkBeam(id);
       } else {
         r.eliminated[idx] = true;
         play('explosion');
-        flashScoreBanner(livePlayers()[idx].name + ' est éliminé', 'bad');
+        flashScoreBanner(livePlayers()[idx].name + ' ' + mot('elimine', 'est éliminé'), 'bad');
         const other = idx === 0 ? 1 : 0;
         if (r.eliminated[other]) { stopMission(); }
         else { r.winner = other; stopMission(); }
@@ -2943,7 +3025,7 @@ const RULES = {
     score(r){
       const ps = livePlayers();
       if (r.winner === null) return { value:0, label:'Duel nul', win:false };
-      return { value:1, label:'Victoire ' + deName(ps[r.winner] ? ps[r.winner].name : '?'),
+      return { value:1, label:w('victory') + ' ' + deName(ps[r.winner] ? ps[r.winner].name : '?'),
                win:true, winnerIndex:r.winner, arrived:!!r.byArrival };
     },
     hud(r){
@@ -3369,7 +3451,7 @@ function renderPeers(){
   if (moi) moi.addEventListener('click', renommerEcran);
   const badge = document.getElementById('role-badge');
   if (badge) {
-    badge.textContent = isPilot() ? 'PILOTE' : 'ÉCRAN SECONDAIRE';
+    badge.textContent = (isPilot() ? w('pilot') : w('follower')).toUpperCase();
     badge.className = 'role-badge ' + (isPilot() ? 'pilot' : 'follower');
   }
   document.body.classList.toggle('is-follower', !isPilot());
@@ -3808,7 +3890,7 @@ function renderRoundTrack(){
 
   const total = roundsTarget > 0 ? '/' + roundsTarget : '';
   el.innerHTML =
-    `<div class="rt-head">MANCHE <b>${roundIndex}${total}</b>` +
+    `<div class="rt-head">${w('round').toUpperCase()} <b>${roundIndex}${total}</b>` +
     `<span class="rt-count">${m.icon} ${done} / ${per}</span></div>` +
     `<div class="rt-bar"><i style="width:${Math.round(100 * done / per)}%"></i></div>` +
     `<div class="rt-pips">${slots.join('<span class="rt-sep"></span>')}</div>` +
