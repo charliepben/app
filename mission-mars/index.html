@@ -432,8 +432,9 @@
   .peer-name i{ color:var(--dim); font-size:.85em; }
   .peer-role{ font-family:'JetBrains Mono'; font-size:.85em; color:var(--dim); flex-shrink:0; }
   .peer.pilot .peer-role{ color:var(--green); }
-  /* Sur un écran qui suit, le bouton d'action n'a pas de sens : c'est le pilote qui décide. */
-  body.is-follower .mission-controls{ opacity:.45; pointer-events:none; }
+  /* Un écran qui suit peut demander, pas décider : son bouton reste actif mais transmet. */
+  body.is-follower .btn-toggle{ filter:saturate(.55); }
+  body.is-follower .btn-toggle::after{ content:" · via le pilote"; font-size:.72em; opacity:.75; }
 
   /* Réglages en deux onglets : ce qui sert à jouer, et le reste. */
   .sheet-tabs{ display:flex; gap:4px; background:#141b25; border:1px solid var(--line); border-radius:11px; padding:3px; }
@@ -3208,7 +3209,10 @@ function notePeer(evt){
   if (!evt || !evt.id || evt.id === DEVICE_ID) return;
   const known = peers[evt.id];
   peers[evt.id] = { id:evt.id, name:evt.name || 'Appareil', since:evt.since || Date.now(), seen:Date.now() };
-  if (!known) announceSelf();   /* un nouveau venu : on se présente en retour */
+  if (!known) {
+    announceSelf();                          /* un nouveau venu : on se présente en retour */
+    if (isPilot()) broadcastState(true);     /* et on lui envoie tout de suite la partie */
+  }
   renderPeers();
 }
 setInterval(() => { announceSelf(); renderPeers(); }, 3000);
@@ -3230,6 +3234,132 @@ function renderPeers(){
     badge.className = 'role-badge ' + (isPilot() ? 'pilot' : 'follower');
   }
   document.body.classList.toggle('is-follower', !isPilot());
+}
+
+/* ===== LE PILOTE DIFFUSE, LES AUTRES AFFICHENT =====
+   Un écran secondaire ne joue pas : il regarde. Pour qu'il puisse regarder, le pilote lui
+   envoie l'état de la partie. Deux messages, pour deux rythmes différents :
+
+     `roster`   — les joueurs, les équipes, les photos. Lourd, mais ça ne change presque
+                  jamais : envoyé à l'arrivée d'un écran et quand la composition bouge.
+     `snapshot` — l'état vivant : mission en cours, chrono, manche, classement. Léger, et
+                  envoyé souvent. Il ne contient AUCUNE photo, exprès.
+
+   Le chrono n'est pas rejoué à l'identique : on envoie le temps écoulé, et l'écran
+   secondaire le fait avancer tout seul entre deux messages. Chaque snapshot le recale, donc
+   il ne dérive jamais. */
+let mirrorTimer = null;
+
+function rosterMessage(){
+  return {
+    type:'roster',
+    players: PLAYERS.map(p => ({ name:p.name, team:p.team, photo:p.photo || null, rookie:!!p.rookie })),
+    teams: TEAMS, teamMode
+  };
+}
+function snapshotMessage(){
+  return {
+    type:'snapshot',
+    missionState, modeKey:currentModeKey,
+    queueIndex, roundIndex, roundsTarget, playedThisRound, roundStartIndex,
+    arrivalButtonId,
+    /* les réglages qui changent ce qu'on AFFICHE doivent suivre : sans la durée du mode,
+       un écran secondaire décompterait à partir d'une autre valeur que le pilote */
+    modeDurations, beamRelightSec, fireExtinguisherId, hardBeams,
+    elapsedMs: running ? Math.round(performance.now() - startTime) : null,
+    hud: (run && rules().hud) ? rules().hud(run) : null,
+    lastResult, liveScores, teamTally
+  };
+}
+function broadcastState(full){
+  if (!isPilot()) return;
+  if (full) broadcastToSim(rosterMessage());
+  broadcastToSim(snapshotMessage());
+}
+/* Rythme : serré pendant une manche (le chrono bouge), tranquille sinon. Inutile d'inonder
+   le réseau quand rien ne se passe. */
+let mirrorTick = 0;
+function startMirror(){
+  clearInterval(mirrorTimer);
+  mirrorTimer = setInterval(() => {
+    if (!isPilot()) return;
+    mirrorTick++;
+    if (running || mirrorTick % 4 === 0) broadcastState(false);
+  }, 500);
+}
+
+/* ----- côté écran secondaire ----- */
+let mirrorBase = { at:0, elapsed:0 };   /* dernier point de recalage du chrono */
+
+function applyRoster(evt){
+  if (isPilot() || !Array.isArray(evt.players)) return;
+  PLAYERS = evt.players.map(p => ({ ...p }));
+  if (isValidTeams(evt.teams)) TEAMS = evt.teams;
+  if (typeof evt.teamMode === 'boolean') teamMode = evt.teamMode;
+  renderPlayers();
+  renderTeamScores();
+}
+function applySnapshot(evt){
+  if (isPilot()) return;
+  const modeChanged = evt.modeKey !== currentModeKey;
+  currentModeKey = evt.modeKey;
+  missionState = evt.missionState;
+  queueIndex = evt.queueIndex;
+  roundIndex = evt.roundIndex;
+  roundsTarget = evt.roundsTarget;
+  playedThisRound = evt.playedThisRound;
+  roundStartIndex = evt.roundStartIndex;
+  arrivalButtonId = evt.arrivalButtonId;
+  if (evt.modeDurations) modeDurations = evt.modeDurations;
+  if (typeof evt.beamRelightSec === 'number') beamRelightSec = evt.beamRelightSec;
+  if (typeof evt.fireExtinguisherId === 'number' || evt.fireExtinguisherId === null) fireExtinguisherId = evt.fireExtinguisherId;
+  if (Array.isArray(evt.hardBeams)) hardBeams = evt.hardBeams;
+  liveScores = Array.isArray(evt.liveScores) ? evt.liveScores : [];
+  if (evt.teamTally) teamTally = evt.teamTally;
+  lastResult = evt.lastResult || null;
+
+  /* le chrono : on retient le point de recalage, l'affichage avance tout seul entre deux */
+  if (typeof evt.elapsedMs === 'number') {
+    mirrorBase = { at:performance.now(), elapsed:evt.elapsedMs };
+    running = true;
+  } else {
+    running = false;
+    renderTimerIdle();
+  }
+
+  const hud = document.getElementById('run-hud');
+  if (evt.hud) { hud.innerHTML = evt.hud; hud.classList.add('show'); }
+  else if (!lastResult) { hud.classList.remove('show'); hud.innerHTML = ''; }
+  else renderRunHud();
+
+  if (modeChanged) { renderModes(); updateModeChip(); }
+  renderPlayers();
+  renderLiveScores();
+  renderTeamScores();
+  renderScoresTab();
+  setStatus();
+  updateMissionControls();
+}
+/* Le chrono d'un écran secondaire avance seul, et se recale à chaque snapshot. */
+setInterval(() => {
+  if (isPilot() || !running) return;
+  const shown = mirrorBase.elapsed + (performance.now() - mirrorBase.at);
+  const limit = durationFor(currentModeKey);
+  const t = fmtTime(limit != null ? Math.max(0, limit * 1000 - shown) : shown);
+  document.getElementById('timer-main').textContent = t.main;
+  document.getElementById('timer-cs').textContent = t.cs;
+}, 40);
+
+/* Un écran secondaire ne décide pas : il demande. Le pilote exécute. */
+function sendIntent(action){
+  broadcastToSim({ type:'intent', action, from:DEVICE_ID });
+  flashScoreBanner('Demande envoyée au pilote', 'warn');
+}
+function applyIntent(evt){
+  if (!isPilot()) return;
+  if (evt.action === 'next') { if (missionState === 'finished') armNext(); }
+  else if (evt.action === 'stop') { if (missionState === 'countdown') cancelLaunch(); else askStopChoice(); }
+  else if (evt.action === 'scores') { if (gameIsOver()) showGameOver(); }
 }
 
 /* Détection des messages perdus : un trou dans la numérotation veut dire qu'on a raté
@@ -4391,6 +4521,11 @@ document.getElementById('stop-next').addEventListener('click', () => {
 });
 
 document.getElementById('mission-btn').addEventListener('click', () => {
+  if (!isPilot()) {
+    /* on ne décide pas ici : on demande au pilote, qui seul tient les comptes */
+    sendIntent(missionState === 'finished' ? (gameIsOver() ? 'scores' : 'next') : 'stop');
+    return;
+  }
   if (missionState === 'finished' && gameIsOver()) { showGameOver(); }
   else if (missionState === 'finished') armNext();
   else if (missionState === 'countdown') cancelLaunch();
@@ -4449,6 +4584,10 @@ function setBattery(target, id, pct){
 function applyEvent(evt){
   if (!evt || !evt.type) return;
   if (evt.type === 'peer') { notePeer(evt); return; }
+  if (evt.type === 'roster')   { applyRoster(evt); return; }
+  if (evt.type === 'snapshot') { applySnapshot(evt); return; }
+  if (evt.type === 'intent')   { applyIntent(evt); return; }
+  if (evt.type === 'hello-screen') { if (isPilot()) broadcastState(true); return; }
   noteHardwareClock(evt);
   noteSequence(evt);
   /* Un écran qui SUIT affiche l'état du matériel, mais ne compte rien : sinon deux écrans
@@ -4562,7 +4701,9 @@ Transport.onStatus((state) => {
 });
 Transport.connect('auto');
 announceSelf();
+broadcastToSim({ type:'hello-screen', id:DEVICE_ID });   /* « quelqu'un peut me dire où on en est ? » */
 renderPeers();
+startMirror();
 
 /* ===== Assistant de démarrage en 3 étapes ===== */
 let wizardStep = 0;

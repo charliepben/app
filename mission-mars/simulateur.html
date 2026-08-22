@@ -290,7 +290,39 @@
   <div class="warn" id="warn">⚠ Ce navigateur ne supporte pas BroadcastChannel — ce simulateur ne peut pas dialoguer avec l'appli.</div>
 
 <script>
-const channel = ('BroadcastChannel' in window) ? new BroadcastChannel('mission-mars-sim') : null;
+/* ===== LIAISON =====
+   Même règle que dans l'appli : si la page est servie par un serveur (la mallette, ou
+   l'ordinateur qui en tient lieu), on parle en WebSocket sur la même origine — donc pas de
+   blocage « mixed content ». Sinon, on retombe sur le BroadcastChannel entre onglets. */
+const channel = (function(){
+  const parUnServeur = location.protocol === 'http:'
+    && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
+
+  if (parUnServeur) {
+    const url = 'ws://' + location.host + '/ws';
+    let ws = null, retry = null, ecoute = null;
+    const ouvrir = () => {
+      try { ws = new WebSocket(url); } catch (e) { replanifier(); return; }
+      ws.onopen = () => log('Liaison WebSocket etablie.', 'in');
+      ws.onmessage = (e) => { try { if (ecoute) ecoute({ data:JSON.parse(e.data) }); } catch (err) {} };
+      ws.onclose = () => { log('Liaison perdue, nouvelle tentative...', 'in'); replanifier(); };
+      ws.onerror = () => { try { ws.close(); } catch (e) {} };
+    };
+    const replanifier = () => { clearTimeout(retry); retry = setTimeout(ouvrir, 1500); };
+    ouvrir();
+    return {
+      kind: 'websocket',
+      postMessage: (evt) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(evt)); },
+      set onmessage(fn){ ecoute = fn; },
+      get onmessage(){ return ecoute; }
+    };
+  }
+
+  if (!('BroadcastChannel' in window)) return null;
+  const ch = new BroadcastChannel('mission-mars-sim');
+  ch.kind = 'broadcast';
+  return ch;
+})();
 /* Chaque message porte l'horodatage du boîtier et un numéro de séquence — c'est ce que
    fera le vrai firmware. L'appli s'en sert pour que la latence du transport ne se retrouve
    jamais dans les chronos, et pour détecter un message perdu. */
