@@ -2624,12 +2624,129 @@ function renderRunHud(){
 }
 
 /* ===== Mission en direct : file d'agents, chrono, classements ===== */
-let simChannel = null;
-function broadcastToSim(evt){ if (simChannel) simChannel.postMessage(evt); }
+/* ===== COUCHE TRANSPORT =====
+   L'appli ne connaît qu'un protocole de messages ; elle ne sait pas par quel tuyau ils
+   passent. Aujourd'hui c'est un BroadcastChannel vers l'onglet du simulateur ; demain ce
+   sera un WebSocket vers la vraie mallette, et peut-être un relais Internet. Le reste du
+   code n'appelle jamais que Transport : rien d'autre ne change quand le tuyau change.
+
+   Deux détails du protocole méritent d'être posés MAINTENANT, tant que rien ne peut casser :
+     `t`   — horodatage de l'événement par le matériel (ms depuis son démarrage). Sans ça, la
+             latence du réseau se retrouverait dans les centièmes affichés le jour où le
+             transport ne sera plus local.
+     `seq` — numéro de séquence : un trou signale un message perdu, et on redemande l'état
+             complet plutôt que de continuer à afficher quelque chose de faux.                */
+const Transport = (function(){
+  let impl = null;
+  let onMsg = () => {};
+  let onSt = () => {};
+
+  /* --- vers l'onglet du simulateur, même navigateur, aucun serveur --- */
+  function broadcastChannelImpl(){
+    if (!('BroadcastChannel' in window)) return null;
+    const ch = new BroadcastChannel('mission-mars-sim');
+    ch.onmessage = (e) => onMsg(e.data);
+    return {
+      kind:'broadcast',
+      send: (evt) => ch.postMessage(evt),
+      close: () => ch.close(),
+      ready: () => true
+    };
+  }
+
+  /* --- vers la vraie mallette : WebSocket, avec reconnexion automatique ---
+     La page est servie par la mallette elle-même, en HTTP : le WebSocket a donc la même
+     origine, et le blocage « mixed content » ne s'applique pas. */
+  function webSocketImpl(url){
+    let ws = null, retry = null, closed = false;
+    function open(){
+      if (closed) return;
+      try { ws = new WebSocket(url); } catch (e) { schedule(); return; }
+      ws.onopen = () => { onSt('online'); ws.send(JSON.stringify({ type:'hello' })); };
+      ws.onmessage = (e) => { try { onMsg(JSON.parse(e.data)); } catch (err) { /* trame illisible */ } };
+      ws.onclose = () => { onSt('offline'); schedule(); };
+      ws.onerror = () => { try { ws.close(); } catch (e) {} };
+    }
+    function schedule(){
+      if (closed) return;
+      clearTimeout(retry);
+      retry = setTimeout(open, 1500);   /* la mallette a pu redémarrer : on réessaie sans fin */
+    }
+    open();
+    return {
+      kind:'websocket',
+      send: (evt) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(evt)); },
+      close: () => { closed = true; clearTimeout(retry); if (ws) ws.close(); },
+      ready: () => !!ws && ws.readyState === 1
+    };
+  }
+
+  return {
+    /* 'auto' : WebSocket si la page vient d'un serveur (donc de la mallette),
+       BroadcastChannel si elle vient d'un fichier local ou de GitHub Pages. */
+    connect(mode){
+      if (impl) impl.close();
+      const wanted = mode || 'auto';
+      const servedByConsole = location.protocol === 'http:' && location.hostname !== 'localhost'
+                              && location.hostname !== '127.0.0.1';
+      if (wanted === 'websocket' || (wanted === 'auto' && servedByConsole)) {
+        impl = webSocketImpl((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
+      } else {
+        impl = broadcastChannelImpl();
+      }
+      return impl ? impl.kind : 'none';
+    },
+    send(evt){ if (impl) impl.send(evt); },
+    onMessage(fn){ onMsg = fn; },
+    onStatus(fn){ onSt = fn; },
+    kind(){ return impl ? impl.kind : 'none'; }
+  };
+})();
+
+/* Tout le code de jeu passe par ici, et par ici seulement. */
+function broadcastToSim(evt){ Transport.send(evt); }
+
+/* ===== Horloge du matériel =====
+   Le matériel horodate ses événements avec SA propre horloge (ms depuis son démarrage).
+   On estime le décalage avec l'horloge du téléphone en gardant le plus PETIT écart observé :
+   c'est l'échantillon qui a le moins souffert de la latence, donc le plus juste. */
+let hwClockOffset = null;
+function noteHardwareClock(evt){
+  if (!evt || typeof evt.t !== 'number') return;
+  const offset = performance.now() - evt.t;
+  if (hwClockOffset === null || offset < hwClockOffset) hwClockOffset = offset;
+}
+/* Quand l'événement s'est VRAIMENT produit, dans l'horloge du téléphone.
+   Sans horodatage utilisable, on retombe sur l'instant de réception — le comportement
+   d'aujourd'hui, à l'identique. */
+function hwTimeOf(evt){
+  if (!evt || typeof evt.t !== 'number' || hwClockOffset === null) return performance.now();
+  return evt.t + hwClockOffset;
+}
+
+/* Détection des messages perdus : un trou dans la numérotation veut dire qu'on a raté
+   quelque chose, et qu'il faut redemander l'état complet au lieu d'afficher un faux. */
+let lastSeq = null;
+function noteSequence(evt){
+  if (!evt || typeof evt.seq !== 'number') return;
+  if (lastSeq !== null && evt.seq !== lastSeq + 1 && evt.seq > lastSeq) {
+    broadcastToSim({ type:'resync' });   /* le matériel réannonce topologie et états */
+  }
+  lastSeq = evt.seq;
+}
 
 let queueIndex = (!legacySave && saved && typeof saved.queueIndex === 'number') ? saved.queueIndex : 0;
 let running = false;
 let startTime = 0;
+let pendingStartAt = null;   /* instant réel de l'appui, d'après l'horloge du matériel */
+/* Un horodatage n'est utilisable que s'il est cohérent : jamais dans le futur, jamais
+   vieux de plus de 2 s. Une mallette qui redémarre remet son horloge à zéro — sans ce
+   garde-fou, le chrono partirait avec plusieurs minutes d'avance. */
+function sanePressTime(at){
+  if (at === null) return false;
+  const age = performance.now() - at;
+  return age >= 0 && age < 2000;
+}
 let tickId = null;
 let liveScores = (!legacySave && Array.isArray(saved && saved.liveScores)) ? saved.liveScores : [];
 let teamTally = (saved && saved.teamTally && typeof saved.teamTally.a === 'number') ? saved.teamTally : { a:0, b:0 };
@@ -3466,8 +3583,12 @@ function armNext(){
   renderRoundTrack();
 }
 
-function startMission(){
+/* `at` = l'instant où le bouton a VRAIMENT été pressé, d'après l'horloge du matériel.
+   Le chrono part de là, pas de l'instant où le message est arrivé : la latence du transport
+   ne se retrouve donc jamais dans les temps affichés. */
+function startMission(at){
   if (missionState !== 'ready') return; /* pas armé : le bouton physique n'a aucun effet */
+  pendingStartAt = (typeof at === 'number') ? at : null;
   /* ouvre une manche selon les règles du mode choisi */
   run = rules().init ? rules().init() : {};
 
@@ -3489,9 +3610,13 @@ function startMission(){
 /* Le vrai départ : chrono, musique et règles partent ensemble, à la même milliseconde. */
 function beginRun(){
   if (missionState !== 'ready' && missionState !== 'countdown') return;
+  const afterCountdown = (missionState === 'countdown');
   missionState = 'running';
   running = true;
-  startTime = performance.now();
+  /* Sans décompte, le chrono part de l'instant où le bouton physique a VRAIMENT été pressé,
+     pas de l'instant où le message est arrivé. Avec décompte, le vrai départ est le GO. */
+  startTime = (!afterCountdown && sanePressTime(pendingStartAt)) ? pendingStartAt : performance.now();
+  pendingStartAt = null;
   if (!run) run = rules().init ? rules().init() : {};
   setStatus();
   updateMissionControls();
@@ -3724,6 +3849,8 @@ function setBattery(target, id, pct){
 
 function applyEvent(evt){
   if (!evt || !evt.type) return;
+  noteHardwareClock(evt);
+  noteSequence(evt);
   if (evt.type === 'topology') { launchState.online = true; applyTopology(evt); renderLaunchSystem(); }
   else if (evt.type === 'launch') {
     if (typeof evt.battery === 'number') launchState.battery = evt.battery;
@@ -3754,7 +3881,7 @@ function applyEvent(evt){
     }
   }
   else if (evt.type === 'release') setButtonPressed(evt.id, false);
-  else if (evt.type === 'start') startMission(); /* no-op si pas armé, voir startMission() */
+  else if (evt.type === 'start') startMission(hwTimeOf(evt)); /* no-op si pas armé, voir startMission() */
   else if (evt.type === 'stop') {
     /* pendant le décompte, le coupe-circuit annule le lancement au lieu de clore une
        manche qui n'a jamais commencé */
@@ -3794,10 +3921,12 @@ document.getElementById('sys-gyro').addEventListener('click', function(){
   el.addEventListener('touchcancel', end);
 })();
 
-if ('BroadcastChannel' in window) {
-  simChannel = new BroadcastChannel('mission-mars-sim');
-  simChannel.onmessage = (e) => applyEvent(e.data);
-}
+Transport.onMessage(applyEvent);
+Transport.onStatus((state) => {
+  launchState.online = (state === 'online');
+  renderLaunchSystem();
+});
+Transport.connect('auto');
 
 /* ===== Assistant de démarrage en 3 étapes ===== */
 let wizardStep = 0;

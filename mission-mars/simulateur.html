@@ -277,7 +277,15 @@
 
 <script>
 const channel = ('BroadcastChannel' in window) ? new BroadcastChannel('mission-mars-sim') : null;
-function send(evt){ if (channel) channel.postMessage(evt); log('→ ' + describe(evt), 'out'); }
+/* Chaque message porte l'horodatage du boîtier et un numéro de séquence — c'est ce que
+   fera le vrai firmware. L'appli s'en sert pour que la latence du transport ne se retrouve
+   jamais dans les chronos, et pour détecter un message perdu. */
+let seqCounter = 0;
+function send(evt){
+  const stamped = { ...evt, t: Math.round(performance.now()), seq: ++seqCounter };
+  if (channel) channel.postMessage(stamped);
+  log('→ ' + describe(evt), 'out');
+}
 function describe(e){
   if (e.type === 'beam') return e.hit ? `laser ${e.id} coupé` : `laser ${e.id} ${e.on ? 'actif' : 'hors jeu'}`;
   if (e.type === 'press') return `bouton ${e.id} enfoncé`;
@@ -611,7 +619,16 @@ document.getElementById('btn-send-batt').addEventListener('click', sendAllBatter
 if (channel) {
   channel.onmessage = (e) => {
     const evt = e.data;
-    if (!evt || evt.type !== 'lamp') return;
+    if (!evt) return;
+    if (evt.type === 'resync') {
+      /* l'appli a raté un message : on lui réannonce tout ce qu'on sait de nous-mêmes */
+      log('← resync demandé par l' + String.fromCharCode(39) + 'appli', 'in');
+      announceTopology();
+      sendAllBatteries();
+      sendLaunchState();
+      return;
+    }
+    if (evt.type !== 'lamp') return;
     if (evt.target === 'start') {
       applyStartLamp(evt);
       document.getElementById('start-state').textContent = lampLabel(evt);
