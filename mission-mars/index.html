@@ -413,6 +413,28 @@
   .setting-row .sub{ font-size:clamp(10px, 2.3cqw, 12px); color:var(--dim); font-family:'JetBrains Mono'; }
   .relight-row{ display:flex; gap:6px; flex-wrap:wrap; }
 
+  /* Qui pilote, qui suit. Le point vert reprend celui du titre : c'est le même signal. */
+  .role-badge{
+    font-family:'JetBrains Mono'; font-size:clamp(8.5px, 1.9cqw, 10.5px); letter-spacing:.12em;
+    padding:3px 9px; border-radius:20px; white-space:nowrap; flex-shrink:0;
+  }
+  .role-badge.pilot{ color:var(--green); background:rgba(53,242,163,.12); border:1px solid rgba(53,242,163,.4); }
+  .role-badge.follower{ color:var(--blue); background:rgba(77,195,255,.12); border:1px solid rgba(77,195,255,.4); }
+
+  .peers{ display:flex; flex-direction:column; gap:5px; }
+  .peer{
+    display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line);
+    border-radius:10px; padding:7px 10px; font-size:clamp(10px, 2.2cqw, 12px);
+  }
+  .peer-dot{ width:8px; height:8px; border-radius:50%; background:var(--blue); flex-shrink:0; box-shadow:0 0 7px var(--blue); }
+  .peer.pilot .peer-dot{ background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 1s infinite; }
+  .peer-name{ flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text); }
+  .peer-name i{ color:var(--dim); font-size:.85em; }
+  .peer-role{ font-family:'JetBrains Mono'; font-size:.85em; color:var(--dim); flex-shrink:0; }
+  .peer.pilot .peer-role{ color:var(--green); }
+  /* Sur un écran qui suit, le bouton d'action n'a pas de sens : c'est le pilote qui décide. */
+  body.is-follower .mission-controls{ opacity:.45; pointer-events:none; }
+
   /* Réglages en deux onglets : ce qui sert à jouer, et le reste. */
   .sheet-tabs{ display:flex; gap:4px; background:#141b25; border:1px solid var(--line); border-radius:11px; padding:3px; }
   .sheet-tab{
@@ -1180,6 +1202,7 @@
       <div class="brand-badge">🛰️</div>
       <div class="dot-live"></div>
       <h1>MISSION MARS</h1>
+      <span class="role-badge pilot" id="role-badge">PILOTE</span>
       <div class="header-nav">
         <button class="header-newgame" id="new-game-btn">
           <span id="new-game-icon">🚀</span><span class="ng-label">NOUVELLE PARTIE</span>
@@ -1257,6 +1280,11 @@
               <div class="system-chip" id="sys-gyro"><span class="sdot"></span>GYROPHARE</div>
               <div class="system-chip" id="sys-smoke"><span class="sdot"></span>FUMÉE</div>
             </div>
+          </section>
+
+          <section class="hw-sec">
+            <div class="sec-title">ÉCRANS CONNECTÉS</div>
+            <div class="peers" id="peers-list"></div>
           </section>
         </div>
 
@@ -3129,6 +3157,81 @@ function hwTimeOf(evt){
   return evt.t + hwClockOffset;
 }
 
+/* ===== QUI PILOTE ? =====
+   Plusieurs écrans peuvent suivre la même partie : l'iPad de la mallette, un téléphone,
+   un ordinateur. Un seul tient les comptes — c'est le PILOTE. Les autres SUIVENT : ils
+   affichent tout, et leurs appuis sont transmis au pilote, qui seul décide.
+
+   Sans cette règle, deux écrans compteraient deux fois le même cristal.
+
+   L'élection est automatique et sans négociation : le pilote est l'appareil connecté
+   depuis le plus longtemps. Si le pilote disparaît, le suivant prend la main tout seul. */
+/* L'identité est celle de l'ÉCRAN, pas de la machine : deux onglets ouverts sur le même
+   ordinateur sont deux écrans, et un seul doit piloter. D'où sessionStorage (propre à
+   l'onglet) plutôt que localStorage — qui les confondrait. */
+const DEVICE_ID = (function(){
+  try {
+    let id = sessionStorage.getItem('mission-mars-screen');
+    if (!id) { id = Math.random().toString(36).slice(2, 10); sessionStorage.setItem('mission-mars-screen', id); }
+    return id;
+  } catch (e) { return Math.random().toString(36).slice(2, 10); }
+})();
+
+function guessDeviceName(){
+  const ua = navigator.userAgent;
+  const touch = navigator.maxTouchPoints > 1;
+  if (/iPad/.test(ua) || (/Macintosh/.test(ua) && touch)) return 'iPad';
+  if (/iPhone/.test(ua)) return 'iPhone';
+  if (/Android/.test(ua)) return touch ? 'Tablette Android' : 'Téléphone Android';
+  return 'Ordinateur';
+}
+const DEVICE_NAME = guessDeviceName();
+const JOINED_AT = Date.now();
+
+/* id -> { id, name, since, seen } */
+const peers = {};
+peers[DEVICE_ID] = { id:DEVICE_ID, name:DEVICE_NAME, since:JOINED_AT, seen:Date.now(), self:true };
+
+function livePeers(){
+  const now = Date.now();
+  Object.keys(peers).forEach(id => { if (!peers[id].self && now - peers[id].seen > 9000) delete peers[id]; });
+  return Object.values(peers).sort((a, b) => a.since - b.since || a.id.localeCompare(b.id));
+}
+/* Le pilote est le plus ancien connecté. Rien à négocier, tout le monde tombe d'accord. */
+function pilotId(){ const l = livePeers(); return l.length ? l[0].id : DEVICE_ID; }
+function isPilot(){ return pilotId() === DEVICE_ID; }
+
+function announceSelf(){
+  broadcastToSim({ type:'peer', id:DEVICE_ID, name:DEVICE_NAME, since:JOINED_AT });
+}
+function notePeer(evt){
+  if (!evt || !evt.id || evt.id === DEVICE_ID) return;
+  const known = peers[evt.id];
+  peers[evt.id] = { id:evt.id, name:evt.name || 'Appareil', since:evt.since || Date.now(), seen:Date.now() };
+  if (!known) announceSelf();   /* un nouveau venu : on se présente en retour */
+  renderPeers();
+}
+setInterval(() => { announceSelf(); renderPeers(); }, 3000);
+
+function renderPeers(){
+  const host = document.getElementById('peers-list');
+  if (!host) return;
+  const list = livePeers();
+  const pid = pilotId();
+  host.innerHTML = list.map(p => `
+    <div class="peer ${p.id === pid ? 'pilot' : ''}${p.self ? ' self' : ''}">
+      <span class="peer-dot"></span>
+      <span class="peer-name">${p.name}${p.self ? ' <i>(cet écran)</i>' : ''}</span>
+      <span class="peer-role">${p.id === pid ? 'pilote' : 'suit'}</span>
+    </div>`).join('');
+  const badge = document.getElementById('role-badge');
+  if (badge) {
+    badge.textContent = isPilot() ? 'PILOTE' : 'ÉCRAN SECONDAIRE';
+    badge.className = 'role-badge ' + (isPilot() ? 'pilot' : 'follower');
+  }
+  document.body.classList.toggle('is-follower', !isPilot());
+}
+
 /* Détection des messages perdus : un trou dans la numérotation veut dire qu'on a raté
    quelque chose, et qu'il faut redemander l'état complet au lieu d'afficher un faux. */
 let lastSeq = null;
@@ -4345,8 +4448,18 @@ function setBattery(target, id, pct){
 
 function applyEvent(evt){
   if (!evt || !evt.type) return;
+  if (evt.type === 'peer') { notePeer(evt); return; }
   noteHardwareClock(evt);
   noteSequence(evt);
+  /* Un écran qui SUIT affiche l'état du matériel, mais ne compte rien : sinon deux écrans
+     compteraient deux fois le même cristal. Les événements de jeu sont donc ignorés ici —
+     c'est le pilote qui les traite, et lui seul. */
+  if (!isPilot() && GAME_EVENTS.indexOf(evt.type) !== -1) {
+    if (evt.type === 'beam') setBeamState(evt.id, evt.on === false ? 'off' : (evt.hit ? 'hit' : 'on'));
+    if (evt.type === 'press') setButtonPressed(evt.id, true);
+    if (evt.type === 'release') setButtonPressed(evt.id, false);
+    return;
+  }
   if (evt.type === 'topology') { launchState.online = true; applyTopology(evt); renderLaunchSystem(); }
   else if (evt.type === 'launch') {
     /* `offline:true` = l'interrupteur violet de la mallette est baissé. Elle n'est plus
@@ -4403,6 +4516,9 @@ function applyEvent(evt){
   }
 }
 
+/* Les événements qui font AVANCER le jeu : seul le pilote les traite. */
+const GAME_EVENTS = ['beam', 'press', 'release', 'start', 'stop'];
+
 /* ===== Systèmes (gyrophare, fumée) =====
    Normalement pilotés par le jeu, mais forçables à la main depuis ici. Chaque changement
    est envoyé au boîtier (le simulateur en affiche l'état, preuve que le signal part).
@@ -4445,6 +4561,8 @@ Transport.onStatus((state) => {
   renderLaunchSystem();
 });
 Transport.connect('auto');
+announceSelf();
+renderPeers();
 
 /* ===== Assistant de démarrage en 3 étapes ===== */
 let wizardStep = 0;
