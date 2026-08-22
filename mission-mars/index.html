@@ -419,8 +419,20 @@
   .team-val{ width:22px; text-align:right; font-family:'JetBrains Mono'; font-weight:700; flex-shrink:0; }
 
   .music-bar{
+    position:relative; overflow:hidden;
     display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line);
     border-radius:12px; padding:8px 10px; flex-shrink:0;
+  }
+  /* Où en est le morceau : un trait fin au ras du bas du bandeau. */
+  .music-progress{
+    position:absolute; left:0; bottom:0; height:2.5px; width:0;
+    background:linear-gradient(90deg, rgba(157,123,255,.45), var(--violet));
+    box-shadow:0 0 8px rgba(157,123,255,.6); transition:width .25s linear;
+  }
+  .music-bar.muted .music-progress{ opacity:.25; box-shadow:none; }
+  .music-time{
+    flex-shrink:0; font-family:'JetBrains Mono'; font-size:clamp(9.5px, 2.1cqw, 11.5px);
+    color:var(--dim); font-variant-numeric:tabular-nums;
   }
   .waveform{ display:flex; align-items:flex-end; gap:2px; height:16px; }
   .waveform i{ width:2.5px; background:var(--violet); border-radius:2px; animation:bounce 1s infinite ease-in-out; }
@@ -936,7 +948,9 @@
           <div class="t1" id="music-title">Thème de mission</div>
           <div class="t2" id="music-sub"></div>
         </div>
+        <span class="music-time" id="music-time"></span>
         <span class="music-state" id="music-state">♪</span>
+        <i class="music-progress" id="music-progress"></i>
       </div>
 
       <div class="mission-controls">
@@ -1925,6 +1939,18 @@ const SOUNDS = {
     tone({ type:'sawtooth', from:400, to:180, dur:0.5, vol:0.28 });
     tone({ type:'sawtooth', from:300, to:120, dur:0.7, vol:0.25, delay:0.25 });
   },
+  /* corne de brume « DJ airhorn » : trois coups brefs puis un long.
+     Le grain vient du battement entre trois sciages très légèrement désaccordés —
+     c'est exactement comme ça que sonne une vraie trompe à air. */
+  airhorn(){
+    const blasts = [{ t:0, d:0.17 }, { t:0.23, d:0.17 }, { t:0.46, d:0.17 }, { t:0.72, d:0.95 }];
+    blasts.forEach(b => {
+      [[1, 1], [1.006, 0.9], [1.5, 0.5], [2.01, 0.34], [3.02, 0.2], [4.03, 0.11]].forEach(([mult, amp]) => {
+        tone({ type:'sawtooth', from:233 * mult, to:242 * mult, dur:b.d, vol:0.13 * amp, delay:b.t, attack:0.008 });
+      });
+      noise({ dur:b.d * 0.4, vol:0.05, filterFrom:2200, filterTo:900, type:'bandpass', delay:b.t });
+    });
+  },
   /* sirène d'alerte (mission Fire) : deux allers-retours */
   siren(){
     for (let i = 0; i < 3; i++) {
@@ -1948,6 +1974,7 @@ const SOUND_FILES = {
   success:      'sounds/success.ogg',
   fail:         'sounds/fail.ogg',
   siren:        'sounds/siren.ogg',
+  /* pas de fichier pour l'instant : le klaxon est synthétisé (voir SOUNDS.airhorn) */
   /* voix d'annonceur du décompte (Kenney Voiceover Pack, CC0) */
   voice5:       'sounds/voice-5.ogg',
   voice4:       'sounds/voice-4.ogg',
@@ -2008,6 +2035,23 @@ function renderMusicBar(playing){
   bar.classList.toggle('muted', !musicOn || !playing);
 }
 
+/* Où en est le morceau. Le thème tourne en boucle : la barre repart avec lui. */
+function renderMusicProgress(){
+  const bar = document.getElementById('music-progress');
+  const lbl = document.getElementById('music-time');
+  if (!musicEl || !musicEl.duration || !isFinite(musicEl.duration)) {
+    bar.style.width = '0%';
+    lbl.textContent = '';
+    return;
+  }
+  bar.style.width = (100 * musicEl.currentTime / musicEl.duration).toFixed(1) + '%';
+  lbl.textContent = mmss(musicEl.currentTime) + ' / ' + mmss(musicEl.duration);
+}
+function mmss(sec){
+  const s = Math.max(0, Math.floor(sec));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
 function startMissionMusic(){
   const t = currentTrack();
   if (!t) return;
@@ -2016,6 +2060,8 @@ function startMissionMusic(){
   musicEl = new Audio(t.file);
   musicEl.loop = true;
   musicEl.volume = 0.45;
+  musicEl.addEventListener('timeupdate', renderMusicProgress);
+  musicEl.addEventListener('loadedmetadata', renderMusicProgress);
   musicEl.play().catch(() => { /* le navigateur peut refuser avant interaction */ });
   renderMusicBar(true);
 }
@@ -2023,12 +2069,13 @@ function startMissionMusic(){
 function stopMissionMusic(){
   if (musicEl) { musicEl.pause(); musicEl.currentTime = 0; musicEl = null; }
   renderMusicBar(false);
+  renderMusicProgress();
 }
 
 document.getElementById('music-bar').addEventListener('click', () => {
   musicOn = !musicOn;
   saveState();
-  if (!musicOn) { if (musicEl) { musicEl.pause(); musicEl = null; } renderMusicBar(false); }
+  if (!musicOn) { if (musicEl) { musicEl.pause(); musicEl = null; } renderMusicBar(false); renderMusicProgress(); }
   else if (missionState === 'running') startMissionMusic();
   else renderMusicBar(false);
 });
@@ -2160,7 +2207,8 @@ const RULES = {
       renderRunHud();
     },
     score(r){
-      return { value:r.failed ? 0 : 1, label:r.failed ? 'Mission perdue' : 'Feu éteint', win:!r.failed };
+      return { value:r.failed ? 0 : 1, label:r.failed ? 'Mission perdue' : 'Feu éteint',
+               win:!r.failed, arrived:!r.failed };
     },
     hud(r){
       if (r.failed) return '<span class="hud-bad">MISSION PERDUE</span>';
@@ -2207,6 +2255,7 @@ const RULES = {
       if (idx === null) return;              /* un autre bouton : sans effet */
       if (r.eliminated[idx]) return;         /* éliminé : son arrivée ne compte pas */
       r.winner = idx;
+      r.byArrival = true;                    /* gagné en franchissant la borne, pas par forfait */
       stopMission();
     },
     onBeamHit(r, id){
@@ -2232,7 +2281,8 @@ const RULES = {
     score(r){
       const ps = livePlayers();
       if (r.winner === null) return { value:0, label:'Duel nul', win:false };
-      return { value:1, label:'Victoire de ' + (ps[r.winner] ? ps[r.winner].name : '?'), win:true, winnerIndex:r.winner };
+      return { value:1, label:'Victoire ' + deName(ps[r.winner] ? ps[r.winner].name : '?'),
+               win:true, winnerIndex:r.winner, arrived:!!r.byArrival };
     },
     hud(r){
       if (r.phase === 'countdown') return '<span class="hud-warn">Séquence de lancement…</span>';
@@ -2243,6 +2293,13 @@ const RULES = {
 };
 
 function rules(){ return RULES[currentModeKey] || RULES['cristal-rush']; }
+
+/* « Victoire de Marty », mais « Victoire d'Achille » : les prénoms des invités
+   commencent souvent par une voyelle, et « Victoire de Achille » pique les yeux. */
+function deName(name){
+  const n = String(name || '');
+  return /^[aeiouyàâäéèêëîïôöùûüh]/i.test(n) ? "d'" + n : 'de ' + n;
+}
 
 /* Choisit au hasard un nouveau cristal parmi les boutons disponibles. */
 function lightRandomCrystal(r){
@@ -3229,8 +3286,15 @@ function stopMission(reason){
     label: result.label || (result.win ? 'Réussie' : 'Perdue')
   };
   stopMissionMusic();
-  setSystemState('gyro', 'idle');   /* le matériel se remet au repos en fin de mission */
-  play(result.win ? 'success' : 'fail');
+  /* Une VRAIE arrivée (un joueur a atteint sa borne) mérite le klaxon et le gyrophare.
+     Une manche qui s'achève au chrono, ou perdue, n'est pas une arrivée. */
+  if (!aborted && result.arrived) {
+    play('airhorn');
+    flashGyro(4500);
+  } else {
+    setSystemState('gyro', 'idle');   /* le matériel se remet au repos en fin de mission */
+    play(result.win ? 'success' : 'fail');
+  }
   showCelebration(joinPlayerNames(finishers.map(p => p.name)), elapsed, result);
   run = null;
   missionState = 'finished';   /* avant renderPlayers : c'est ce qui déclenche la mise en avant */
