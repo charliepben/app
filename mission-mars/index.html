@@ -49,7 +49,7 @@
     background-size: 30px 30px;
   }
   .device{
-    position:relative; z-index:1; width:100%; max-width:1280px; height:100dvh; margin:0 auto; background:var(--bg);
+    position:relative; z-index:1; width:100%; max-width:1600px; height:100dvh; margin:0 auto; background:var(--bg);
     container-type: inline-size; container-name: device;
   }
   .screen{ height:100%; display:flex; flex-direction:column; overflow:hidden; }
@@ -459,6 +459,10 @@
   }
   .role-badge.pilot{ color:var(--green); background:rgba(53,242,163,.12); border:1px solid rgba(53,242,163,.4); }
   .role-badge.follower{ color:var(--blue); background:rgba(77,195,255,.12); border:1px solid rgba(77,195,255,.4); }
+  /* Pendant les deux premières secondes, on ÉCOUTE : on ne sait pas encore si un autre
+     écran pilotait pendant notre absence. Annoncer « PILOTE » puis se corriger en
+     « ÉCRAN SECONDAIRE » (ou l'inverse) donnait un badge qui se contredit tout seul. */
+  .role-badge.waiting{ color:var(--dim); background:rgba(107,124,146,.12); border:1px solid rgba(107,124,146,.3); letter-spacing:3px; }
 
   .peers{ display:flex; flex-direction:column; gap:5px; }
   .peer{
@@ -535,7 +539,6 @@
 
   /* Photo en cours de transformation : elle pâlit, et un liseré vert balaye la ligne. */
   .agent-row.astro-en-cours{ position:relative; overflow:hidden; }
-  .agent-row.astro-en-cours .avatar{ opacity:.5; }
   .agent-row.astro-en-cours::after{
     content:""; position:absolute; left:0; right:0; bottom:0; height:2px;
     background:linear-gradient(90deg, transparent, var(--green), transparent);
@@ -993,19 +996,19 @@
   .confirm-ok{ background:linear-gradient(180deg,#3ef2a8,#1fae72); color:#05070a; box-shadow:0 8px 20px -8px rgba(53,242,163,.6); }
 
   /* --- Décompte plein écran (5-4-3-2-1 du duel orbital) --- */
-  /* Choix proposés quand on interrompt une mission en cours */
-  .stop-overlay{
-    position:fixed; inset:0; z-index:72; display:flex; align-items:center; justify-content:center;
-    background:rgba(5,7,10,.9); padding:20px; opacity:0; pointer-events:none; transition:opacity .2s;
+  /* Choix proposés quand on interrompt une mission : ils vivent dans la barre du bas. */
+  .stop-row{ display:flex; gap:8px; flex:1; min-width:0; }
+  .stop-row[hidden]{ display:none; }
+  .stop-row .stop-choice{ flex:1 1 0; min-width:0; }
+  /* Deuxième étape : « Arrêter la mission » devient ROUGE. C'est le choix qui clôt la
+     manche — il doit se distinguer des deux qui ne coûtent rien. */
+  .stop-row .stop-choice.next{ border-color:var(--red); background:rgba(255,77,94,.1); }
+  .stop-row .stop-choice.next .ic{ color:var(--red); }
+  .stop-row .stop-choice.next b{ color:var(--red); }
+  @container device (max-width: 700px){
+    .stop-row{ flex-direction:column; }
+    .stop-choice i{ display:none; }
   }
-  .stop-overlay.show{ opacity:1; pointer-events:auto; }
-  .stop-card{
-    width:100%; max-width:460px; background:var(--panel); border:1px solid var(--line);
-    border-radius:20px; padding:24px 20px 20px; display:flex; flex-direction:column; gap:10px;
-    animation:celebratePop .3s cubic-bezier(.34,1.4,.64,1);
-  }
-  .stop-title{ font-family:'Orbitron'; font-size:clamp(18px, 4.2cqw, 24px); color:#fff; text-align:center; }
-  .stop-sub{ font-size:clamp(13px, 3cqw, 16px); color:var(--dim); text-align:center; margin-bottom:8px; }
   .stop-choice{
     display:flex; align-items:center; gap:14px; text-align:left; width:100%;
     background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:14px;
@@ -1156,10 +1159,22 @@
   .agent-row.dragging{ opacity:.45; }
   .agent-row.drop-before{ box-shadow:0 -3px 0 -1px var(--green); }
   .agent-row.drop-after{ box-shadow:0 3px 0 -1px var(--green); }
-  .agent-row{ display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:9px 12px; margin-bottom:7px; }
+  /* Deux colonnes dès qu'il y a la place. Les joueurs sont rangés en alternant les équipes,
+     donc la colonne de gauche est celle de l'équipe A et celle de droite l'équipe B — sans
+     casser le glisser-déposer, qui a besoin d'une seule liste dans l'ordre. */
+  #agents-list{ display:grid; grid-template-columns:1fr; gap:8px; }
+  @container device (min-width: 620px){ #agents-list{ grid-template-columns:1fr 1fr; gap:8px 12px; } }
+  .agent-row{ display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:9px 12px; margin-bottom:0; }
+  /* 3. les photos du paramétrage : deux fois plus grandes, on voit enfin les visages */
+  .agent-row .avatar{
+    width:clamp(76px, 19cqw, 112px); height:clamp(76px, 19cqw, 112px);
+    border-radius:18px; font-size:clamp(30px, 7.2cqw, 42px);
+  }
   .agent-info{ flex:1; } .agent-info .name{ font-weight:600; font-size:clamp(14px, 3.2cqw, 17px); } .agent-info .team{ font-size:clamp(10px, 2.3cqw, 12px); color:var(--dim); font-family:'JetBrains Mono'; }
   .team-tag{ font-size:clamp(9px, 2.1cqw, 11px); font-family:'JetBrains Mono'; padding:4px 9px; border-radius:20px; border:1px solid currentColor; cursor:pointer; white-space:nowrap; }
 
+  .teams-grid{ display:grid; grid-template-columns:1fr; gap:12px; }
+  @container device (min-width: 620px){ .teams-grid{ grid-template-columns:1fr 1fr; } }
   .team-edit-row{ display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:9px 12px; margin-bottom:2px; }
   .team-swatch{ width:32px; height:32px; border-radius:50%; border:2px solid var(--line); flex-shrink:0; }
   .team-name-input{ flex:1; background:transparent; border:none; color:var(--text); font-family:'Rajdhani'; font-weight:600; font-size:clamp(14px, 3.2cqw, 17px); }
@@ -1266,7 +1281,8 @@
       <div class="brand-badge">🛰️</div>
       <div class="dot-live"></div>
       <h1>MISSION MARS</h1>
-      <span class="role-badge pilot" id="role-badge">PILOTE</span>
+      <!-- On ne sait pas encore qui pilote : le badge attend, il ne devine pas. -->
+      <span class="role-badge waiting" id="role-badge">…</span>
       <div class="header-nav">
         <button class="header-newgame" id="new-game-btn">
           <span id="new-game-icon">🚀</span><span class="ng-label">NOUVELLE PARTIE</span>
@@ -1384,6 +1400,20 @@
 
       <div class="mission-controls">
         <button class="btn-toggle go" id="mission-btn">JOUEUR SUIVANT →</button>
+        <!-- Mission interrompue : les trois choix prennent LA PLACE du bouton, ici en bas.
+             Une popup obligeait à viser au milieu de l'écran pour une décision qui se prend
+             en une seconde ; là, le doigt est déjà au bon endroit. -->
+        <div class="stop-row" id="stop-row" hidden>
+          <button class="stop-choice resume" id="stop-resume">
+            <span class="ic">▶</span><span><b>Reprendre</b><i>le chrono repart où il s'est arrêté</i></span>
+          </button>
+          <button class="stop-choice restart" id="stop-restart">
+            <span class="ic">↺</span><span><b>Recommencer la manche</b><i>même joueur, tout repart à zéro</i></span>
+          </button>
+          <button class="stop-choice next" id="stop-next">
+            <span class="ic">■</span><span><b>Arrêter la mission</b><i>la manche est enregistrée telle quelle</i></span>
+          </button>
+        </div>
       </div>
 
     </div>
@@ -1433,24 +1463,6 @@
       </div>
     </div>
 
-    <div class="stop-overlay" id="stop-overlay">
-      <div class="stop-card">
-        <div class="stop-title">Mission interrompue</div>
-        <div class="stop-sub" id="stop-sub"></div>
-        <button class="stop-choice resume" id="stop-resume">
-          <span class="ic">▶</span><span><b>Reprendre</b><i>le chrono repart où il s'est arrêté</i></span>
-        </button>
-        <button class="stop-choice restart" id="stop-restart">
-          <span class="ic">↺</span><span><b>Recommencer la manche</b><i>même joueur, tout repart à zéro</i></span>
-        </button>
-        <button class="stop-choice next" id="stop-next">
-          <span class="ic">■</span><span><b>Arrêter la mission</b><i>la manche est enregistrée telle quelle</i></span>
-        </button>
-      </div>
-    </div>
-
-    <div class="countdown-overlay" id="countdown-overlay"></div>
-
     <div class="celebrate-overlay" id="celebrate-overlay">
       <div class="celebrate-content">
         <span class="celebrate-ring"></span><span class="celebrate-ring"></span><span class="celebrate-ring"></span>
@@ -1486,16 +1498,23 @@
 
         <div id="teams-block">
           <div class="section-label">Équipes</div>
-          <div class="team-edit-row">
-            <div class="team-swatch" id="team-swatch-a"></div>
-            <input type="text" class="team-name-input" id="team-name-a" maxlength="28">
+          <!-- Une colonne par équipe : le nom, puis sa palette juste dessous. -->
+          <div class="teams-grid">
+            <div class="team-col">
+              <div class="team-edit-row">
+                <div class="team-swatch" id="team-swatch-a"></div>
+                <input type="text" class="team-name-input" id="team-name-a" maxlength="28">
+              </div>
+              <div class="palette" id="palette-a"></div>
+            </div>
+            <div class="team-col">
+              <div class="team-edit-row">
+                <div class="team-swatch" id="team-swatch-b"></div>
+                <input type="text" class="team-name-input" id="team-name-b" maxlength="28">
+              </div>
+              <div class="palette" id="palette-b"></div>
+            </div>
           </div>
-          <div class="palette" id="palette-a"></div>
-          <div class="team-edit-row">
-            <div class="team-swatch" id="team-swatch-b"></div>
-            <input type="text" class="team-name-input" id="team-name-b" maxlength="28">
-          </div>
-          <div class="palette" id="palette-b"></div>
         </div>
 
         <div class="section-label" id="lbl-players">Joueurs</div>
@@ -3801,14 +3820,15 @@ function renderPeers(){
     <div class="peer ${p.id === pid ? 'pilot' : ''}${p.self ? ' self' : ''}"${p.self ? ' title="Toucher pour renommer cet écran"' : ''}>
       <span class="peer-dot"></span>
       <span class="peer-name">${p.name}${p.self ? ' <i>(cet écran)</i>' : ''}</span>
-      <span class="peer-role">${p.id === pid ? 'pilote' : 'suit'}</span>
+      <span class="peer-role">${adopting ? '…' : (p.id === pid ? 'pilote' : 'suit')}</span>
     </div>`).join('');
   const moi = host.querySelector('.peer.self');
   if (moi) moi.addEventListener('click', renommerEcran);
   const badge = document.getElementById('role-badge');
   if (badge) {
-    badge.textContent = (isPilot() ? w('pilot') : w('follower')).toUpperCase();
-    badge.className = 'role-badge ' + (isPilot() ? 'pilot' : 'follower');
+    /* tant qu'on écoute, on ne tranche pas : le badge attend au lieu de se contredire */
+    badge.textContent = adopting ? '…' : (isPilot() ? w('pilot') : w('follower')).toUpperCase();
+    badge.className = 'role-badge ' + (adopting ? 'waiting' : (isPilot() ? 'pilot' : 'follower'));
   }
   document.body.classList.toggle('is-follower', !isPilot());
 }
@@ -3896,8 +3916,16 @@ function startMirror(){
 /* ----- côté écran secondaire ----- */
 let mirrorBase = { at:0, elapsed:0 };   /* dernier point de recalage du chrono */
 
+/* L'écran qui compose une partie fait autorité sur ce qu'il compose. Sans ça, le pilote
+   d'avant continuait d'envoyer son état deux fois par seconde et écrasait l'assistant en
+   cours de route — d'où « je fais nouvelle partie et rien ne s'affiche ». */
+function assistantOuvert(){
+  const wz = document.getElementById('wizard');
+  return !!wz && wz.classList.contains('show');
+}
+
 function applyRoster(evt){
-  if (isPilot() || !Array.isArray(evt.players)) return;
+  if (isPilot() || assistantOuvert() || !Array.isArray(evt.players)) return;
   PLAYERS = evt.players.map(p => ({ ...p }));
   if (isValidTeams(evt.teams)) TEAMS = evt.teams;
   if (typeof evt.teamMode === 'boolean') teamMode = evt.teamMode;
@@ -3906,7 +3934,7 @@ function applyRoster(evt){
   renderTeamScores();
 }
 function applySnapshot(evt){
-  if (isPilot()) return;
+  if (isPilot() || assistantOuvert()) return;
   const modeChanged = evt.modeKey !== currentModeKey;
   currentModeKey = evt.modeKey;
   missionState = evt.missionState;
@@ -4884,6 +4912,10 @@ function setStatus(){
 
 function updateMissionControls(){
   const btn = document.getElementById('mission-btn');
+  /* Les trois choix ne survivent pas à un changement d'état : hors pause, ils n'ont plus
+     de sens et laisseraient la barre du bas dans un état impossible. */
+  if (choixArretOuvert && missionState !== 'paused') choixArretOuvert = false;
+  majBarreDuBas();
   if (missionState === 'countdown') {
     btn.textContent = '■ ANNULER LE LANCEMENT';
     btn.disabled = false;
@@ -5156,22 +5188,31 @@ document.getElementById('celebrate-overlay').addEventListener('click', function(
 
 /* Interrompre une mission ne décide de rien : ça met en pause et ça demande quoi faire.
    C'est ce choix qui remplace l'ancien bouton pause. */
+let choixArretOuvert = false;
 function askStopChoice(){
   if (missionState !== 'running') return;
   togglePause();                       /* le chrono s'arrête, rien n'est encore enregistré */
-  const crew = playersAt(queueIndex, modePlayerCount());
-  document.getElementById('stop-sub').textContent = joinPlayerNames(crew.map(p => p.name));
-  document.getElementById('stop-overlay').classList.add('show');
+  choixArretOuvert = true;
+  majBarreDuBas();
 }
-function closeStopChoice(){ document.getElementById('stop-overlay').classList.remove('show'); }
+function closeStopChoice(){
+  choixArretOuvert = false;
+  majBarreDuBas();
+}
+/* Le bouton d'un côté, les trois choix de l'autre : jamais les deux. */
+function majBarreDuBas(){
+  document.getElementById('stop-row').hidden = !choixArretOuvert;
+  document.getElementById('mission-btn').hidden = choixArretOuvert;
+}
 
-/* Cliquer à côté des trois choix = « en fait, non » : on reprend là où on en était.
-   C'est le geste naturel pour annuler, et il ne coûte rien puisque rien n'était décidé. */
-document.getElementById('stop-overlay').addEventListener('click', (e) => {
-  if (e.target.id !== 'stop-overlay') return;   /* un clic SUR un choix ne compte pas ici */
+/* Cliquer AILLEURS = « en fait, non » : on reprend là où on en était. C'est le geste
+   naturel pour annuler, et il ne coûte rien puisque rien n'était décidé. */
+document.addEventListener('pointerdown', (e) => {
+  if (!choixArretOuvert) return;
+  if (e.target.closest('.mission-controls')) return;   /* un clic SUR un choix ne compte pas */
   closeStopChoice();
   if (missionState === 'paused') togglePause();
-});
+}, true);
 
 document.getElementById('stop-resume').addEventListener('click', () => {
   closeStopChoice();
