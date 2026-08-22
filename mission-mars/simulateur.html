@@ -92,6 +92,24 @@
   .start-node .led{ width:52px; height:52px; margin:0; border-radius:50%; }
   .start-node:active .start-cap{ transform:translateY(2px); }
 
+  /* --- Afficheur 4 chiffres à 7 segments (TM1637), câblé dans la mallette --- */
+  .seg-node{
+    flex:1; min-width:230px; background:var(--panel); border:2px solid var(--line); border-radius:14px;
+    padding:14px 16px 12px; display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  .seg-node .name{ font-family:'Orbitron'; font-size:12px; letter-spacing:1.2px; color:var(--dim); }
+  .seg-panel{
+    display:flex; align-items:center; gap:7px; padding:12px 16px; border-radius:10px;
+    background:#0a0d12; box-shadow:inset 0 0 0 1px #1b232e, inset 0 3px 12px rgba(0,0,0,.8);
+  }
+  .seg-digit{ width:34px; height:56px; }
+  .seg-digit polygon{ fill:#1a1010; transition:fill .1s, filter .1s; }
+  .seg-digit polygon.on{ fill:#ff3b30; filter:drop-shadow(0 0 3px #ff3b30) drop-shadow(0 0 8px rgba(255,59,48,.6)); }
+  .seg-colon{ display:flex; flex-direction:column; gap:13px; padding:0 1px; }
+  .seg-colon i{ width:6px; height:6px; border-radius:50%; background:#1a1010; }
+  .seg-colon.on i{ background:#ff3b30; box-shadow:0 0 4px #ff3b30, 0 0 10px rgba(255,59,48,.6); }
+  .seg-node .state{ font-family:'JetBrains Mono'; font-size:9px; color:var(--dim); }
+
   /* --- Les 3 commandes de la mallette ---
      Ce sont des interrupteurs à bascule lumineux sous capot de sécurité relevable.
      Les trois ont le même rôle : un coupe-circuit. Allumé, l'appareil peut fonctionner ;
@@ -211,6 +229,15 @@
         <div class="led" id="start-led"></div>
       </div>
       <div class="state" id="start-state">éteint</div>
+    </div>
+  </div>
+
+  <div class="section-label">Afficheur de la mallette</div>
+  <div class="console-row">
+    <div class="seg-node">
+      <div class="name">CHRONO 4 CHIFFRES</div>
+      <div class="seg-panel" id="seg-panel"></div>
+      <div class="state" id="seg-state">—</div>
     </div>
   </div>
 
@@ -516,6 +543,7 @@ document.getElementById('case-power').addEventListener('click', () => cycleSwitc
     /* la mallette s'éteint : tout retombe, capots rabattus */
     caseState.smoke = false; caseState.laser = false;
     caseOpen.smoke = false; caseOpen.laser = false;
+    renderSegments('', false);   /* l'afficheur s'éteint avec la mallette */
     renderCase();
     send({ type:'launch', offline:true });
   }
@@ -614,6 +642,24 @@ if (channel) {
       sendLaunchState();
       return;
     }
+    if (evt.type === 'display') {
+      /* la mallette est éteinte : son afficheur l'est aussi */
+      if (!caseState.power) return;
+      renderSegments(evt.text, evt.colon);
+      return;
+    }
+    if (evt.type === 'system') {
+      /* Le gyrophare et la fumée sont pilotés par le jeu : on affiche ce qu'on reçoit.
+         Sans ça, le gyrophare ne s'allumait jamais dans la console — les ordres étaient
+         reçus puis jetés. */
+      const key = evt.key;
+      if (key !== 'gyro' && key !== 'smoke') return;
+      if (evt.state === 'absent') { sysConnected[key] = false; sysActive[key] = false; }
+      else { sysConnected[key] = true; sysActive[key] = (evt.state === 'active'); }
+      renderSystem(key);
+      log(`← ${key} : ${evt.state}`, 'in');
+      return;
+    }
     if (evt.type !== 'lamp') return;
     if (evt.target === 'start') {
       applyStartLamp(evt);
@@ -632,6 +678,51 @@ if (channel) {
     }
   };
 }
+
+/* ===== Afficheur 4 chiffres à 7 segments =====
+   Mock fidèle d'un TM1637 : 4 digits + les deux points. L'appli envoie un texte déjà
+   formaté (« 01:23 »), le boîtier se contente de l'allumer segment par segment. */
+const SEG_MAP = {
+  '0':'abcdef', '1':'bc', '2':'abdeg', '3':'abcdg', '4':'bcfg',
+  '5':'acdfg', '6':'acdefg', '7':'abc', '8':'abcdefg', '9':'abcdfg',
+  '-':'g', ' ':'', '':''
+};
+/* géométrie d'un digit : 7 polygones dans un viewBox 0 0 40 70 */
+const SEG_SHAPE = {
+  a:'6,3 34,3 29,8 11,8',
+  b:'35,4 37,31 32,35 30,10',
+  c:'32,38 35,66 30,61 28,42',
+  d:'29,63 33,68 6,68 2,63',
+  e:'7,38 10,61 5,66 3,38',
+  f:'9,4 12,10 10,35 5,31',
+  g:'11,36 29,36 33,36.5 29,41 11,41 7,36.5'
+};
+function digitSvg(){
+  return '<svg class="seg-digit" viewBox="0 0 40 70">' +
+    Object.keys(SEG_SHAPE).map(k => `<polygon data-seg="${k}" points="${SEG_SHAPE[k]}"></polygon>`).join('') +
+    '</svg>';
+}
+(function buildSegPanel(){
+  const panel = document.getElementById('seg-panel');
+  panel.innerHTML = digitSvg() + digitSvg() +
+    '<span class="seg-colon" id="seg-colon"><i></i><i></i></span>' +
+    digitSvg() + digitSvg();
+})();
+function renderSegments(text, colon){
+  const panel = document.getElementById('seg-panel');
+  const digits = panel.querySelectorAll('.seg-digit');
+  /* on ne garde que les chiffres : « 01:23 » → « 0123 » */
+  const chars = String(text || '').replace(/[^0-9\- ]/g, '').padStart(4, ' ').slice(-4);
+  digits.forEach((svg, i) => {
+    const on = SEG_MAP[chars[i]] !== undefined ? SEG_MAP[chars[i]] : '';
+    svg.querySelectorAll('polygon').forEach(p => {
+      p.classList.toggle('on', on.indexOf(p.dataset.seg) !== -1);
+    });
+  });
+  document.getElementById('seg-colon').classList.toggle('on', colon !== false);
+  document.getElementById('seg-state').textContent = text || '—';
+}
+renderSegments('', false);
 
 /* ===== Ce que le boîtier déclare de lui-même ===== */
 function colorLetter(rgb){

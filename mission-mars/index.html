@@ -2711,6 +2711,8 @@ function showCountdown(n){
   const el = document.getElementById('countdown-overlay');
   if (n === null) { el.classList.remove('show', 'go'); return; }
   el.classList.toggle('go', typeof n === 'string');
+  /* le gros afficheur suit le décompte : 00:05 → 00:01, puis le GO */
+  sendDisplay(typeof n === 'number' ? '00:0' + n : '00:00');
   el.textContent = n;
   el.classList.add('show');
   el.classList.remove('tickpop');
@@ -2730,13 +2732,24 @@ function flashScoreBanner(text, kind){
 /* Fait clignoter un faisceau touché sans le sortir du jeu. */
 /* Tout impact fait clignoter le gyrophare : c'est le signal visuel commun à tous les jeux. */
 let gyroFlashTimer = null;
+/* Forcé à la main depuis l'appli : le jeu ne l'éteint plus tant qu'on ne lui rend pas la
+   main (au démarrage ou à la fin d'une mission). Un coup de gyrophare de test ne doit pas
+   s'arrêter tout seul au bout d'une seconde. */
+let gyroForced = false;
 function flashGyro(ms){
+  if (gyroForced) return;
   setSystemState('gyro', 'active');
   clearTimeout(gyroFlashTimer);
   gyroFlashTimer = setTimeout(() => {
+    if (gyroForced) return;
     /* on ne l'éteint que s'il n'est pas censé rester allumé (mission Fire) */
     if (currentModeKey !== 'fire' || missionState !== 'running') setSystemState('gyro', 'idle');
   }, ms || 1200);
+}
+/* Le jeu reprend la main sur les effets. */
+function releaseForcedEffects(){
+  gyroForced = false;
+  clearTimeout(gyroFlashTimer);
 }
 
 function blinkBeam(id){
@@ -2957,6 +2970,18 @@ function printScore(name, meta, time, note){
     </div>
   `;
   window.print();
+}
+
+/* ===== Afficheur 7 segments de la mallette =====
+   4 chiffres et un « : » au milieu : exactement ce qu'un TM1637 sait faire. L'appli lui
+   envoie le texte déjà formaté, et SEULEMENT quand il change — inutile d'inonder la liaison
+   à 30 Hz pour un afficheur qui bouge une fois par seconde. */
+let lastDisplay = null;
+function sendDisplay(text){
+  const t = String(text).slice(0, 5);
+  if (t === lastDisplay) return;
+  lastDisplay = t;
+  broadcastToSim({ type:'display', text:t, colon:true });
 }
 
 function fmtTime(ms){
@@ -3674,6 +3699,7 @@ function updateMissionControls(){
 function renderTimerIdle(){
   const limit = durationFor(currentModeKey);
   const t = fmtTime(limit != null ? limit * 1000 : 0);
+  sendDisplay(t.main);   /* le gros afficheur de la mallette montre la même chose */
   document.getElementById('timer-main').textContent = t.main;
   document.getElementById('timer-cs').textContent = t.cs;
   document.querySelector('.timer-display').classList.remove('urgent');
@@ -3684,6 +3710,7 @@ function tick(){
   const limit = durationFor(currentModeKey);
   const shown = limit != null ? Math.max(0, limit * 1000 - elapsed) : elapsed;
   const t = fmtTime(shown);
+  sendDisplay(t.main);
   document.getElementById('timer-main').textContent = t.main;
   document.getElementById('timer-cs').textContent = t.cs;
   document.querySelector('.timer-display').classList.toggle('urgent', limit != null && shown <= 10000);
@@ -3764,6 +3791,7 @@ function beginRun(){
   setStatus();
   updateMissionControls();
   renderRunHud();
+  releaseForcedEffects();   /* le jeu reprend la main sur le gyrophare */
   startMissionMusic();
   if (rules().onStart) rules().onStart(run);
   tick();
@@ -3839,6 +3867,7 @@ function stopMission(reason){
     play('airhorn');
     flashGyro(4500);
   } else {
+    releaseForcedEffects();
     setSystemState('gyro', 'idle');   /* le matériel se remet au repos en fin de mission */
     play(result.win ? 'success' : 'fail');
   }
@@ -4058,7 +4087,11 @@ function setSystemState(key, state, fromHardware){
 
 document.getElementById('sys-gyro').addEventListener('click', function(){
   if (systemState.gyro === 'absent') return;
-  setSystemState('gyro', systemState.gyro === 'active' ? 'idle' : 'active');
+  /* Allumage FORCÉ : il reste allumé jusqu'à ce qu'on le rééteigne, ou que le jeu
+     reprenne la main au démarrage d'une mission. */
+  gyroForced = (systemState.gyro !== 'active');
+  clearTimeout(gyroFlashTimer);
+  setSystemState('gyro', gyroForced ? 'active' : 'idle');
 });
 (function(){
   const el = document.getElementById('sys-smoke');
