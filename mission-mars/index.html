@@ -608,6 +608,32 @@
   .confirm-ok{ background:linear-gradient(180deg,#3ef2a8,#1fae72); color:#05070a; box-shadow:0 8px 20px -8px rgba(53,242,163,.6); }
 
   /* --- Décompte plein écran (5-4-3-2-1 du duel orbital) --- */
+  /* Choix proposés quand on interrompt une mission en cours */
+  .stop-overlay{
+    position:fixed; inset:0; z-index:72; display:flex; align-items:center; justify-content:center;
+    background:rgba(5,7,10,.9); padding:20px; opacity:0; pointer-events:none; transition:opacity .2s;
+  }
+  .stop-overlay.show{ opacity:1; pointer-events:auto; }
+  .stop-card{
+    width:100%; max-width:460px; background:var(--panel); border:1px solid var(--line);
+    border-radius:20px; padding:24px 20px 20px; display:flex; flex-direction:column; gap:10px;
+    animation:celebratePop .3s cubic-bezier(.34,1.4,.64,1);
+  }
+  .stop-title{ font-family:'Orbitron'; font-size:clamp(18px, 4.2cqw, 24px); color:#fff; text-align:center; }
+  .stop-sub{ font-size:clamp(13px, 3cqw, 16px); color:var(--dim); text-align:center; margin-bottom:8px; }
+  .stop-choice{
+    display:flex; align-items:center; gap:14px; text-align:left; width:100%;
+    background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:14px;
+    padding:14px 16px; cursor:pointer; color:var(--text); transition:border-color .15s, background .15s;
+  }
+  .stop-choice:hover{ background:rgba(255,255,255,.08); }
+  .stop-choice .ic{ font-size:22px; width:30px; text-align:center; flex-shrink:0; }
+  .stop-choice b{ display:block; font-size:clamp(14px, 3.2cqw, 17px); font-weight:700; }
+  .stop-choice i{ display:block; font-style:normal; font-size:clamp(11px, 2.5cqw, 13px); color:var(--dim); margin-top:2px; }
+  .stop-choice.resume{ border-color:var(--green); } .stop-choice.resume .ic{ color:var(--green); }
+  .stop-choice.restart{ border-color:var(--amber); } .stop-choice.restart .ic{ color:var(--amber); }
+  .stop-choice.next{ border-color:var(--blue); } .stop-choice.next .ic{ color:var(--blue); }
+
   .countdown-overlay{
     position:fixed; inset:0; z-index:70; display:flex; align-items:center; justify-content:center;
     background:rgba(5,7,10,0.82); font-family:'Orbitron'; font-weight:900;
@@ -889,7 +915,6 @@
       </div>
 
       <div class="mission-controls">
-        <button class="btn-pause" id="pause-btn" style="display:none;">⏸</button>
         <button class="btn-toggle go" id="mission-btn">JOUEUR SUIVANT →</button>
       </div>
 
@@ -936,6 +961,22 @@
           <button class="crop-btn ghost" id="crop-cancel">Annuler</button>
           <button class="crop-btn primary" id="crop-ok">Valider</button>
         </div>
+      </div>
+    </div>
+
+    <div class="stop-overlay" id="stop-overlay">
+      <div class="stop-card">
+        <div class="stop-title">Mission interrompue</div>
+        <div class="stop-sub" id="stop-sub"></div>
+        <button class="stop-choice resume" id="stop-resume">
+          <span class="ic">▶</span><span><b>Reprendre</b><i>le chrono repart où il s'est arrêté</i></span>
+        </button>
+        <button class="stop-choice restart" id="stop-restart">
+          <span class="ic">↺</span><span><b>Recommencer la manche</b><i>même joueur, tout repart à zéro</i></span>
+        </button>
+        <button class="stop-choice next" id="stop-next">
+          <span class="ic">→</span><span><b>Joueur suivant</b><i>la manche est enregistrée telle quelle</i></span>
+        </button>
       </div>
     </div>
 
@@ -2803,26 +2844,18 @@ function setStatus(){
 
 function updateMissionControls(){
   const btn = document.getElementById('mission-btn');
-  const pauseBtn = document.getElementById('pause-btn');
   if (missionState === 'running' || missionState === 'paused') {
     btn.textContent = '■ ' + w('stopMission').toUpperCase();
     btn.disabled = false;
     btn.className = 'btn-toggle stop';
-    pauseBtn.style.display = 'flex';
-    pauseBtn.innerHTML = missionState === 'paused'
-      ? '<span class="play"></span>'
-      : '<span class="bar"></span><span class="bar"></span>';
-    pauseBtn.title = missionState === 'paused' ? 'Reprendre' : 'Mettre en pause';
   } else if (missionState === 'ready') {
     btn.innerHTML = '<span class="ready-btn"><i></i></span>' + w('waitingStart').toUpperCase();
     btn.disabled = true;
     btn.className = 'btn-toggle idle';
-    pauseBtn.style.display = 'none';
   } else {
     btn.textContent = w('nextPlayer').toUpperCase() + ' →';
     btn.disabled = false;
     btn.className = 'btn-toggle go';
-    pauseBtn.style.display = 'none';
   }
   /* Le vrai bouton physique de départ ne s'allume que quand la mission est armée :
      on renvoie cet état au matériel (ici : au mock du simulateur). */
@@ -2995,11 +3028,49 @@ document.getElementById('celebrate-overlay').addEventListener('click', function(
   this.classList.remove('show');
 });
 
+/* Interrompre une mission ne décide de rien : ça met en pause et ça demande quoi faire.
+   C'est ce choix qui remplace l'ancien bouton pause. */
+function askStopChoice(){
+  if (missionState !== 'running') return;
+  togglePause();                       /* le chrono s'arrête, rien n'est encore enregistré */
+  const crew = playersAt(queueIndex, modePlayerCount());
+  document.getElementById('stop-sub').textContent = joinPlayerNames(crew.map(p => p.name));
+  document.getElementById('stop-overlay').classList.add('show');
+}
+function closeStopChoice(){ document.getElementById('stop-overlay').classList.remove('show'); }
+
+document.getElementById('stop-resume').addEventListener('click', () => {
+  closeStopChoice();
+  togglePause();                       /* reprend exactement où on en était */
+});
+document.getElementById('stop-restart').addEventListener('click', () => {
+  closeStopChoice();
+  /* on abandonne la manche SANS l'enregistrer, et on réarme le même joueur */
+  missionState = 'running';
+  running = false;
+  clearInterval(tickId);
+  clearInterval(countdownTimer);
+  showCountdown(null);
+  stopMissionMusic();
+  setSystemState('gyro', 'idle');
+  run = null;
+  lastResult = null;
+  missionState = 'ready';
+  renderRunHud();
+  renderTimerIdle();
+  setStatus();
+  updateMissionControls();
+});
+document.getElementById('stop-next').addEventListener('click', () => {
+  closeStopChoice();
+  missionState = 'running';            /* pour que stopMission accepte de clore la manche */
+  stopMission('abort');
+});
+
 document.getElementById('mission-btn').addEventListener('click', () => {
   if (missionState === 'finished') armNext();
-  else if (missionState === 'running' || missionState === 'paused') stopMission('abort');
+  else if (missionState === 'running' || missionState === 'paused') askStopChoice();
 });
-document.getElementById('pause-btn').addEventListener('click', togglePause);
 
 /* ===== Connexion console : un seul point d'entrée pour tous les événements matériel.
    Alimenté aujourd'hui par la page simulateur.html (BroadcastChannel, même navigateur,
