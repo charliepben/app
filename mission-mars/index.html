@@ -1514,8 +1514,9 @@
           <div class="setting-row cle-row">
             <div>
               <div class="lbl">Clé API Leonardo</div>
-              <div class="sub">elle ne quitte jamais cet appareil · environ 25 centimes par photo ·
-                à créer sur app.leonardo.ai, rubrique API Access</div>
+              <div class="sub">saisie ici, elle reste sur cet appareil · sinon c'est la mallette
+                qui la fournit · environ 25 centimes par photo · à créer sur app.leonardo.ai,
+                rubrique API Access</div>
             </div>
             <input type="password" id="astro-cle" class="cle-input" placeholder="colle ta clé ici"
                    autocomplete="off" spellcheck="false">
@@ -1551,6 +1552,11 @@
 
 <div id="print-certificate" class="print-only"></div>
 
+<!-- La clé API Leonardo, si elle est posée à côté de ce fichier. Elle n'est PAS dans le
+     dépôt : il est public. Sur GitHub Pages ce fichier n'existe pas, le 404 est sans
+     conséquence, et l'appli se rabat sur la clé saisie dans les réglages.
+     Modèle à recopier : cle-locale.exemple.js -->
+<script src="cle-locale.js"></script>
 <script>
 /* Config et Scores s'ouvrent par-dessus la mission, qui reste l'écran principal. */
 function openSheet(id){
@@ -2323,7 +2329,12 @@ function renderAstroConfig(){
   const champ = document.getElementById('astro-cle');
   if (!sw || !champ) return;
   sw.classList.toggle('on', astroAuto);
-  if (document.activeElement !== champ) champ.value = leoCle();
+  if (document.activeElement !== champ) champ.value = cleSaisie();
+  /* Sans ça, un champ vide laisserait croire qu'aucune clé n'est disponible — alors que
+     la mallette en fournit une. */
+  champ.placeholder = cleDuServeur()
+    ? 'clé fournie par la mallette — laisse vide'
+    : 'colle ta clé ici';
   if (!sw.dataset.pret) {
     sw.dataset.pret = '1';
     sw.addEventListener('click', () => {
@@ -2995,10 +3006,18 @@ const LEO_CONSIGNE =
   "a dramatic burnt-orange sky, tall cliffs and craters in the distance. Punchy and vivid, " +
   "not hazy or washed out.";
 
-function leoCle(){
+/* Deux sources, dans cet ordre : ce qu'on a saisi sur CET écran l'emporte, sinon la clé
+   posée à côté de l'appli (cle-locale.js, hors dépôt). Servie depuis la mallette, elle
+   arrive donc toute seule sur chaque écran, sans rien taper nulle part. */
+function cleDuServeur(){
+  const k = (window.MISSION_MARS_LEONARDO || '').trim();
+  return k && k !== 'colle-ta-cle-ici' ? k : '';
+}
+function cleSaisie(){
   try { return (localStorage.getItem('mission-mars-leonardo') || '').trim(); }
   catch (e) { return ''; }
 }
+function leoCle(){ return cleSaisie() || cleDuServeur(); }
 function leoActif(){ return !!leoCle() && astroAuto; }
 
 function leoEntetes(){
