@@ -1516,7 +1516,8 @@ function modeHasArrival(){ return currentMode().hasArrival !== false; }
    de commande (simulé aujourd'hui, physique demain) qui l'annonce au démarrage via un
    événement `topology`. Ces valeurs ne servent que tant que rien n'a été annoncé. */
 let TOPOLOGY = {
-  beams:   [1,2,3,4,5,6].map(id => ({ id, color:['g','r','b','r','g','b'][id-1] })),
+  /* 4 rouges + 2 bleus : le matériel réel. Écrasé dès que la console annonce sa topologie. */
+  beams:   [1,2,3,4,5,6].map(id => ({ id, color:['r','r','b','r','r','b'][id-1] })),
   buttons: [1,2,3,4,5].map(id => ({ id }))
 };
 

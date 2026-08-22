@@ -364,9 +364,11 @@ function wireHold(el, { onStart, onEnd }){
 }
 
 /* ===== Lasers : couleur physique du module (fixe), 3 états ===== */
+/* Le matériel réel : 4 faisceaux rouges + 2 bleus. Le vert 532nm a été écarté
+   (280-400 mA, soit 1 h 40 d'autonomie — voir alimentation-tensions.md). */
 const BEAMS = [
-  { id:1, rgb:{r:53,g:242,b:163} }, { id:2, rgb:{r:255,g:77,b:94} }, { id:3, rgb:{r:77,g:195,b:255} },
-  { id:4, rgb:{r:255,g:77,b:94} }, { id:5, rgb:{r:53,g:242,b:163} }, { id:6, rgb:{r:77,g:195,b:255} }
+  { id:1, rgb:{r:255,g:77,b:94} }, { id:2, rgb:{r:255,g:77,b:94} }, { id:3, rgb:{r:77,g:195,b:255} },
+  { id:4, rgb:{r:255,g:77,b:94} }, { id:5, rgb:{r:255,g:77,b:94} }, { id:6, rgb:{r:77,g:195,b:255} }
 ];
 const beamOn = {}; BEAMS.forEach(b => beamOn[b.id] = true);
 
