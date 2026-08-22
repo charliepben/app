@@ -3304,7 +3304,7 @@ let DEVICE_NAME = (function(){
 /* L'ancienneté survit à un rafraîchissement : sinon l'ordinateur qui recharge sa page
    redevenait le plus jeune et cédait le pilotage au téléphone. Elle est propre à l'onglet,
    donc elle disparaît quand on ferme vraiment l'écran — ce qui est le bon comportement. */
-const JOINED_AT = (function(){
+let JOINED_AT = (function(){
   try {
     let t = parseInt(sessionStorage.getItem('mission-mars-depuis') || '', 10);
     if (!t) { t = Date.now(); sessionStorage.setItem('mission-mars-depuis', String(t)); }
@@ -3336,6 +3336,22 @@ function livePeers(){
 /* Le pilote est le plus ancien connecté. Rien à négocier, tout le monde tombe d'accord. */
 function pilotId(){ const l = livePeers(); return l.length ? l[0].id : DEVICE_ID; }
 function isPilot(){ return !adopting && pilotId() === DEVICE_ID; }
+
+/* Prendre le pilotage. C'est ce qui se passe quand on lance une nouvelle partie depuis un
+   écran secondaire : celui qui compose la partie doit la tenir, sinon il configure dans le
+   vide — le pilote lui réécrirait son état une demi-seconde plus tard.
+   On se déclare simplement plus ancien que tout le monde ; l'élection fait le reste. */
+function claimPilot(){
+  if (isPilot()) return;
+  const plusAncien = livePeers().reduce((m, p) => Math.min(m, p.since), Date.now());
+  JOINED_AT = plusAncien - 1000;
+  try { sessionStorage.setItem('mission-mars-depuis', String(JOINED_AT)); } catch (e) {}
+  peers[DEVICE_ID].since = JOINED_AT;
+  adopting = false;
+  announceSelf();
+  renderPeers();
+  flashScoreBanner('Cet écran prend le pilotage', 'good');
+}
 
 /* Renommer son écran : « iPad » devient « iPad de la mallette » si on veut. */
 function renommerEcran(){
@@ -3659,6 +3675,7 @@ function resetGame(){
 }
 
 function newGame(){
+  claimPilot();   /* on compose la partie ici : c'est donc ici qu'on la pilote */
   resetGame();
   startWizard();
 }
