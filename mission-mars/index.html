@@ -54,6 +54,7 @@
   }
   .screen{ height:100%; display:flex; flex-direction:column; overflow:hidden; }
 
+  .app-header{ padding-left:clamp(14px, 3.5cqw, 34px); padding-right:clamp(14px, 3.5cqw, 34px); }
   .app-header{
     display:flex; align-items:center; gap:9px;
     padding: 14px 18px 10px;
@@ -117,61 +118,29 @@
   }
   @container device (max-width: 460px){ .ng-label{ display:none; } }
 
-  .tabpanel{ display:none; flex:1; min-height:0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+  .tabpanel{
+    display:none; flex:1; min-height:0;
+    /* de l'air sur les côtés : coller aux bords fait bricolé sur un écran étroit */
+    padding: 12px clamp(14px, 3.5cqw, 34px) calc(12px + env(safe-area-inset-bottom));
+  }
   .tabpanel.active{ display:flex; flex-direction:column; gap:9px; }
   #tab-mission{ overflow:hidden; padding-bottom:10px; }
   .scores-scroll{ flex:1; min-height:0; overflow-y:auto; scrollbar-width:thin; scrollbar-color:var(--line) transparent; display:flex; flex-direction:column; gap:9px; }
-  /* écran large : les deux classements tiennent côte à côte */
-  @container device (min-width: 700px){
-    .scores-scroll{ flex-direction:row; align-items:flex-start; }
+  /* Écran large : matériel / classement / équipes, côte à côte. */
+  @container device (min-width: 760px){
+    .scores-scroll{ flex-direction:row; align-items:stretch; }
     .scores-scroll > *{ flex:1 1 0; min-width:0; }
+    .scores-scroll > .hw-col{ flex:1.15 1 0; }
+    /* côte à côte, les 3 colonnes sont courtes : on leur garantit une hauteur lisible */
+    .scores-scroll{ min-height:clamp(120px, 22vh, 300px); }
   }
-
-  /* ===== Écran large : deux colonnes =====
-     Sur un iPad en paysage, empiler huit blocs à la verticale fait déborder la barre du bas.
-     Il y a en revanche de la largeur à revendre : on répartit. `display:contents` sur
-     .mission-top dissout le conteneur pour que ses deux enfants deviennent des cases de
-     la grille à part entière. */
-  @media (min-width: 900px) and (min-height: 560px){
-    #tab-mission.tabpanel.active{
-      display:grid; gap:9px; align-content:stretch;
-      grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
-      grid-template-rows:auto auto auto 1fr auto auto;
-      grid-template-areas:
-        "banner  banner"
-        "players timer"
-        "beams   scores"
-        "btns    scores"
-        "sys     scores"
-        "music   music"
-        "ctrl    ctrl";
-    }
-    #tab-mission.tabpanel.active > .mode-banner{ grid-area:banner; }
-    #tab-mission.tabpanel.active > .mission-top{ display:contents; }
-    #tab-mission.tabpanel.active .players-now{ grid-area:players; }
-    #tab-mission.tabpanel.active .timer-block{ grid-area:timer; }
-    #tab-mission.tabpanel.active > .beam-grid{ grid-area:beams; align-self:center; }
-    #tab-mission.tabpanel.active > .buttons-grid{ grid-area:btns; align-self:center; }
-    #tab-mission.tabpanel.active > .systems-row{ grid-area:sys; align-self:start; }
-    #tab-mission.tabpanel.active > .scores-scroll{ grid-area:scores; }
-    #tab-mission.tabpanel.active > .music-bar{ grid-area:music; }
-    #tab-mission.tabpanel.active > .mission-controls,
-    #tab-mission.tabpanel.active > #mission-btn{ grid-area:ctrl; }
-    /* dans une colonne, les deux classements se remettent l'un sous l'autre */
-    #tab-mission.tabpanel.active > .scores-scroll{ flex-direction:column; }
-
-    /* En paysage, la hauteur est la ressource rare : les gros éléments se dimensionnent
-       en vh plutôt qu'en largeur de conteneur. Sans ça, la barre du bas sort de l'écran —
-       or elle doit rester visible en toutes circonstances. */
-    #tab-mission.tabpanel.active .now-players .avatar{
-      --av: clamp(64px, 13vh, 130px);
-      font-size:clamp(26px, 6vh, 50px);
-    }
-    /* main et ms gardent la MÊME taille : les chiffres doivent rester alignés */
-    #tab-mission.tabpanel.active .timer-display .main,
-    #tab-mission.tabpanel.active .timer-display .ms{ font-size:clamp(34px, 9.5vh, 78px); }
-    #tab-mission.tabpanel.active > .mode-banner{ min-height:clamp(52px, 9vh, 100px); }
-    #tab-mission.tabpanel.active .players-now .avatar.mini{ width:clamp(22px,3.4vh,34px); height:clamp(22px,3.4vh,34px); }
+  .hw-col{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:9px 10px 11px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .hw-col .lbl{
+    font-size:clamp(9.5px, 2.1cqw, 11.5px); font-family:'JetBrains Mono'; color:var(--dim);
+    letter-spacing:.09em;
   }
 
   /* ===== Bandeau du mode de mission =====
@@ -180,14 +149,21 @@
   .mode-banner{
     position:relative; flex-shrink:0; overflow:hidden; cursor:pointer;
     border:1px solid var(--line); border-radius:14px; background:var(--panel);
-    min-height:clamp(58px, 11vh, 108px); display:flex; align-items:center;
-    padding:10px 14px; -webkit-tap-highlight-color:transparent;
+    min-height:clamp(84px, 15vh, 150px); display:flex; align-items:center; gap:12px;
+    padding:10px 16px; -webkit-tap-highlight-color:transparent;
     transition:border-color .25s, box-shadow .25s;
   }
+  /* L'illustration tient dans la HAUTEUR du bandeau : plus rien n'est coupé en haut.
+     Elle déborde à gauche, où elle n'est que traînée — c'est là qu'on la rogne. */
   .mode-banner .mb-art{
     position:absolute; right:0; top:50%; transform:translateY(-50%);
-    height:132%; width:auto; max-width:none;   /* la traînée déborde à gauche, et c'est rogné */
+    height:100%; width:auto; max-width:none;
     pointer-events:none; opacity:.95;
+  }
+  .mode-banner .mb-emoji{
+    position:relative; z-index:2; flex-shrink:0;
+    font-size:clamp(24px, 5.5cqw, 44px); line-height:1;
+    filter:drop-shadow(0 2px 8px #000);
   }
   /* voile sombre sous le texte : le visuel peut aller où il veut, le nom reste lisible */
   .mode-banner::after{
@@ -226,6 +202,9 @@
   }
   .status-badge.idle{ color:var(--dim); background:rgba(107,124,146,0.1); border-color:rgba(107,124,146,0.35); }
   .status-badge.idle .dot-live{ background:var(--dim); box-shadow:none; animation:none; }
+  /* quelque chose empêche de partir : on le dit en rouge, et rien ne clignote */
+  .status-badge.bad{ color:var(--red); background:rgba(255,77,94,0.12); border-color:rgba(255,77,94,0.45); }
+  .status-badge.bad .dot-live{ background:var(--red); box-shadow:none; animation:none; }
   .mode-chip{
     font-family:'JetBrains Mono'; font-size:clamp(9.5px, 2.3cqw, 12px); letter-spacing:1px; text-transform:uppercase;
     color:var(--amber); background:rgba(255,179,71,0.1); border:1px solid rgba(255,179,71,0.4);
@@ -291,6 +270,9 @@
     100%{ transform:translateY(var(--dist)) rotate(220deg) scale(1); opacity:0; }
   }
   .player-chip > div{ min-width:0; }
+  /* photo au-dessus, nom et équipe en dessous, le tout centré */
+  .player-chip{ flex-direction:column; text-align:center; gap:8px; }
+  .player-chip .pident{ display:flex; flex-direction:column; align-items:center; gap:2px; max-width:100%; }
   .avatar{
     width:clamp(38px, 9.5cqw, 56px); height:clamp(38px, 9.5cqw, 56px); border-radius:11px; display:flex; align-items:center; justify-content:center;
     font-family:'Orbitron'; font-weight:700; font-size:clamp(15px, 3.6cqw, 21px); color:#05070a; flex-shrink:0;
@@ -350,6 +332,19 @@
   .rt-pip.now .avatar.pip{ animation:pipPulse 1.6s ease-in-out infinite; }
   @keyframes pipPulse{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.35); } }
   .rt-sep{ width:5px; height:1px; background:#26313f; flex-shrink:0; }
+  /* Le joueur suivant, annoncé ici et pas dans un encart à part. */
+  .rt-next{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:9px; padding-top:8px;
+    border-top:1px dashed var(--line);
+  }
+  .rt-next-lbl{
+    font-family:'JetBrains Mono'; font-size:clamp(9px, 2cqw, 11px); color:var(--dim);
+    letter-spacing:.12em; flex-shrink:0;
+  }
+  .rt-next-one{ display:inline-flex; align-items:center; gap:7px; min-width:0; }
+  .rt-next-one b{ font-size:clamp(14px, 3.4cqw, 20px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rt-next-one .avatar.pip{ width:clamp(26px, 6cqw, 38px); height:clamp(26px, 6cqw, 38px); border-radius:9px; font-size:clamp(12px, 2.8cqw, 17px); }
+  .rt-next-sep{ color:var(--dim); font-size:.85em; }
 
   .beam-grid{
     display:flex; justify-content:center; gap:9px; flex-shrink:0;
@@ -577,35 +572,38 @@
   .team-bar i{ display:block; height:100%; border-radius:4px; transition:width .4s ease; }
   .team-val{ width:22px; text-align:right; font-family:'JetBrains Mono'; font-weight:700; flex-shrink:0; }
 
-  .music-bar{
-    position:relative; overflow:hidden;
-    display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line);
-    border-radius:12px; padding:8px 10px; flex-shrink:0;
+  /* La musique est une pastille comme les autres, à droite de Launch System.
+     Plus de croix ni de note : ce sont LES BARRES qui disent tout — violettes quand la
+     musique est active, grises quand elle est coupée, animées pendant la lecture. */
+  .system-chip.music-chip{
+    flex:1.7; position:relative; overflow:hidden; gap:7px; padding-bottom:11px;
+    justify-content:flex-start; text-align:left;
   }
-  /* Où en est le morceau : un trait fin au ras du bas du bandeau. */
+  .system-chip.music-chip .music-txt{ flex:1; min-width:0; display:flex; flex-direction:column; line-height:1.15; }
+  .system-chip.music-chip .t1{ font-size:clamp(9.5px, 2.1cqw, 11.5px); font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .system-chip.music-chip .t2{ font-size:clamp(8.5px, 1.9cqw, 10px); color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .system-chip.music-chip.muted .t1{ color:var(--dim); }
+  /* Où en est le morceau : un trait fin au ras du bas de la pastille. */
   .music-progress{
     position:absolute; left:0; bottom:0; height:2.5px; width:0;
     background:linear-gradient(90deg, rgba(157,123,255,.45), var(--violet));
     box-shadow:0 0 8px rgba(157,123,255,.6); transition:width .25s linear;
   }
-  .music-bar.muted .music-progress{ opacity:.25; box-shadow:none; }
+  .music-chip.muted .music-progress{ opacity:.2; box-shadow:none; }
   .music-time{
-    flex-shrink:0; font-family:'JetBrains Mono'; font-size:clamp(9.5px, 2.1cqw, 11.5px);
+    flex-shrink:0; font-family:'JetBrains Mono'; font-size:clamp(8.5px, 1.9cqw, 10.5px);
     color:var(--dim); font-variant-numeric:tabular-nums;
   }
-  .waveform{ display:flex; align-items:flex-end; gap:2px; height:16px; }
-  .waveform i{ width:2.5px; background:var(--violet); border-radius:2px; animation:bounce 1s infinite ease-in-out; }
+  .waveform{ display:flex; align-items:flex-end; gap:2px; height:15px; flex-shrink:0; }
+  .waveform i{ width:2.5px; background:var(--violet); border-radius:2px; animation:bounce 1s infinite ease-in-out; animation-play-state:paused; }
+  /* animées seulement quand ça joue vraiment */
+  .music-chip.playing .waveform i{ animation-play-state:running; }
+  .music-chip.muted .waveform i{ background:#3d4a5c; animation-play-state:paused; }
   .waveform i:nth-child(1){height:40%;animation-delay:0s;} .waveform i:nth-child(2){height:85%;animation-delay:0.1s;}
   .waveform i:nth-child(3){height:55%;animation-delay:0.2s;} .waveform i:nth-child(4){height:95%;animation-delay:0.3s;}
   .waveform i:nth-child(5){height:35%;animation-delay:0.4s;}
   @keyframes bounce{ 0%,100%{transform:scaleY(0.4);} 50%{transform:scaleY(1);} }
-  .music-bar{ cursor:pointer; -webkit-tap-highlight-color:transparent; }
-  .music-txt{ flex:1; min-width:0; }
-  .music-bar .t2{ font-size:clamp(10px, 2.2cqw, 12px); color:var(--dim); font-family:'JetBrains Mono'; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .music-state{ flex-shrink:0; color:var(--violet); font-size:15px; }
-  .music-bar.muted .music-state{ color:var(--dim); }
-  .music-bar.muted .waveform i{ animation-play-state:paused; opacity:.3; }
-  .music-bar .t1{ font-size:clamp(12px, 2.7cqw, 15px); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .music-chip{ cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .mission-controls{ display:flex; gap:8px; flex-shrink:0; }
   .btn-toggle{
     border:none; border-radius:14px; color:#fff; flex:1;
@@ -615,6 +613,16 @@
   }
   .btn-toggle.go{ background: linear-gradient(180deg,#3ef2a8,#1fae72); box-shadow: 0 8px 22px -8px rgba(53,242,163,0.55); }
   .btn-toggle.stop{ background: linear-gradient(180deg,#ff5b6a,#d8283b); box-shadow: 0 8px 22px -8px rgba(255,77,94,0.55); }
+  /* Fin de partie : plus de « joueur suivant », on va voir les scores — et c'est doré. */
+  .btn-toggle.gold{
+    background:linear-gradient(180deg,#ffdc6b,#e0a316); color:#241a02;
+    box-shadow:0 8px 24px -8px rgba(255,213,74,.7);
+    animation:goldPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes goldPulse{
+    0%,100%{ box-shadow:0 8px 24px -8px rgba(255,213,74,.6); }
+    50%{ box-shadow:0 8px 30px -6px rgba(255,213,74,.95), 0 0 26px 2px rgba(255,213,74,.35); }
+  }
   /* "prêt" = représente l'état réel du bouton physique de départ (glow blanc) : mêmes
      paramètres d'animation que .status-badge.ready et que le mock côté simulateur. */
   .btn-toggle.idle{
@@ -774,8 +782,8 @@
   }
   /* le visuel de la mission, en haut à droite de sa carte */
   .mcard .mcard-art{
-    position:absolute; right:-4%; top:50%; transform:translateY(-50%);
-    height:118%; max-width:58%; object-fit:contain; object-position:right center;
+    position:absolute; right:0; top:50%; transform:translateY(-50%);
+    height:100%; max-width:62%; object-fit:contain; object-position:right center;
     opacity:.85; pointer-events:none; z-index:0;
     -webkit-mask-image:linear-gradient(90deg, transparent 0%, #000 34%);
             mask-image:linear-gradient(90deg, transparent 0%, #000 34%);
@@ -1071,6 +1079,31 @@
     .print-only{ display:block !important; }
   }
 
+  /* ===== Écran large mais PAS HAUT (iPad en paysage, PC 13") =====
+     La hauteur y est la ressource rare : les gros éléments s'y dimensionnent en vh, sinon
+     ils mangent toute la place et le classement se retrouve écrasé à 50 px.
+     Le seuil couvre toutes les tablettes et portables en paysage, iPad Pro 13" compris. */
+  @media (min-width: 900px) and (max-height: 1200px){
+    .now-players .avatar{ --av: clamp(72px, 13vh, 120px); font-size:clamp(26px, 6vh, 46px); }
+    .player-chip .pname{ font-size:clamp(15px, 3.2vh, 24px); }
+    .timer-display .main, .timer-display .ms{ font-size:clamp(34px, 9vh, 74px); }
+    .mode-banner{ min-height:clamp(72px, 11vh, 112px); }
+    .rt-next-one .avatar.pip{ width:clamp(24px, 3.6vh, 34px); height:clamp(24px, 3.6vh, 34px); }
+    /* on resserre les espacements : 25 px gagnés ici, c'est la barre du bas qui rentre */
+    .players-now{ padding:7px 12px; }
+    .now-row{ gap:6px; }
+    .player-chip{ gap:5px; }
+    .round-track{ margin-top:7px; padding-top:7px; }
+    .rt-pips{ margin-top:6px; }
+    .rt-next{ margin-top:6px; padding-top:6px; }
+    .scores-scroll{ min-height:clamp(110px, 18vh, 230px); }
+  }
+  /* Téléphone : le bandeau prend moins de hauteur, l'écran est déjà chargé. */
+  @media (max-width: 760px){
+    .mode-banner{ min-height:clamp(76px, 12vh, 120px); }
+  }
+
+
 </style>
 </head>
 <body>
@@ -1096,6 +1129,7 @@
 
       <div class="mode-banner" id="mode-banner" role="button" tabindex="0" title="Voir la carte de mission">
         <img class="mb-art" id="mode-banner-art" alt="" aria-hidden="true">
+        <span class="mb-emoji" id="mode-banner-emoji" aria-hidden="true">💎</span>
         <div class="mb-txt">
           <div class="mb-name" id="mode-banner-name">Cristal Rush</div>
           <div class="mb-tag" id="mode-banner-tag"></div>
@@ -1107,11 +1141,6 @@
           <div class="now-row">
             <span class="now-lbl">EN&nbsp;PISTE</span>
             <div class="now-players" id="now-players"></div>
-          </div>
-          <div class="next-row">
-            <span class="next-lbl">SUIVANT</span>
-            <span class="next-arrow">→</span>
-            <span class="next-names" id="next-players"></span>
           </div>
           <div class="round-track" id="round-track"></div>
         </div>
@@ -1127,21 +1156,16 @@
         </div>
       </div>
 
-      <div class="beam-grid" id="beam-grid"></div>
-
-      <div class="buttons-grid" id="buttons-grid"></div>
-
-      <div class="systems-row" id="systems-row">
-        <div class="system-chip launch" id="sys-launch">
-          <span class="sdot"></span>LAUNCH SYSTEM
-          <span class="launch-info"><span id="launch-batt">--%</span></span>
-          <div class="battery"><i id="launch-batt-bar" style="width:0%"></i></div>
-        </div>
-        <div class="system-chip" id="sys-gyro"><span class="sdot"></span>GYROPHARE</div>
-        <div class="system-chip" id="sys-smoke"><span class="sdot"></span>FUMÉE</div>
-      </div>
-
+      <!-- Trois colonnes : l'état du matériel, le classement, les équipes.
+           Le matériel descend ici : il n'a pas besoin de deux rangées à lui seul, et la
+           hauteur récupérée est exactement celle qui manquait en paysage. -->
       <div class="scores-scroll">
+        <div class="hw-col">
+          <div class="lbl">MATÉRIEL</div>
+          <div class="beam-grid" id="beam-grid"></div>
+          <div class="buttons-grid" id="buttons-grid"></div>
+        </div>
+
         <div class="live-scores">
           <div class="lbl" id="lbl-live-ranking">CLASSEMENT EN DIRECT</div>
           <div id="live-scores-body"></div>
@@ -1162,15 +1186,24 @@
         </div>
       </div>
 
-      <div class="music-bar" id="music-bar" role="button" tabindex="0" title="Couper / remettre la musique">
-        <div class="waveform" id="waveform"><i></i><i></i><i></i><i></i><i></i></div>
-        <div class="music-txt">
-          <div class="t1" id="music-title">Thème de mission</div>
-          <div class="t2" id="music-sub"></div>
+      <!-- Rangée des systèmes : la mallette, la musique, puis les deux effets. -->
+      <div class="systems-row" id="systems-row">
+        <div class="system-chip launch" id="sys-launch">
+          <span class="sdot"></span>LAUNCH SYSTEM
+          <span class="launch-info"><span id="launch-batt">--%</span></span>
+          <div class="battery"><i id="launch-batt-bar" style="width:0%"></i></div>
         </div>
-        <span class="music-time" id="music-time"></span>
-        <span class="music-state" id="music-state">♪</span>
-        <i class="music-progress" id="music-progress"></i>
+        <div class="system-chip music-chip" id="music-bar" role="button" tabindex="0" title="Couper / remettre la musique">
+          <span class="waveform" id="waveform"><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="music-txt">
+            <span class="t1" id="music-title">Thème de mission</span>
+            <span class="t2" id="music-sub"></span>
+          </span>
+          <span class="music-time" id="music-time"></span>
+          <i class="music-progress" id="music-progress"></i>
+        </div>
+        <div class="system-chip" id="sys-gyro"><span class="sdot"></span>GYROPHARE</div>
+        <div class="system-chip" id="sys-smoke"><span class="sdot"></span>FUMÉE</div>
       </div>
 
       <div class="mission-controls">
@@ -1504,6 +1537,7 @@ function renderModeBanner(){
   const img = document.getElementById('mode-banner-art');
   if (art) { img.src = art; img.style.display = ''; } else { img.removeAttribute('src'); img.style.display = 'none'; }
   el.style.setProperty('--mb-glow', MODE_TINT[m.key] || '#35f2a3');
+  document.getElementById('mode-banner-emoji').textContent = m.icon;
   document.getElementById('mode-banner-name').textContent = m.name;
   document.getElementById('mode-banner-tag').textContent = m.tagline || '';
 }
@@ -2320,15 +2354,15 @@ let musicOn = (saved && typeof saved.musicOn === 'boolean') ? saved.musicOn : tr
 
 function currentTrack(){ return tracksFor(currentModeKey)[trackIndexFor(currentModeKey)] || null; }
 
+/* Les barres disent tout : violettes = musique active, grises = coupée, animées pendant
+   la lecture. Plus besoin d'une croix ni d'une note à côté. */
 function renderMusicBar(playing){
   const t = currentTrack();
   const bar = document.getElementById('music-bar');
   document.getElementById('music-title').textContent = t ? t.title : 'Thème de mission';
-  document.getElementById('music-sub').textContent = t
-    ? (playing ? '▶ ' : '') + t.author
-    : '';
-  document.getElementById('music-state').textContent = musicOn ? '♪' : '✕';
-  bar.classList.toggle('muted', !musicOn || !playing);
+  document.getElementById('music-sub').textContent = t ? t.author : '';
+  bar.classList.toggle('muted', !musicOn);
+  bar.classList.toggle('playing', !!playing && musicOn);
 }
 
 /* Où en est le morceau. Le thème tourne en boucle : la barre repart avec lui. */
@@ -3051,11 +3085,15 @@ function starShowerHtml(){
   return out + '</div>';
 }
 
+/* Le nom et l'équipe passent SOUS la photo : la photo reste la vedette, et le bloc est
+   plus étroit — ce qui compte quand deux joueurs s'affichent côte à côte en duel. */
 function playerChipHtml(p, outcome){
   const color = colorOf(p);
   const sub = subtitleOf(p);
   const stars = outcome === 'winner' ? starShowerHtml() : '';
-  return `<div class="player-chip${outcome ? ' ' + outcome : ''}">${stars}${avatarHtml(p)}<div><div class="pname" style="color:${color};">${p.name}</div>${sub ? `<div class="prole" style="color:${color};">${sub}</div>` : ''}</div></div>`;
+  return `<div class="player-chip${outcome ? ' ' + outcome : ''}">${stars}${avatarHtml(p)}` +
+    `<div class="pident"><div class="pname" style="color:${color};">${p.name}</div>` +
+    `${sub ? `<div class="prole" style="color:${color};">${sub}</div>` : ''}</div></div>`;
 }
 
 function renderPlayers(){
@@ -3068,10 +3106,7 @@ function renderPlayers(){
   document.getElementById('now-players').innerHTML = n === 2
     ? `${playerChipHtml(current[0], outcomeOf(0))}<div class="vs">${showOutcome ? '' : 'VS'}</div>${playerChipHtml(current[1], outcomeOf(1))}`
     : playerChipHtml(current[0], showOutcome ? 'winner' : '');
-  document.getElementById('next-players').innerHTML = next
-    .map(p => `${avatarHtml(p, 'mini')} <span style="color:${colorOf(p)};">${p.name}</span>`)
-    .join(` <span class="next-amp">${modePlayerCount() === 2 ? 'vs' : '&amp;'}</span> `);
-  renderRoundTrack();   /* la file affichée et le suivi de manche disent la même chose */
+  renderRoundTrack();   /* c'est lui qui annonce désormais le joueur suivant */
 }
 
 /* ===== Suivi de la manche =====
@@ -3095,12 +3130,22 @@ function renderRoundTrack(){
       '</span>');
   }
 
+  /* Qui passe après ? C'est ici qu'on le dit maintenant, et on le dit franchement. */
+  const nextCrew = playersAt(queueIndex + n, n);
+  const nextHtml = nextCrew.length
+    ? `<div class="rt-next"><span class="rt-next-lbl">SUIVANT</span>` +
+      nextCrew.map(p => `<span class="rt-next-one">${avatarHtml(p, 'pip')}` +
+        `<b style="color:${colorOf(p)}">${p.name}</b></span>`).join('<span class="rt-next-sep">' +
+        (n === 2 ? 'vs' : '&amp;') + '</span>') + '</div>'
+    : '';
+
   const total = roundsTarget > 0 ? '/' + roundsTarget : '';
   el.innerHTML =
     `<div class="rt-head">MANCHE <b>${roundIndex}${total}</b>` +
     `<span class="rt-count">${m.icon} ${done} / ${per}</span></div>` +
     `<div class="rt-bar"><i style="width:${Math.round(100 * done / per)}%"></i></div>` +
-    `<div class="rt-pips">${slots.join('<span class="rt-sep"></span>')}</div>`;
+    `<div class="rt-pips">${slots.join('<span class="rt-sep"></span>')}</div>` +
+    nextHtml;
 }
 
 function renderLiveScores(){
@@ -3656,16 +3701,25 @@ function inMissionNow(){
   return missionState === 'running' || missionState === 'paused' || missionState === 'countdown';
 }
 
+/* Ce badge doit dire quelque chose de VRAI. « Prêt — départ armé » clignotant alors que
+   la mallette est éteinte n'a aucun sens : le bouton de départ ne répondra pas. On annonce
+   donc d'abord ce qui empêche de partir, et seulement ensuite qu'on est prêt. */
 function setStatus(){
   const badge = document.getElementById('status-badge');
-  badge.classList.toggle('idle', missionState !== 'running' && missionState !== 'countdown');
-  badge.classList.toggle('ready', missionState === 'ready');
-  const labels = {
-    finished: w('waiting'), ready:'PRÊT — DÉPART ARMÉ',
-    countdown:'SÉQUENCE DE LANCEMENT',
-    running: w('missionRunning'), paused:'EN PAUSE'
-  };
-  badge.innerHTML = '<span class="dot-live"></span> ' + labels[missionState].toUpperCase();
+  let label, kind;
+
+  if (missionState === 'running')        { label = w('missionRunning'); kind = 'live'; }
+  else if (missionState === 'countdown') { label = 'séquence de lancement'; kind = 'live'; }
+  else if (missionState === 'paused')    { label = 'en pause'; kind = 'idle'; }
+  else if (missionState === 'finished')  { label = w('waiting'); kind = 'idle'; }
+  else if (!launchState.online)          { label = 'mallette éteinte'; kind = 'bad'; }
+  else if (!launchState.lasers)          { label = 'lasers coupés'; kind = 'bad'; }
+  else                                   { label = 'prêt — départ armé'; kind = 'ready'; }
+
+  badge.classList.toggle('idle', kind === 'idle');
+  badge.classList.toggle('ready', kind === 'ready');
+  badge.classList.toggle('bad', kind === 'bad');
+  badge.innerHTML = '<span class="dot-live"></span> ' + label.toUpperCase();
 }
 
 function updateMissionControls(){
@@ -3682,6 +3736,11 @@ function updateMissionControls(){
     btn.innerHTML = '<span class="ready-btn"><i></i></span>' + w('waitingStart').toUpperCase();
     btn.disabled = true;
     btn.className = 'btn-toggle idle';
+  } else if (missionState === 'finished' && gameIsOver()) {
+    /* toutes les manches sont jouées : il n'y a plus de « joueur suivant » */
+    btn.textContent = '🏆 ' + 'voir les scores'.toUpperCase();
+    btn.disabled = false;
+    btn.className = 'btn-toggle gold';
   } else {
     btn.textContent = w('nextPlayer').toUpperCase() + ' →';
     btn.disabled = false;
@@ -3721,6 +3780,11 @@ let pausedAt = 0;
 
 /* La file n'avance qu'ici : tant qu'on n'a pas demandé le joueur suivant, l'écran
    continue d'afficher celui qui vient de jouer (avec son résultat). */
+/* La partie est-elle finie ? (dernière manche jouée jusqu'au bout) */
+function gameIsOver(){
+  return roundsTarget > 0 && roundIndex >= roundsTarget && playedThisRound >= missionsPerRound();
+}
+
 function armNext(){
   if (missionState !== 'finished') return;
   /* La manche est-elle bouclée ? Si oui, on passe à la suivante — et si c'était la
@@ -3965,7 +4029,8 @@ document.getElementById('stop-next').addEventListener('click', () => {
 });
 
 document.getElementById('mission-btn').addEventListener('click', () => {
-  if (missionState === 'finished') armNext();
+  if (missionState === 'finished' && gameIsOver()) { showGameOver(); }
+  else if (missionState === 'finished') armNext();
   else if (missionState === 'countdown') cancelLaunch();
   else if (missionState === 'running' || missionState === 'paused') askStopChoice();
 });
@@ -4030,6 +4095,7 @@ function applyEvent(evt){
     if (evt.offline) {
       launchState.online = false;
       renderLaunchSystem();
+      setStatus();
       return;
     }
     if (typeof evt.battery === 'number') launchState.battery = evt.battery;
@@ -4038,6 +4104,7 @@ function applyEvent(evt){
     if (typeof evt.smoke === 'boolean') launchState.smokeArmed = evt.smoke;
     launchState.online = true;
     renderLaunchSystem();
+    setStatus();   /* « lasers coupés » / « mallette éteinte » dépendent de ça */
   }
   else if (evt.type === 'hello') { launchState.online = true; renderLaunchSystem(); syncLamps(); broadcastToSim({ type:'system', key:'gyro', state:systemState.gyro }); broadcastToSim({ type:'system', key:'smoke', state:systemState.smoke }); }
   else if (evt.type === 'system') setSystemState(evt.key, evt.state, true); /* annoncé par le matériel */
