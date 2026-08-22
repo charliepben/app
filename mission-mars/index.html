@@ -392,6 +392,9 @@
   .beam.knob.unused{ opacity:.32; filter:grayscale(1); }
   .beam.knob.unused .led{ background:#1c2836 !important; box-shadow:inset 0 0 0 1px #2a3644 !important; }
   .beam.knob.arrival{ border-color:var(--amber); }
+  /* en mission Fire, on choisit l'extincteur en touchant une tuile */
+  .buttons-grid.pickable .beam.knob[data-button]{ cursor:pointer; }
+  .buttons-grid.pickable .beam.knob[data-button]:hover{ background:rgba(255,255,255,.04); }
 
   /* Le halo ne doit RIEN rencontrer.
      Les tuiles de boutons portaient un fond et une bordure, et surtout un overflow:hidden
@@ -1351,6 +1354,15 @@
             <div class="relight-row" id="relight-row"></div>
           </div>
 
+          <div class="section-label">Fumée</div>
+          <div class="setting-row">
+            <div>
+              <div class="lbl">Jet au départ de chaque manche</div>
+              <div class="sub">la fumée rend les faisceaux visibles pile au bon moment</div>
+            </div>
+            <div class="relight-row" id="smoke-row"></div>
+          </div>
+
           <div class="section-label">Musique des missions</div>
           <div id="music-picker"></div>
 
@@ -1490,6 +1502,8 @@ const MODES = [
 let currentModeKey = 'cristal-rush';
 let arrivalButtonId = 3;
 let beamRelightSec = 3;   /* secondes avant qu'un faisceau touché ne se rallume */
+let fireExtinguisherId = null;   /* extincteur choisi pour la mission Fire (null = celui de l'arrivée) */
+let smokeBurstSec = 3;           /* durée du jet de fumée au départ de chaque manche */
 let teamMode = true;
 let modeDurations = {}; /* clé de mode → durée en secondes, pour les modes chronométrés */
 function currentMode(){ return MODES.find(m => m.key === currentModeKey) || MODES[0]; }
@@ -1621,19 +1635,21 @@ function buttonLampFor(id){
   }
 
   /* ---- FIRE : seul le bouton d'arrivée (l'extincteur) est allumé ---- */
+  /* eslint-disable-next-line no-unused-vars */
   if (m.key === 'fire') {
     /* Hors mission : on montre juste où se trouvent les boutons, en veille rouge.
        En mission : tous allumés faiblement tant que l'extincteur n'est pas trouvé,
        puis seul l'extincteur désigné reste allumé, en rouge pulsé. */
-    if (!inMission || !run) return { r:255, g:60, b:40, mode:'solid', brightness:18 };
-    if (run.extinguisher === null) return { r:255, g:60, b:40, mode:'solid', brightness:35 };
-    return id === run.extinguisher
+    const ext = (inMission && run) ? run.extinguisher : defaultExtinguisher();
+    if (id !== ext) return (inMission && run) ? LAMP_OFF : { r:255, g:60, b:40, mode:'solid', brightness:14 };
+    return (inMission && run)
       ? { r:255, g:60, b:40, mode:'glow', brightness:100, brightnessMin:30, periodMs:1200 }
-      : LAMP_OFF;
+      : { r:255, g:60, b:40, mode:'solid', brightness:45 };
   }
 
-  /* ---- DUEL ORBITAL : deux bornes croisées, chacune à la couleur de sa cible ---- */
+  /* ---- DUEL ORBITAL : seule la borne d'arrivée est un bouton joueur ---- */
   if (m.key === 'duel-orbital') {
+    if (id !== arrivalButtonId) return LAMP_OFF;
     const p = duelTargetPlayer(id);
     if (!p) return LAMP_OFF;
     const col = hexToRgb(colorOf(p));
@@ -1831,20 +1847,21 @@ function buttonRoleFor(id){
   }
 
   if (m.key === 'fire') {
-    const inRun = (missionState === 'running' || missionState === 'paused') && run;
-    if (!inRun) return { label:`Bouton ${id}`, shape:'extinguisher', used:false };
-    if (run.extinguisher === null) return { label:'Extincteur ?', shape:'extinguisher', used:true };
-    return id === run.extinguisher
+    const inRun = inMissionNow() && run;
+    const ext = inRun ? run.extinguisher : defaultExtinguisher();
+    return id === ext
       ? { label:m.arrivalLabel, shape:'extinguisher', used:true }
       : { label:`Bouton ${id}`, shape:'plain', used:false };
   }
 
   if (m.key === 'duel-orbital') {
-    /* Les deux bornes sont croisées : le bouton 1 est le départ du joueur 1, donc
-       l'ARRIVÉE du joueur 2 — il porte le nom du joueur 2, et inversement. Chaque
-       borne annonce ainsi qui doit l'atteindre : c'est ce qu'un joueur cherche. */
-    const p = duelTargetPlayer(id);
-    if (p) return { label:p.name, shape:'rocket', used:true };
+    /* Seul le bouton d'arrivée est concerné ici : l'autre borne, c'est le bouton DÉPART
+       de la console. Il porte le nom du joueur 1 — celui qui doit l'atteindre — mais
+       seulement une fois la manche lancée. */
+    if (isArrival) {
+      const p = duelRunning() ? duelTargetPlayer(id) : null;
+      return { label:p ? p.name : m.arrivalLabel, shape:'rocket', used:true };
+    }
     return { label:`Bouton ${id}`, shape:'plain', used:false };
   }
 
@@ -1855,10 +1872,20 @@ function buttonRoleFor(id){
    Le bouton 1 est le départ du joueur 1 : c'est donc l'arrivée du joueur 2, et il porte
    son nom et sa couleur. Le bouton configuré comme arrivée est l'inverse. Effet de bord
    heureux : un appui identifie tout seul le joueur qui vient d'arriver. */
+/* Les deux bornes du duel sont le BOUTON DÉPART de la console (id 0) et le bouton
+   configuré comme arrivée. Le bouton départ est le point de départ du joueur 1, donc
+   l'ARRIVÉE du joueur 2 : c'est lui qui porte le nom du joueur 2, et inversement.
+   Le bouton 1 n'a aucun rôle dans ce mode. */
+const DUEL_START_ID = 0;
 function duelIndexFor(id){
-  if (id === 1) return 1;
+  if (id === DUEL_START_ID) return 1;
   if (id === arrivalButtonId) return 0;
   return null;
+}
+/* Tant que la manche n'a pas commencé, le bouton départ s'appelle « Départ » : lui donner
+   déjà le nom d'un joueur n'aurait aucun sens, personne ne court encore. */
+function duelRunning(){
+  return inMissionNow() && run && run.phase === 'launch';
 }
 function duelTargetPlayer(id){
   const idx = duelIndexFor(id);
@@ -1869,6 +1896,10 @@ function duelTargetPlayer(id){
    simplement un rond blanc lumineux : ce n'est pas un cristal à attraper. */
 const START_SHAPES = { 'cristal-rush':'plain', 'fire':'flame', 'duel-orbital':'rocket' };
 function startRoleFor(){
+  if (currentModeKey === 'duel-orbital' && duelRunning()) {
+    const p = duelTargetPlayer(DUEL_START_ID);
+    if (p) return { label:p.name, shape:'rocket' };
+  }
   return { label:'Départ', shape:START_SHAPES[currentModeKey] || 'plain' };
 }
 
@@ -1921,6 +1952,23 @@ function applyStartLamp(lamp){
   }
 }
 
+/* En mission FIRE, toucher un bouton DANS L'APPLI le désigne comme extincteur — c'est
+   l'organisateur qui décide où se trouve la commande d'extinction, sans avoir à courir
+   jusqu'au vrai bouton. Le choix est mémorisé d'une manche à l'autre. */
+function pickExtinguisher(id){
+  if (currentModeKey !== 'fire' || !buttonIds().includes(id)) return;
+  fireExtinguisherId = id;
+  if (run && run.extinguisher != null && !run.failed) run.extinguisher = id;
+  saveState();
+  syncLamps();
+  renderRunHud();
+  flashScoreBanner('Extincteur : bouton ' + id, 'good');
+}
+document.getElementById('buttons-grid').addEventListener('click', (e) => {
+  const tile = e.target.closest('.beam.knob[data-button]');
+  if (tile) pickExtinguisher(+tile.dataset.button);
+});
+
 /* Rendu local d'une lampe de bouton (l'appli montre la même chose que le matériel) */
 function applyButtonLamp(id, lamp){
   const el = document.querySelector('.beam[data-button="' + id + '"]');
@@ -1959,7 +2007,10 @@ function applyButtonLamp(id, lamp){
     ? 'readyGlow 1.5s ease-in-out infinite' : 'none';
 }
 
-function updateButtonsForMode(){ syncLamps(); }
+function updateButtonsForMode(){
+  document.getElementById('buttons-grid').classList.toggle('pickable', currentModeKey === 'fire');
+  syncLamps();
+}
 
 /* Carte de mission en premier plan (clic sur le nom de la mission pendant le jeu) */
 function openModeModal(){
@@ -1996,6 +2047,20 @@ function renderThemePicker(){
 /* ===== Bouton d'arrivée configurable ===== */
 /* Délai de rallumage d'un faisceau touché (0 = immédiat). */
 const RELIGHT_CHOICES = [0, 1, 2, 3, 5, 8];
+const SMOKE_CHOICES = [0, 2, 3, 5, 8];
+function renderSmokeConfig(){
+  const row = document.getElementById('smoke-row');
+  if (!row) return;
+  row.innerHTML = SMOKE_CHOICES.map(v => `
+    <button class="arrival-btn ${v === smokeBurstSec ? 'selected' : ''}" data-v="${v}">${v === 0 ? 'aucun' : v + 's'}</button>
+  `).join('');
+  row.querySelectorAll('.arrival-btn').forEach(b => b.addEventListener('click', () => {
+    smokeBurstSec = +b.dataset.v;
+    saveState();
+    renderSmokeConfig();
+  }));
+}
+
 function renderRelightConfig(){
   const row = document.getElementById('relight-row');
   if (!row) return;
@@ -2087,7 +2152,8 @@ function saveState(){
       teams:TEAMS, players:PLAYERS, roster:ROSTER,
       queueIndex, liveScores, teamTally, roundIndex, roundsTarget, roundsChoice, playedThisRound, roundStartIndex,
       currentModeKey, arrivalButtonId,
-      teamMode, modeDurations, currentTheme, history:HISTORY, soundOn, musicOn, beamRelightSec, musicChoice
+      teamMode, modeDurations, currentTheme, history:HISTORY, soundOn, musicOn, beamRelightSec,
+      musicChoice, fireExtinguisherId, smokeBurstSec
     }));
   }catch(e){ /* stockage plein ou indisponible, tant pis */ }
 }
@@ -2542,7 +2608,9 @@ const RULES = {
       const p = livePlayers()[0];
       /* extinguisher : aucun bouton n'est l'extincteur au départ. Le premier bouton
          touché le devient — et si on en touche un autre, c'est lui qui prend le rôle. */
-      return { hits:0, allowance:allowanceFor(p), failed:false, extinguisher:null };
+      /* Un extincteur est désigné d'entrée : celui choisi comme arrivée dans les réglages.
+         On peut en changer en touchant un autre bouton — dans l'appli ou en vrai. */
+      return { hits:0, allowance:allowanceFor(p), failed:false, extinguisher:defaultExtinguisher() };
     },
     onStart(){
       play('siren');
@@ -2567,21 +2635,9 @@ const RULES = {
     },
     onButtonPress(r, id){
       if (r.failed) return;
-      if (r.extinguisher === null) {
-        /* c'est ce bouton-là qui devient l'extincteur, et il s'allume en conséquence */
-        r.extinguisher = id;
-        play('beep', true);
-        flashScoreBanner('Extincteur repéré !', 'good');
-        syncLamps();
-        renderRunHud();
-        return;
-      }
-      if (id === r.extinguisher) { stopMission(); return; }   /* feu éteint */
-      /* on change d'avis : c'est ce bouton qui devient l'extincteur */
-      r.extinguisher = id;
-      play('beep', true);
-      syncLamps();
-      renderRunHud();
+      /* L'extincteur est désigné d'avance : appuyer dessus éteint le feu, appuyer
+         ailleurs ne fait rien (c'est le mauvais bouton). */
+      if (id === r.extinguisher) stopMission();
     },
     score(r){
       return { value:r.failed ? 0 : 1, label:r.failed ? 'Mission perdue' : 'Feu éteint',
@@ -2592,9 +2648,7 @@ const RULES = {
       const garde = r.allowance > 0
         ? '<span class="hud-warn">🛡 1 contact toléré</span>'
         : '<span class="hud-warn">⚠ le moindre contact est fatal</span>';
-      const ext = r.extinguisher === null
-        ? ` · <span class="hud-warn">trouve l'extincteur</span>`
-        : ' · <span style="color:var(--green)">extincteur : bouton ' + r.extinguisher + '</span>';
+      const ext = ' · <span style="color:var(--green)">extincteur : bouton ' + r.extinguisher + '</span>';
       return garde + ext;
     }
   },
@@ -2670,6 +2724,14 @@ const RULES = {
 };
 
 function rules(){ return RULES[currentModeKey] || RULES['cristal-rush']; }
+
+/* L'extincteur par défaut de la mission Fire : le bouton choisi comme arrivée, ou le
+   premier bouton qui existe. Il n'y a jamais « aucun » extincteur. */
+function defaultExtinguisher(){
+  const ids = buttonIds();
+  if (fireExtinguisherId != null && ids.includes(fireExtinguisherId)) return fireExtinguisherId;
+  return ids.includes(arrivalButtonId) ? arrivalButtonId : (ids[0] || 1);
+}
 
 /* « Victoire de Marty », mais « Victoire d'Achille » : les prénoms des invités
    commencent souvent par une voyelle, et « Victoire de Achille » pique les yeux. */
@@ -2780,6 +2842,16 @@ function flashGyro(ms){
     if (currentModeKey !== 'fire' || missionState !== 'running') setSystemState('gyro', 'idle');
   }, ms || 1200);
 }
+/* Un jet de fumée à chaque départ : c'est ce qui rend les faisceaux visibles au moment
+   précis où les joueurs s'élancent. Durée réglable dans les paramètres avancés (0 = jamais). */
+let smokeBurstTimer = null;
+function smokeBurst(){
+  if (!smokeBurstSec || systemState.smoke === 'absent') return;
+  clearTimeout(smokeBurstTimer);
+  setSystemState('smoke', 'active');
+  smokeBurstTimer = setTimeout(() => setSystemState('smoke', 'idle'), smokeBurstSec * 1000);
+}
+
 /* Le jeu reprend la main sur les effets. */
 function releaseForcedEffects(){
   gyroForced = false;
@@ -3100,12 +3172,15 @@ function renderPlayers(){
   const n = modePlayerCount();
   const current = playersAt(queueIndex, n);
   const next = playersAt(queueIndex + n, n);
-  /* Manche terminée avec un vainqueur désigné : on le met en avant, l'autre s'efface. */
-  const showOutcome = missionState === 'finished' && lastResult && lastResult.winnerIndex != null;
-  const outcomeOf = (i) => showOutcome ? (i === lastResult.winnerIndex ? 'winner' : 'loser') : '';
+  /* Fin de manche : on met le joueur en avant, étoiles et glow compris. En duel c'est le
+     vainqueur qui brille et le perdant qui s'efface ; ailleurs, c'est simplement celui qui
+     vient de jouer — il a fini sa manche, ça se fête. */
+  const done = missionState === 'finished' && lastResult;
+  const duelOutcome = done && lastResult.winnerIndex != null;
+  const outcomeOf = (i) => duelOutcome ? (i === lastResult.winnerIndex ? 'winner' : 'loser') : '';
   document.getElementById('now-players').innerHTML = n === 2
-    ? `${playerChipHtml(current[0], outcomeOf(0))}<div class="vs">${showOutcome ? '' : 'VS'}</div>${playerChipHtml(current[1], outcomeOf(1))}`
-    : playerChipHtml(current[0], showOutcome ? 'winner' : '');
+    ? `${playerChipHtml(current[0], outcomeOf(0))}<div class="vs">${duelOutcome ? '' : 'VS'}</div>${playerChipHtml(current[1], outcomeOf(1))}`
+    : playerChipHtml(current[0], done && !lastResult.aborted ? 'winner' : '');
   renderRoundTrack();   /* c'est lui qui annonce désormais le joueur suivant */
 }
 
@@ -3830,6 +3905,7 @@ function startMission(at){
      déroule AVANT que quoi que ce soit ne démarre : ni chrono, ni musique. Tant qu'elle
      dure, la manche n'a pas commencé — c'est ce que dit l'état 'countdown'. */
   if (rules().preStart) {
+    smokeBurst();   /* la fumée part avec le décompte, pas au GO */
     missionState = 'countdown';
     setStatus();
     updateMissionControls();
@@ -3856,6 +3932,7 @@ function beginRun(){
   updateMissionControls();
   renderRunHud();
   releaseForcedEffects();   /* le jeu reprend la main sur le gyrophare */
+  if (!rules().preStart) smokeBurst();   /* sinon elle est déjà partie avec le décompte */
   startMissionMusic();
   if (rules().onStart) rules().onStart(run);
   tick();
@@ -3922,6 +3999,7 @@ function stopMission(reason){
   lastResult = {
     who: joinPlayerNames(finishers.map(p => p.name)),
     winnerIndex: result.winnerIndex,
+    aborted: aborted,
     label: result.label || (result.win ? 'Réussie' : 'Perdue')
   };
   stopMissionMusic();
@@ -4128,7 +4206,15 @@ function applyEvent(evt){
     }
   }
   else if (evt.type === 'release') setButtonPressed(evt.id, false);
-  else if (evt.type === 'start') startMission(hwTimeOf(evt)); /* no-op si pas armé, voir startMission() */
+  else if (evt.type === 'start') {
+    /* En duel, le bouton DÉPART est aussi la borne d'arrivée du joueur 2 : une fois la
+       manche lancée, un appui dessus n'est plus un départ, c'est une arrivée. */
+    if (missionState === 'running' && currentModeKey === 'duel-orbital' && run && rules().onButtonPress) {
+      rules().onButtonPress(run, DUEL_START_ID);
+    } else {
+      startMission(hwTimeOf(evt)); /* no-op si pas armé, voir startMission() */
+    }
+  }
   else if (evt.type === 'stop') {
     /* pendant le décompte, le coupe-circuit annule le lancement au lieu de clore une
        manche qui n'a jamais commencé */
@@ -4431,6 +4517,7 @@ renderModes();
 updateModeChip();
 renderHardware();
 renderRelightConfig();
+renderSmokeConfig();
 renderLaunchSystem();
 renderTeamEditors();
 renderAgents();
