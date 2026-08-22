@@ -334,6 +334,23 @@
   }
   .beam.knob .role-icon svg{ width:100%; height:100%; display:block; }
 
+  /* Bouton DÉPART : même tuile que les autres, mais entouré de son anneau LED.
+     L'anneau sert aussi de barre de chargement pendant un décompte. */
+  .beam.knob.start-knob .role-icon{ width:clamp(11px, 26cqw, 32px); height:clamp(16px, 38cqw, 46px); }
+  .start-ring{
+    position:absolute; left:50%; top:50%;
+    transform:translate(-50%,-50%) rotate(-90deg);
+    width:clamp(30px, 70cqw, 82px); height:clamp(30px, 70cqw, 82px);
+    overflow:visible; pointer-events:none; transition:color .15s, filter .15s;
+  }
+  @keyframes ringBlink{ 0%,49%{ opacity:1; } 50%,100%{ opacity:.12; } }
+  .start-ring circle{ fill:none; stroke-width:4.5; stroke-linecap:round; }
+  .start-ring .ring-bg{ stroke:#1b2532; }
+  .start-ring .ring-fg{
+    stroke:currentColor; stroke-dasharray:125.7; stroke-dashoffset:125.7;
+    transition:stroke-dashoffset .12s linear;
+  }
+
   /* Pastille "Launch System" : état du boîtier de commande */
   .system-chip.launch{ flex:1.5; gap:5px; }
   .launch-info{ display:inline-flex; align-items:center; gap:7px; margin-left:2px; }
@@ -643,6 +660,14 @@
   .countdown-overlay.show{ opacity:1; }
   @keyframes tickPop{ from{ transform:scale(1.6); opacity:.2; } to{ transform:scale(1); opacity:1; } }
   .countdown-overlay.tickpop{ animation:tickPop .35s ease-out; }
+  /* le GO final : un mot, pas un chiffre — il lui faut sa propre taille */
+  .countdown-overlay.go{
+    font-size:clamp(64px, 24cqw, 180px); letter-spacing:.04em; color:var(--green);
+    text-shadow:0 0 40px var(--green), 0 0 120px rgba(53,242,163,.55);
+    background:rgba(5,7,10,0.6);
+  }
+  @keyframes goPunch{ 0%{ transform:scale(.55); opacity:0; } 45%{ transform:scale(1.14); opacity:1; } 100%{ transform:scale(1); opacity:1; } }
+  .countdown-overlay.go.tickpop{ animation:goPunch .5s cubic-bezier(.2,1.4,.4,1); }
 
   /* --- État propre à la mission en cours (cristaux, joueurs restants…) --- */
   .run-hud{
@@ -1166,7 +1191,7 @@ const MODES = [
     playersUsed:2, timed:false,
     hasArrival:true, arrivalLabel:'Arrivée', arrivalIcon:'🛸',
     tagline:"Five… four… three… two… one… ignition!",
-    desc:"Deux navettes, deux bases opposées, un champ d'astéroïdes entre les deux. Au signal, chacun frappe son bouton de mise à feu et s'élance vers la base adverse. Le premier arrivé gagne — le premier touché explose."
+    desc:"Deux navettes, deux bases opposées, un champ d'astéroïdes entre les deux. Le décompte tombe, l'annonceur crie GO, et chacun s'élance vers la base d'en face — celle qui porte son nom. Le premier arrivé gagne, le premier touché explose."
   }
 ];
 /* valeurs par défaut ; écrasées plus bas par l'état sauvegardé s'il existe */
@@ -1193,7 +1218,7 @@ function renderModes(){
       updateModeChip();
       renderPlayers();
       renderMusicBar(false);  /* chaque mission a son thème */
-      if (missionState !== 'running' && missionState !== 'paused') renderTimerIdle();
+      if (!inMissionNow()) renderTimerIdle();
       renderArrivalConfig();   /* le réglage d'arrivée dépend de la mission */
       updateButtonsForMode();  /* et les rôles/icônes des boutons aussi */
     });
@@ -1265,7 +1290,7 @@ function hexToRgb(hex){
 /* Quelle lampe pour le bouton `id`, selon le mode courant ? */
 function buttonLampFor(id){
   const m = MODES.find(x => x.key === currentModeKey) || MODES[0];
-  const inMission = (missionState === 'running' || missionState === 'paused');
+  const inMission = inMissionNow();
 
   /* ---- CRISTAL RUSH : un seul cristal allumé à la fois, choisi au hasard ---- */
   if (m.key === 'cristal-rush') {
@@ -1291,26 +1316,38 @@ function buttonLampFor(id){
       : LAMP_OFF;
   }
 
-  /* ---- DUEL ORBITAL : les 2 bases aux couleurs des joueurs, éteintes si éliminé ---- */
+  /* ---- DUEL ORBITAL : deux bornes croisées, chacune à la couleur de sa cible ---- */
   if (m.key === 'duel-orbital') {
-    if (id === arrivalButtonId && inMission && run && run.phase === 'launch') {
-      return { r:255, g:255, b:255, mode:'glow', brightness:100, brightnessMin:30, periodMs:1200 };
-    }
-    if (id !== 1) return LAMP_OFF;
-    const p = livePlayers()[0];
+    const p = duelTargetPlayer(id);
     if (!p) return LAMP_OFF;
     const col = hexToRgb(colorOf(p));
     if (!inMission || !run) return { ...col, mode:'solid', brightness:30 };
-    if (run.phase === 'countdown') return { ...col, mode:'solid', brightness:25 };
-    return run.launched && run.launched[0]
-      ? { ...col, mode:'solid', brightness:100 }
-      : { ...col, mode:'glow', brightness:100, brightnessMin:35, periodMs:700 };
+    if (run.phase === 'countdown') return { ...col, mode:'solid', brightness:22 };
+    const idx = duelIndexFor(id);
+    if (run.eliminated[idx]) return LAMP_OFF;   /* sa navette a explosé : sa borne s'éteint */
+    return { ...col, mode:'glow', brightness:100, brightnessMin:35, periodMs:900 };
   }
 
   return LAMP_OFF;
 }
 
+/* L'anneau LED qui entoure le bouton de départ est un vrai périphérique : l'appli lui
+   envoie un état, il ne devine rien. Trois usages :
+     auto → veille (blanc pulsé quand le départ est armé)
+     bar  → barre de chargement pendant un décompte (ratio 0 → 1)
+     go   → vert clignotant intense, le signal de départ                              */
+let startRing = { kind:'auto', ratio:0 };
+function setStartRing(kind, ratio){
+  startRing = { kind, ratio: ratio || 0 };
+  syncLamps();
+}
 function startLamp(){
+  if (startRing.kind === 'bar') {
+    return { r:255, g:176, b:60, mode:'bar', ratio:startRing.ratio, brightness:100 };
+  }
+  if (startRing.kind === 'go') {
+    return { r:53, g:242, b:163, mode:'blink', brightness:100, brightnessMin:0, periodMs:160 };
+  }
   /* pulsation lente entre 25 % et 100 % quand le départ est armé */
   return missionState === 'ready'
     ? { r:255, g:255, b:255, mode:'glow', brightness:100, brightnessMin:25, periodMs:1500 }
@@ -1324,7 +1361,9 @@ function syncLamps(){
     broadcastToSim({ type:'lamp', target:'button', id, ...lamp });
     applyButtonLamp(id, lamp);
   });
-  broadcastToSim({ type:'lamp', target:'start', id:0, ...startLamp() });
+  const sl = startLamp();
+  broadcastToSim({ type:'lamp', target:'start', id:0, ...sl });
+  applyStartLamp(sl);
 }
 
 /* Le mode courant utilise-t-il un bouton d'arrivée ? (Cristal Rush n'en a pas) */
@@ -1355,8 +1394,18 @@ function renderHardware(){
       <div class="battery"><i style="width:0%"></i></div>
     </div>`).join('');
 
+  /* Le bouton de départ est sur la mallette : il ne fait pas partie de la topologie
+     annoncée, mais il s'affiche dans la même rangée, avec le même traitement. */
   const kg = document.getElementById('buttons-grid');
-  kg.innerHTML = TOPOLOGY.buttons.map(b => `
+  kg.innerHTML = `
+    <div class="beam knob start-knob off" data-start="1">
+      <span class="name">Départ</span>
+      <svg class="start-ring" viewBox="0 0 48 48" aria-hidden="true">
+        <circle class="ring-bg" cx="24" cy="24" r="20"></circle>
+        <circle class="ring-fg" cx="24" cy="24" r="20"></circle>
+      </svg>
+      <span class="role-icon"></span>
+    </div>` + TOPOLOGY.buttons.map(b => `
     <div class="beam knob off" data-button="${b.id}">
       <span class="name">Bouton ${b.id}</span>
       <span class="role-icon"></span>
@@ -1442,6 +1491,11 @@ const ROLE_SHAPES = {
       <path d="M30 40 L37 54 L27 48 Z" fill="currentColor" opacity=".75"/>
       <circle cx="20" cy="22" r="5" fill="#000" opacity=".15"/>
     </svg>`,
+  /* flamme : le départ de la mission Fire */
+  flame: `<svg viewBox="0 0 40 64" aria-hidden="true">
+      <path d="M21 4 C22 16 31 20 31 32 C31 45 26 55 20 59 C14 55 9 45 9 32 C9 24 14 20 15 13 C17 19 18 22 19 26 C21 19 21 11 21 4 Z" fill="currentColor"/>
+      <path d="M20 28 C23 35 25 39 25 44 C25 50 23 55 20 57 C17 55 15 50 15 44 C15 39 17 35 20 28 Z" fill="#000" opacity=".22"/>
+    </svg>`,
   /* bouton générique (mission qui ne lui donne pas de rôle) */
   plain: `<svg viewBox="0 0 40 64" aria-hidden="true">
       <circle cx="20" cy="32" r="14" fill="currentColor"/>
@@ -1469,16 +1523,85 @@ function buttonRoleFor(id){
   }
 
   if (m.key === 'duel-orbital') {
-    if (isArrival) return { label:m.arrivalLabel, shape:'rocket', used:true };
-    /* le départ du duel, c'est le bouton du joueur 1 */
-    if (id === 1) {
-      const p = livePlayers()[0];
-      return { label:p ? p.name : 'Départ', shape:'rocket', used:true };
-    }
+    /* Les deux bornes sont croisées : le bouton 1 est le départ du joueur 1, donc
+       l'ARRIVÉE du joueur 2 — il porte le nom du joueur 2, et inversement. Chaque
+       borne annonce ainsi qui doit l'atteindre : c'est ce qu'un joueur cherche. */
+    const p = duelTargetPlayer(id);
+    if (p) return { label:p.name, shape:'rocket', used:true };
     return { label:`Bouton ${id}`, shape:'plain', used:false };
   }
 
   return { label:isArrival ? 'Arrivée' : `Bouton ${id}`, shape:'plain', used:isArrival };
+}
+
+/* DUEL ORBITAL — quelle borne appartient à qui ?
+   Le bouton 1 est le départ du joueur 1 : c'est donc l'arrivée du joueur 2, et il porte
+   son nom et sa couleur. Le bouton configuré comme arrivée est l'inverse. Effet de bord
+   heureux : un appui identifie tout seul le joueur qui vient d'arriver. */
+function duelIndexFor(id){
+  if (id === 1) return 1;
+  if (id === arrivalButtonId) return 0;
+  return null;
+}
+function duelTargetPlayer(id){
+  const idx = duelIndexFor(id);
+  return idx === null ? null : (livePlayers()[idx] || null);
+}
+
+/* Le bouton de départ porte le logo de la mission — sauf Cristal Rush, où c'est
+   simplement un rond blanc lumineux : ce n'est pas un cristal à attraper. */
+const START_SHAPES = { 'cristal-rush':'plain', 'fire':'flame', 'duel-orbital':'rocket' };
+function startRoleFor(){
+  return { label:'Départ', shape:START_SHAPES[currentModeKey] || 'plain' };
+}
+
+/* Rendu local du bouton de départ et de son anneau. En mode 'bar', l'anneau se remplit :
+   c'est la barre de chargement du décompte. */
+const RING_LEN = 125.7;   /* 2·π·20, le périmètre du cercle de l'anneau */
+function applyStartLamp(lamp){
+  const el = document.querySelector('.start-knob');
+  if (!el) return;
+  const off = !lamp || lamp.mode === 'off' || !lamp.brightness;
+  const role = startRoleFor();
+
+  el.classList.toggle('on', !off);
+  el.classList.toggle('off', off);
+  el.classList.toggle('unused', off);
+
+  const label = el.querySelector('.name');
+  if (label) label.textContent = role.label;
+
+  const holder = el.querySelector('.role-icon');
+  if (holder && holder.dataset.shape !== role.shape) {
+    holder.innerHTML = roleShapeSvg(role.shape);
+    holder.dataset.shape = role.shape;
+  }
+
+  const ring = el.querySelector('.start-ring');
+  const fg = el.querySelector('.ring-fg');
+  const c = off ? '38,49,63' : `${lamp.r},${lamp.g},${lamp.b}`;
+  const a = off ? 0 : (lamp.brightness || 0) / 100;
+  const filled = off ? 0 : (lamp.mode === 'bar' ? Math.max(0, Math.min(1, lamp.ratio || 0)) : 1);
+
+  if (fg) fg.style.strokeDashoffset = String(RING_LEN * (1 - filled));
+  if (ring) {
+    ring.style.color = off ? '#26313f' : `rgb(${c})`;
+    ring.style.filter = off ? 'none'
+      : `drop-shadow(0 0 ${2 + 3 * a}px rgba(${c},.9)) drop-shadow(0 0 ${8 + 10 * a}px rgba(${c},.5))`;
+    ring.style.animation = (lamp.mode === 'blink' && !off)
+      ? `ringBlink ${lamp.periodMs || 200}ms steps(1, end) infinite` : 'none';
+  }
+
+  if (holder) {
+    /* pendant le décompte l'icône reste sobre : c'est l'anneau qui parle */
+    const iconLit = !off && lamp.mode !== 'bar';
+    holder.style.color = iconLit ? `rgb(${c})` : '#26313f';
+    holder.style.filter = iconLit
+      ? `drop-shadow(0 0 ${1 + 1.5 * a}px rgba(${c},.95)) drop-shadow(0 0 ${4 + 5 * a}px rgba(${c},.7))`
+      : 'none';
+    holder.style.opacity = iconLit ? String(0.55 + 0.45 * a) : '.45';
+    holder.style.animation = (lamp.mode === 'glow' && !off) ? 'readyGlow 1.5s ease-in-out infinite' : 'none';
+  }
 }
 
 /* Rendu local d'une lampe de bouton (l'appli montre la même chose que le matériel) */
@@ -1824,7 +1947,14 @@ const SOUND_FILES = {
   liftoff:      'sounds/liftoff.ogg',
   success:      'sounds/success.ogg',
   fail:         'sounds/fail.ogg',
-  siren:        'sounds/siren.ogg'
+  siren:        'sounds/siren.ogg',
+  /* voix d'annonceur du décompte (Kenney Voiceover Pack, CC0) */
+  voice5:       'sounds/voice-5.ogg',
+  voice4:       'sounds/voice-4.ogg',
+  voice3:       'sounds/voice-3.ogg',
+  voice2:       'sounds/voice-2.ogg',
+  voice1:       'sounds/voice-1.ogg',
+  voiceGo:      'sounds/voice-go.ogg'
 };
 const soundBuffers = {};   /* nom -> AudioBuffer décodé */
 const soundFailed = {};    /* nom -> true si le fichier est inutilisable */
@@ -1902,6 +2032,22 @@ document.getElementById('music-bar').addEventListener('click', () => {
   else if (missionState === 'running') startMissionMusic();
   else renderMusicBar(false);
 });
+
+/* Voix de l'annonceur : playVoice(5)… playVoice(1), puis playVoice('go').
+   Si le fichier manque, on retombe sur un bip — le décompte reste audible. */
+function playVoice(key){
+  initAudio();
+  preloadSounds();
+  if (!soundOn) return;
+  const name = key === 'go' ? 'voiceGo' : 'voice' + key;
+  if (playBuffer(name, 1)) return;
+  if (key === 'go') {
+    tone({ type:'sawtooth', from:200, to:620, dur:0.45, vol:0.35 });
+    noise({ dur:0.4, vol:0.28, filterFrom:400, filterTo:3200, type:'bandpass' });
+  } else {
+    tone({ type:'square', from:196, dur:0.3, vol:0.3 });
+  }
+}
 
 function play(name, arg){
   initAudio();
@@ -2028,7 +2174,9 @@ const RULES = {
     }
   },
 
-  /* ---- DUEL ORBITAL : décompte, ignition, course vers la base adverse ---- */
+  /* ---- DUEL ORBITAL : décompte de lancement, puis course croisée ----
+     Les deux joueurs partent chacun de leur borne et courent vers celle d'en face.
+     Le décompte se déroule AVANT le chrono : au GO seulement, la manche commence. */
   'duel-orbital': {
     init(){
       const ps = livePlayers();
@@ -2036,32 +2184,30 @@ const RULES = {
         phase:'countdown',
         allowance:ps.map(allowanceFor),
         eliminated:[false, false],
-        launched:[false, false],
         winner:null
       };
     },
-    onStart(r){
+    /* séquence de lancement : 5-4-3-2-1 annoncés, anneau LED en barre de chargement,
+       puis GO — c'est `go()` qui démarre réellement le chrono et la musique */
+    preStart(r, go){
       runCountdown(5, () => {
         r.phase = 'launch';
+        go();
         play('liftoff');
-        flashScoreBanner('IGNITION !', 'good');
+        flashScoreBanner('GO !', 'good');
         syncLamps();
         renderRunHud();
       });
     },
     onButtonPress(r, id){
-      if (r.phase === 'countdown') return;          /* trop tôt */
-      /* mise à feu : le bouton 1 est le point de départ commun */
-      if (id === 1 && !r.launched[0]) {
-        r.launched[0] = true; r.launched[1] = true;
-        play('beep', true); renderRunHud(); syncLamps();
-        return;
-      }
-      /* atteindre le bouton d'ARRIVÉE (celui choisi en config) = victoire */
-      if (id === arrivalButtonId && r.phase === 'launch') {
-        r.winner = r.eliminated[0] ? 1 : 0;
-        stopMission();
-      }
+      if (r.phase !== 'launch' || r.winner !== null) return;   /* trop tôt, ou déjà joué */
+      /* Les bornes sont croisées : appuyer sur la borne 1, c'est le joueur 2 qui arrive,
+         et inversement. Le matériel identifie donc tout seul qui vient de finir. */
+      const idx = duelIndexFor(id);
+      if (idx === null) return;              /* un autre bouton : sans effet */
+      if (r.eliminated[idx]) return;         /* éliminé : son arrivée ne compte pas */
+      r.winner = idx;
+      stopMission();
     },
     onBeamHit(r, id){
       if (r.phase !== 'launch') return;
@@ -2089,7 +2235,7 @@ const RULES = {
       return { value:1, label:'Victoire de ' + (ps[r.winner] ? ps[r.winner].name : '?'), win:true, winnerIndex:r.winner };
     },
     hud(r){
-      if (r.phase === 'countdown') return '<span class="hud-warn">Décompte…</span>';
+      if (r.phase === 'countdown') return '<span class="hud-warn">Séquence de lancement…</span>';
       const ps = livePlayers();
       return ps.map((p, i) => `<span class="${r.eliminated[i] ? 'hud-bad' : ''}" style="${r.eliminated[i] ? '' : 'color:' + colorOf(p)}">${r.eliminated[i] ? '💥' : '🚀'} ${p.name}</span>`).join(' · ');
     }
@@ -2106,26 +2252,65 @@ function lightRandomCrystal(r){
   syncLamps();
 }
 
-/* Décompte 5-4-3-2-1 puis ignition. */
+/* Décompte 5-4-3-2-1 puis GO.
+   Il a lieu AVANT que le chrono ne démarre : tant qu'il tourne, la mission n'a pas
+   commencé. La voix de l'annonceur égrène les secondes, l'anneau LED du bouton de
+   départ se remplit comme une barre de chargement, et au GO il passe au vert
+   clignotant pendant 5 s — le signal que les joueurs attendent. */
 let countdownTimer = null;
+let goFlashTimer = null;
+const GO_FLASH_MS = 5000;
+
 function runCountdown(n, done){
   clearInterval(countdownTimer);
-  let left = n;
-  showCountdown(left);
-  play('beep', false);
+  clearTimeout(goFlashTimer);
+  const total = n * 1000;
+  const t0 = performance.now();
+  let spoken = n + 1;   /* pour que le premier chiffre soit annoncé tout de suite */
+
+  showCountdown(n);
+  setStartRing('bar', 0);
+
   countdownTimer = setInterval(() => {
-    left--;
-    if (left > 0) { showCountdown(left); play('beep', false); }
-    else {
+    const done_ms = performance.now() - t0;
+    const left = Math.max(0, total - done_ms);
+    const sec = Math.ceil(left / 1000);
+
+    /* la barre se remplit en continu, elle ne saute pas de seconde en seconde */
+    setStartRing('bar', Math.min(1, done_ms / total));
+
+    if (sec < spoken && sec > 0) {
+      spoken = sec;
+      showCountdown(sec);
+      playVoice(sec);
+    }
+    if (left <= 0) {
       clearInterval(countdownTimer);
-      showCountdown(null);
+      countdownTimer = null;
+      showCountdown('GO !');
+      playVoice('go');
+      setStartRing('go');
+      /* le mot disparaît vite pour libérer l'écran ; c'est l'anneau vert qui
+         continue de clignoter pendant 5 s, comme sur le vrai boîtier */
+      setTimeout(() => showCountdown(null), 900);
+      goFlashTimer = setTimeout(() => setStartRing('auto'), GO_FLASH_MS);
       done();
     }
-  }, 1000);
+  }, 60);
+}
+
+/* Annule un décompte en cours et remet l'anneau au repos. */
+function clearCountdown(){
+  clearInterval(countdownTimer);
+  countdownTimer = null;
+  clearTimeout(goFlashTimer);
+  showCountdown(null);
+  setStartRing('auto');
 }
 function showCountdown(n){
   const el = document.getElementById('countdown-overlay');
-  if (n === null) { el.classList.remove('show'); return; }
+  if (n === null) { el.classList.remove('show', 'go'); return; }
+  el.classList.toggle('go', typeof n === 'string');
   el.textContent = n;
   el.classList.add('show');
   el.classList.remove('tickpop');
@@ -2856,16 +3041,23 @@ document.getElementById('add-agent-btn').addEventListener('click', () => {
 });
 
 /* Machine à états : 'finished' (résultat affiché, personne d'armé) → 'ready' (joueur
-   suivant armé, départ possible) → 'running' ⇄ 'paused'. Le départ n'arrive JAMAIS d'un
-   tap dans l'appli : uniquement du bouton physique de la console (ou son double simulé). */
+   suivant armé, départ possible) → ['countdown' : séquence de lancement, le chrono n'a
+   pas encore démarré] → 'running' ⇄ 'paused'. Le départ n'arrive JAMAIS d'un tap dans
+   l'appli : uniquement du bouton physique de la console (ou son double simulé). */
 let missionState = 'ready';
+/* Une manche est-elle en cours, décompte compris ? Beaucoup d'affichages ont besoin de
+   le savoir, et un seul endroit doit en décider. */
+function inMissionNow(){
+  return missionState === 'running' || missionState === 'paused' || missionState === 'countdown';
+}
 
 function setStatus(){
   const badge = document.getElementById('status-badge');
-  badge.classList.toggle('idle', missionState !== 'running');
+  badge.classList.toggle('idle', missionState !== 'running' && missionState !== 'countdown');
   badge.classList.toggle('ready', missionState === 'ready');
   const labels = {
     finished: w('waiting'), ready:'PRÊT — DÉPART ARMÉ',
+    countdown:'SÉQUENCE DE LANCEMENT',
     running: w('missionRunning'), paused:'EN PAUSE'
   };
   badge.innerHTML = '<span class="dot-live"></span> ' + labels[missionState].toUpperCase();
@@ -2873,7 +3065,11 @@ function setStatus(){
 
 function updateMissionControls(){
   const btn = document.getElementById('mission-btn');
-  if (missionState === 'running' || missionState === 'paused') {
+  if (missionState === 'countdown') {
+    btn.textContent = '■ ANNULER LE LANCEMENT';
+    btn.disabled = false;
+    btn.className = 'btn-toggle stop';
+  } else if (missionState === 'running' || missionState === 'paused') {
     btn.textContent = '■ ' + w('stopMission').toUpperCase();
     btn.disabled = false;
     btn.className = 'btn-toggle stop';
@@ -2937,11 +3133,31 @@ function armNext(){
 
 function startMission(){
   if (missionState !== 'ready') return; /* pas armé : le bouton physique n'a aucun effet */
+  /* ouvre une manche selon les règles du mode choisi */
+  run = rules().init ? rules().init() : {};
+
+  /* Certaines missions ont une séquence de lancement (le décompte du duel). Elle se
+     déroule AVANT que quoi que ce soit ne démarre : ni chrono, ni musique. Tant qu'elle
+     dure, la manche n'a pas commencé — c'est ce que dit l'état 'countdown'. */
+  if (rules().preStart) {
+    missionState = 'countdown';
+    setStatus();
+    updateMissionControls();
+    renderRunHud();
+    syncLamps();
+    rules().preStart(run, beginRun);
+    return;
+  }
+  beginRun();
+}
+
+/* Le vrai départ : chrono, musique et règles partent ensemble, à la même milliseconde. */
+function beginRun(){
+  if (missionState !== 'ready' && missionState !== 'countdown') return;
   missionState = 'running';
   running = true;
   startTime = performance.now();
-  /* ouvre une manche selon les règles du mode choisi */
-  run = rules().init ? rules().init() : {};
+  if (!run) run = rules().init ? rules().init() : {};
   setStatus();
   updateMissionControls();
   renderRunHud();
@@ -2949,6 +3165,20 @@ function startMission(){
   if (rules().onStart) rules().onStart(run);
   tick();
   tickId = setInterval(tick, 30);
+}
+
+/* Interrompre la séquence de lancement : rien n'a encore été joué, donc rien n'est
+   enregistré et le même joueur reste armé. */
+function cancelLaunch(){
+  if (missionState !== 'countdown') return;
+  clearCountdown();
+  run = null;
+  missionState = 'ready';
+  renderRunHud();
+  renderTimerIdle();
+  setStatus();
+  updateMissionControls();
+  syncLamps();
 }
 
 /* Temps réellement joué (le chrono affiché peut être un décompte) */
@@ -2961,8 +3191,7 @@ function stopMission(reason){
   if (missionState !== 'running' && missionState !== 'paused') return;
   running = false;
   clearInterval(tickId);
-  clearInterval(countdownTimer);
-  showCountdown(null);
+  clearCountdown();
   const elapsed = elapsedOf(performance.now() - startTime);
   const finishers = playersAt(queueIndex, modePlayerCount());
   let result = (run && rules().score) ? rules().score(run) : { value:0, label:'', win:true };
@@ -3078,8 +3307,7 @@ document.getElementById('stop-restart').addEventListener('click', () => {
   missionState = 'running';
   running = false;
   clearInterval(tickId);
-  clearInterval(countdownTimer);
-  showCountdown(null);
+  clearCountdown();
   stopMissionMusic();
   setSystemState('gyro', 'idle');
   run = null;
@@ -3098,6 +3326,7 @@ document.getElementById('stop-next').addEventListener('click', () => {
 
 document.getElementById('mission-btn').addEventListener('click', () => {
   if (missionState === 'finished') armNext();
+  else if (missionState === 'countdown') cancelLaunch();
   else if (missionState === 'running' || missionState === 'paused') askStopChoice();
 });
 
@@ -3183,7 +3412,11 @@ function applyEvent(evt){
   }
   else if (evt.type === 'release') setButtonPressed(evt.id, false);
   else if (evt.type === 'start') startMission(); /* no-op si pas armé, voir startMission() */
-  else if (evt.type === 'stop') stopMission(); /* no-op si pas en cours, voir stopMission() */
+  else if (evt.type === 'stop') {
+    /* pendant le décompte, le coupe-circuit annule le lancement au lieu de clore une
+       manche qui n'a jamais commencé */
+    if (missionState === 'countdown') cancelLaunch(); else stopMission();
+  }
 }
 
 /* ===== Systèmes (gyrophare, fumée) =====

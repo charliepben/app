@@ -1,4 +1,4 @@
-const CACHE_NAME = "mission-mars-v4";
+const CACHE_NAME = "mission-mars-v5";
 const ASSETS = [
   "./",
   "./index.html",
@@ -19,7 +19,14 @@ const ASSETS = [
   "./sounds/liftoff.ogg",
   "./sounds/success.ogg",
   "./sounds/fail.ogg",
-  "./sounds/siren.ogg"
+  "./sounds/siren.ogg",
+  // Voix de l'annonceur du décompte (Duel orbital)
+  "./sounds/voice-5.ogg",
+  "./sounds/voice-4.ogg",
+  "./sounds/voice-3.ogg",
+  "./sounds/voice-2.ogg",
+  "./sounds/voice-1.ogg",
+  "./sounds/voice-go.ogg"
 ];
 
 self.addEventListener("install", (event) => {
