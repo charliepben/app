@@ -1,4 +1,4 @@
-const CACHE = 'photo-identite-v8';
+const CACHE = 'photo-identite-v9';
 const CACHE_MODELES = 'photo-identite-modeles-v1';   // garde entre deux versions de l'appli
 const ASSETS = [
   './',
@@ -6,6 +6,7 @@ const ASSETS = [
   './app.js',
   './photo.js',
   './album.js',
+  './detourage.js',
   './manifest.json',
   './icon.svg',
   './vendor/vision_bundle.mjs',
