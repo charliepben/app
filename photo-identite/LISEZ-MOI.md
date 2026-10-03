@@ -73,6 +73,9 @@ sert aux dossiers papier.
 
 - `index.html`, `app.js` : interface.
 - `album.js` : photos gardées et planches composées.
+- `detourage.js` : moteurs de détourage au choix, `?detourage=rmbg` (BRIA
+  RMBG-1.4, 44 Mo, gratuit pour un usage non commercial), `?detourage=modnet`
+  (MODNet, 26 Mo) ou `?detourage=isnet` (IMG.LY, par défaut). Le choix est gardé.
 - `photo.js` : géométrie, cadrage, lumière, planche, export JPEG (pur calcul).
 - `vendor/vision_bundle.mjs` : `@mediapipe/tasks-vision@1.0.1`, tel quel.
 - `vendor/background-removal.mjs` : `@imgly/background-removal@1.7.0` +
@@ -80,7 +83,7 @@ sert aux dossiers papier.
 
   ```sh
   npm i @imgly/background-removal@1.7.0 onnxruntime-web@1.21.0 esbuild
-  echo "export { segmentForeground, preload } from '@imgly/background-removal';" > entry.mjs
+  printf "export { segmentForeground, preload } from '@imgly/background-removal';\nexport * as ort from 'onnxruntime-web/webgpu';\n" > entry.mjs
   npx esbuild entry.mjs --bundle --format=esm --minify --platform=browser \
     --outfile=vendor/background-removal.mjs --legal-comments=eof
   ```

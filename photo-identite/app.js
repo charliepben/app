@@ -4,6 +4,7 @@ import {
   rendrePhoto, mesures, angles, planche, jpeg, PLANCHE, versPhoto, affinerMasque, nettoyerBords,
 } from './photo.js';
 import { initAlbum, garder, rafraichir as rafraichirAlbum } from './album.js';
+import { MOTEURS, segmenter } from './detourage.js';
 
 // Les modeles sont charges depuis les CDN officiels, puis gardes en cache.
 const MP_VERSION = '1.0.1';
@@ -117,6 +118,19 @@ async function detecterVisage(source) {
   return { pts, bs, angles: angles(mat), visages: n };
 }
 
+// Moteur de detourage : isnet (IMG.LY, par defaut), modnet ou rmbg (voir
+// detourage.js). Choix par ?detourage=... dans l'adresse, garde ensuite.
+function moteurDetourage() {
+  const demande = new URLSearchParams(location.search).get('detourage');
+  try {
+    if (demande && (demande === 'isnet' || MOTEURS[demande])) localStorage.setItem('photo-identite-moteur', demande);
+    const m = localStorage.getItem('photo-identite-moteur');
+    return m && (m === 'isnet' || MOTEURS[m]) ? m : 'isnet';
+  } catch {
+    return demande && MOTEURS[demande] ? demande : 'isnet';
+  }
+}
+
 async function detourer(source, zone, onProgres) {
   const { segmentForeground } = await chargerDetourage();
   const k = Math.min(1, COTE_MAX_DETOURAGE / Math.max(zone.w, zone.h));
@@ -134,14 +148,22 @@ async function detourer(source, zone, onProgres) {
     output: { format: 'image/x-rgba8' },
     progress: (cle, fait, total) => onProgres?.(cle, fait, total),
   });
-  let sortie;
-  try {
-    sortie = await segmentForeground(entree, config(navigator.gpu ? 'gpu' : 'cpu'));
-  } catch (e) {
-    if (!navigator.gpu) throw e;
-    sortie = await segmentForeground(entree, config('cpu'));
+  let data;
+  const moteur = moteurDetourage();
+  if (moteur !== 'isnet') {
+    const { ort } = await chargerDetourage();
+    data = new Uint8ClampedArray(await segmenter(ort, moteur, pixels, w, h, (fait, total) => onProgres?.(`/models/${moteur}`, fait, total)));
+    onProgres?.('fin', 1, 1);
+  } else {
+    let sortie;
+    try {
+      sortie = await segmentForeground(entree, config(navigator.gpu ? 'gpu' : 'cpu'));
+    } catch (e) {
+      if (!navigator.gpu) throw e;
+      sortie = await segmentForeground(entree, config('cpu'));
+    }
+    data = new Uint8ClampedArray(await sortie.arrayBuffer());
   }
-  const data = new Uint8ClampedArray(await sortie.arrayBuffer());
   affinerMasque(pixels, data, w, h);
   const m = document.createElement('canvas'); m.width = w; m.height = h;
   m.getContext('2d').putImageData(new ImageData(data, w, h), 0, 0);
