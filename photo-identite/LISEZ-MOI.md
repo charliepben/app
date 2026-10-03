@@ -22,7 +22,7 @@ quitte pas l'appareil, pas de serveur, pas de clé d'API.
    Pupilles, menton et sommet détectés sont marqués sur le gabarit.
 4. **Lumière** :
    - balance des blancs : la couleur de la peau varie peu d'une personne à
-     l'autre dans le plan a*b* de CIELAB (teinte 47–58°, chroma ≤ 30), seule sa
+     l'autre dans le plan a*b* de CIELAB (teinte 25–63°, chroma ≤ 30), seule sa
      clarté change vraiment. Si une lampe (jaune) ou l'ombre (bleue) l'en fait
      sortir, des gains vert et bleu (von Kries, comme un appareil photo) l'y
      ramènent en bougeant le moins possible ; une peau déjà dans la zone n'est

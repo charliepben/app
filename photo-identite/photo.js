@@ -14,7 +14,8 @@ export const NORME = {
   teteSilhouette: 35, // repere = haut visible de cheveux courts ou plaques
   teteVolume: 34.5,   // repere = crane estime sous des cheveux qui depassent
   margeHaut: 3.5,      // sommet du crane -> bord haut, par defaut
-  margeHautMax: 5,     // au-dela, les yeux passent sous 50 % de la hauteur
+  margeHautMax: 6.5,   // au-dela, les yeux passent sous 50 % de la hauteur
+  teteReduite: 33,     // plus petite tete visee pour garder une coiffure haute dans le cadre
   yeuxBasMin: 0.5,     // ligne des yeux, en fraction de la hauteur depuis le bas
   yeuxBasMax: 0.7,
 };
@@ -125,12 +126,19 @@ export function affinerCrane(geo, alphaEnSource) {
 // Choisit taille de tete et marge haute pour que la tete fasse 34 mm, que les
 // cheveux ne soient pas coupes si possible, et que les yeux restent dans la zone.
 export function cadrageAuto(geo) {
-  // Taille choisie par affinerCrane selon le repere (voir plus haut). Les
-  // cheveux qui depassent encore sont coupes par le bord, ce qui est admis.
+  // Taille choisie par affinerCrane selon le repere (voir plus haut). On garde
+  // toute la chevelure dans le cadre avec 1 mm d'air : marge haute jusqu'a
+  // 6,5 mm (les yeux restent au-dessus de 50 % de la hauteur), puis tete
+  // reduite jusqu'a 33 mm (1 mm de securite sur le minimum de 32 mm). Au-dela
+  // seulement, les cheveux sont coupes par le bord, ce qui est admis.
   const hTeteU = geo.menton - geo.crane;
   const cheveuxU = Math.max(0, geo.crane - geo.hautCheveux);
-  const tete = geo.teteCible ?? NORME.teteCible;
-  const marge = Math.min(NORME.margeHautMax, Math.max(NORME.margeHaut, cheveuxU * (tete / hTeteU) + 0.6));
+  const besoin = (t) => cheveuxU * (t / hTeteU) + 1;
+  let tete = geo.teteCible ?? NORME.teteCible;
+  if (besoin(tete) > NORME.margeHautMax && cheveuxU > 0) {
+    tete = Math.max(NORME.teteReduite, ((NORME.margeHautMax - 1) * hTeteU) / cheveuxU);
+  }
+  const marge = Math.min(NORME.margeHautMax, Math.max(NORME.margeHaut, besoin(tete)));
   return { tete, marge };
 }
 
@@ -220,7 +228,7 @@ const versSRGB = (v) => { v = v <= 0 ? 0 : v >= 1 ? 1 : v; return 255 * (v <= 0.
 const lisse = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 // Teinte (degres) et chroma dans le plan a*b* de CIELAB d'une couleur RVB lineaire (D65).
-export const TEINTE_PEAU = [47, 58];
+export const TEINTE_PEAU = [25, 63];   // peaux roses d'enfant (~26) a olive (~60)
 export const CHROMA_PEAU_MAX = 30;
 export function teinteChroma(r, g, b) {
   const X = 0.4124 * r + 0.3576 * g + 0.1805 * b;
@@ -236,6 +244,77 @@ function percentile(valeurs, p) {
   if (!valeurs.length) return 0;
   const tri = Float32Array.from(valeurs).sort();
   return tri[Math.min(tri.length - 1, Math.floor(p * tri.length))];
+}
+
+// ---------------------------------------------------------------- Affinage du detourage
+// Le modele de detourage rend un bord flou autour des cheveux (surtout blonds,
+// sur un decor clair) : dans cette bande, le decor se melange a la chevelure.
+// On recalcule l'opacite a partir des couleurs de l'image (matting par
+// echantillonnage) : pour chaque pixel incertain, on estime la couleur du sujet
+// F et celle du decor B tout pres, et l'opacite est la part de F dans le pixel :
+//   I = a.F + (1 - a).B   =>   a = (I - B).(F - B) / |F - B|^2
+// La ou F et B se ressemblent trop pour trancher, on garde l'avis du modele.
+// pixels : RVBA de l'image ; alpha : RVBA du masque (canal A modifie en place).
+export function affinerMasque(pixels, alpha, w, h) {
+  const N = w * h;
+  const R = new Float32Array(N), G = new Float32Array(N), B = new Float32Array(N), a0 = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    R[i] = lin[pixels[i * 4]]; G[i] = lin[pixels[i * 4 + 1]]; B[i] = lin[pixels[i * 4 + 2]];
+    a0[i] = alpha[i * 4 + 3] / 255;
+  }
+  const echelle = Math.max(w, h) / 1000;
+
+  // Zones sures : sujet (a > 0,97) et decor (a < 0,03), un peu retrecies pour
+  // ne pas echantillonner dans le flou du modele.
+  const sur = (test) => {
+    const m = new Float32Array(N);
+    for (let i = 0; i < N; i++) m[i] = test(a0[i]) ? 1 : 0;
+    const e = Float32Array.from(m); flou(e, w, h, 2 * echelle);
+    for (let i = 0; i < N; i++) m[i] = e[i] > 0.97 ? 1 : 0;
+    return m;
+  };
+  const sujet = sur((a) => a > 0.97), decor = sur((a) => a < 0.03);
+
+  // Couleur de reference la plus proche, cherchee a plusieurs echelles.
+  const remplir = (m) => {
+    const out = [new Float32Array(N), new Float32Array(N), new Float32Array(N)];
+    const trouve = new Uint8Array(N);
+    for (const sig of [4, 12, 36, 100]) {
+      const ww = Float32Array.from(m), rr = new Float32Array(N), gg = new Float32Array(N), bb = new Float32Array(N);
+      for (let i = 0; i < N; i++) { rr[i] = R[i] * m[i]; gg[i] = G[i] * m[i]; bb[i] = B[i] * m[i]; }
+      const sg = sig * echelle;
+      flou(ww, w, h, sg); flou(rr, w, h, sg); flou(gg, w, h, sg); flou(bb, w, h, sg);
+      for (let i = 0; i < N; i++) {
+        if (trouve[i] || ww[i] < 0.03) continue;
+        out[0][i] = rr[i] / ww[i]; out[1][i] = gg[i] / ww[i]; out[2][i] = bb[i] / ww[i];
+        trouve[i] = 1;
+      }
+    }
+    return { c: out, trouve };
+  };
+  const F = remplir(sujet), D = remplir(decor);
+
+  for (let i = 0; i < N; i++) {
+    const a = a0[i];
+    if (a <= 0.01 || a >= 0.99 || sujet[i] || !F.trouve[i] || !D.trouve[i]) continue;
+    const dr = F.c[0][i] - D.c[0][i], dg = F.c[1][i] - D.c[1][i], db = F.c[2][i] - D.c[2][i];
+    const den = dr * dr + dg * dg + db * db;
+    const conf = lisse(0.03, 0.12, Math.sqrt(den));   // ecart de couleur sujet / decor
+    if (conf <= 0) continue;
+    const ir = R[i] - D.c[0][i], ig = G[i] - D.c[1][i], ib = B[i] - D.c[2][i];
+    let ac = (ir * dr + ig * dg + ib * db) / den;
+    ac = Math.min(1, Math.max(0, ac));
+    // le pixel colle-t-il au modele I = a.F + (1-a).B ? sinon (3e couleur,
+    // comme une voiture rouge derriere des cheveux blonds) il est suspect
+    const er = ir - ac * dr, eg = ig - ac * dg, eb = ib - ac * db;
+    const residu = Math.sqrt(er * er + eg * eg + eb * eb);
+    const fiable = conf * (1 - lisse(0.05, 0.2, residu));
+    let an = a + (ac - a) * fiable * 0.85;
+    // pixel qui ne ressemble ni au sujet ni au decor proche : on ne le garde que
+    // si le modele en etait sur
+    if (residu > 0.12) an = Math.min(an, a * (1 - lisse(0.12, 0.3, residu)) + 0.2 * a);
+    alpha[i * 4 + 3] = Math.round(Math.min(1, Math.max(0, an)) * 255);
+  }
 }
 
 // ---------------------------------------------------------------- Rendu
@@ -321,6 +400,42 @@ export function rendrePhoto({ source, masque, zone, geo, reglages: r, fond }) {
     }
   }
 
+  // --- Reflets colores du decor dans le bord du sujet : une voiture rouge ou de
+  // la verdure vue a travers des cheveux blonds donne des pixels que le modele
+  // croit opaques mais qui n'ont pas la couleur des cheveux. Pres du bord, on
+  // compare la teinte (couleur a clarte egale) a celle du sujet plus a
+  // l'interieur ; si elle s'en ecarte nettement, on prend la teinte du sujet en
+  // gardant la clarte du pixel (le dessin des meches reste).
+  {
+    const inter = new Float32Array(N);
+    for (let i = 0; i < N; i++) inter[i] = A[i] > 0.97 ? 1 : 0;
+    flou(inter, W, H, largV * 0.025);
+    for (let i = 0; i < N; i++) inter[i] = inter[i] > 0.97 ? 1 : 0;
+    const fr = new Float32Array(N), fg = new Float32Array(N), fb = new Float32Array(N), ok = new Uint8Array(N);
+    for (const sig of [6, 20, 60]) {
+      const w = Float32Array.from(inter), rr = new Float32Array(N), gg = new Float32Array(N), bb = new Float32Array(N);
+      for (let i = 0; i < N; i++) { rr[i] = R[i] * inter[i]; gg[i] = G[i] * inter[i]; bb[i] = B[i] * inter[i]; }
+      flou(w, W, H, sig); flou(rr, W, H, sig); flou(gg, W, H, sig); flou(bb, W, H, sig);
+      for (let i = 0; i < N; i++) {
+        if (ok[i] || w[i] < 0.05) continue;
+        fr[i] = rr[i] / w[i]; fg[i] = gg[i] / w[i]; fb[i] = bb[i] / w[i]; ok[i] = 1;
+      }
+    }
+    for (let i = 0; i < N; i++) {
+      if (A[i] < 0.01 || inter[i] || !ok[i]) continue;
+      const l = 0.2126 * R[i] + 0.7152 * G[i] + 0.0722 * B[i];
+      const lf = 0.2126 * fr[i] + 0.7152 * fg[i] + 0.0722 * fb[i];
+      if (l < 1e-4 || lf < 1e-4) continue;
+      const dr = R[i] / l - fr[i] / lf, dg = G[i] / l - fg[i] / lf, db = B[i] / l - fb[i] / lf;
+      const q = lisse(0.2, 0.45, Math.sqrt(dr * dr + dg * dg + db * db));
+      if (q <= 0) continue;
+      const k = l / lf;
+      R[i] += (fr[i] * k - R[i]) * q;
+      G[i] += (fg[i] * k - G[i]) * q;
+      B[i] += (fb[i] * k - B[i]) * q;
+    }
+  }
+
   // --- Poids du visage (ovale adouci) et zone d'influence (visage + cou + oreilles)
   const Fv = new Float32Array(N), Zone = new Float32Array(N);
   for (let i = 0; i < N; i++) { Fv[i] = (od[i * 4 + 3] / 255) * A[i]; Zone[i] = od[i * 4 + 3] / 255; }
@@ -330,8 +445,9 @@ export function rendrePhoto({ source, masque, zone, geo, reglages: r, fond }) {
   for (let i = 0; i < N; i++) Zone[i] = Math.min(1, (Zone[i] / (zMax || 1)) * 1.6) * A[i];
 
   // --- Balance des blancs. La couleur de la peau varie peu d'une personne a
-  // l'autre dans le plan a*b* de CIELAB : teinte entre 47 et 58 deg, saturation
-  // (chroma) moderee ; seule la clarte change vraiment. Une lampe d'interieur
+  // l'autre dans le plan a*b* de CIELAB : teinte entre 25 et 63 deg, saturation
+  // (chroma) moderee ; seule la clarte change vraiment. Plage volontairement
+  // large : une peau rose d'enfant ne doit pas etre prise pour une dominante. Une lampe d'interieur
   // pousse le visage vers le jaune-orange et le sature, l'ombre ou un ecran vers
   // le bleu-rose. On cherche les gains vert et bleu (adaptation chromatique de
   // von Kries, comme un appareil photo) qui ramenent le visage dans cette zone,
@@ -418,24 +534,39 @@ export function rendrePhoto({ source, masque, zone, geo, reglages: r, fond }) {
   const autoGain = p99 > 0 ? Math.min(1.8, Math.max(0.95, 0.8 / p99)) : 1;
   const gain = autoGain * 2 ** (r.lumiere || 0);
 
-  // --- Ombres : on mesure l'eclairage basse frequence du visage et on le rend
-  // plus uniforme (moitie de visage dans l'ombre, ombre sous les yeux / le menton).
-  const force = r.ombres ?? 0.6;
+  // --- Ombres. Un visage est a peu pres symetrique : si une moitie est plus
+  // sombre que l'autre a hauteur egale, c'est l'eclairage (fenetre de cote),
+  // pas le visage. On mesure l'eclairage basse frequence, on le compare a celui
+  // du point miroir (par rapport a l'axe du visage) et on eclaircit le cote
+  // sombre pour rejoindre le cote clair. Le modele naturel du visage (nez,
+  // pommettes, menton) est garde ; seule une petite part de l'ombre generale
+  // (sous le menton, orbites) est en plus adoucie.
+  const force = r.ombres ?? 1;
   let ratio = null;
   if (force > 0 && visage.length > 100) {
     const num = new Float32Array(N), den = new Float32Array(N);
     for (let i = 0; i < N; i++) { num[i] = L[i] * Fv[i]; den[i] = Fv[i]; }
-    const sig = largV * 0.16;
+    // echelle large : un eclairage de cote est un degrade sur tout le visage ;
+    // plus fin, on confondrait le relief d'une joue avec une ombre
+    const sig = largV * 0.25;
     flou(num, W, H, sig); flou(den, W, H, sig);
-    const bas = [];
-    for (let i = 0; i < N; i += 3) if (Fv[i] > 0.8 && den[i] > 1e-3) bas.push(num[i] / den[i]);
-    const cible = percentile(bas, 0.8);
+    const bas = new Float32Array(N);
+    for (let i = 0; i < N; i++) bas[i] = den[i] > 1e-3 ? num[i] / den[i] : 0;
+    const vals = [];
+    for (let i = 0; i < N; i += 3) if (Fv[i] > 0.8 && bas[i] > 0) vals.push(bas[i]);
+    const cible = percentile(vals, 0.7);
+    const axe = versPhoto(t, { x: geo.centreX, y: 0 }).x;
     ratio = new Float32Array(N);
-    for (let i = 0; i < N; i++) {
-      if (Zone[i] < 0.01 || den[i] < 1e-3) { ratio[i] = 1; continue; }
-      const low = num[i] / den[i];
-      let k = (cible / Math.max(low, 1e-4)) ** force;
-      k = Math.min(3, Math.max(0.75, k));
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      const low = bas[i];
+      if (Zone[i] < 0.01 || low <= 0) { ratio[i] = 1; continue; }
+      const xm = Math.round(2 * axe - x);
+      const lm = xm >= 0 && xm < W ? bas[y * W + xm] : 0;
+      const sym = lm > 0 ? Math.min(1.7, Math.max(1, lm / low)) : 1;   // seul le cote sombre bouge
+      const plat = Math.max(1, cible / low);                   // ombre generale, adoucie a 30 %
+      let k = sym ** force * plat ** (0.3 * force);
+      k = Math.min(1.9, k);
       ratio[i] = 1 + (k - 1) * Zone[i];
     }
   }
