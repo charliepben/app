@@ -1,7 +1,7 @@
 import {
   NORME, PX_MM, W, H, FONDS,
   geometrie, affinerCrane, cadrageAuto, transformation, appliquerTransfo, zoneUtile,
-  rendrePhoto, mesures, angles, planche, jpeg, PLANCHE, versPhoto, affinerMasque, nettoyerBords,
+  rendrePhoto, mesures, angles, planche, jpeg, PLANCHE, versPhoto, affinerMasque, nettoyerBords, dentsVisibles,
   NORMES, choisirNorme, repereNorme, places,
 } from './photo.js';
 import { initAlbum, garder, rafraichir as rafraichirAlbum } from './album.js';
@@ -337,7 +337,7 @@ async function traiter(fichier) {
 
     Object.assign(etat, {
       source, geo, masque: masque.canvas, zone,
-      infos: { ...visage, hauteurTetePx: geo.menton - geo.crane },
+      infos: { ...visage, hauteurTetePx: geo.menton - geo.crane, dents: dentsVisibles(source, visage.pts) },
       auto,
       reglages: { ...DEFAUTS, ...auto, fond: fondNorme() },
     });
@@ -508,6 +508,20 @@ function afficherControles() {
       const neutre = sourire < 0.35 && !bouche;
       ajouter(neutre ? 'ok' : 'bad', neutre ? 'Expression neutre, bouche fermée' : (sourire >= 0.35 ? 'Sourire détecté' : 'Bouche ouverte'),
         neutre ? '' : 'La norme exige une expression neutre, bouche fermée, sans sourire : reprenez la photo.');
+    }
+  }
+
+  // Dents : la bouche doit etre fermee (France) ; aux Etats-Unis le sourire
+  // naturel est admis mais la bouche fermee reste demandee.
+  if (infos.dents) {
+    const d = infos.dents;
+    if (d.visible) {
+      ajouter('bad', 'Dents visibles',
+        NORME.sourireAdmis ? 'La norme demande la bouche fermée, même en souriant : reprenez la photo lèvres jointes.'
+          : 'Interdit : la bouche doit être fermée, sans sourire. Reprenez la photo lèvres jointes, visage détendu.');
+    } else {
+      ajouter(d.entrouverte ? 'warn' : 'ok', d.entrouverte ? 'Lèvres entrouvertes' : 'Dents non visibles, lèvres jointes',
+        d.entrouverte ? 'Pas de dents visibles, mais la bouche paraît légèrement ouverte : mieux vaut lèvres jointes.' : '');
     }
   }
 
