@@ -123,6 +123,9 @@
   .album-outils label { display: flex; gap: 6px; align-items: center; }
   .album-planches { display: grid; gap: 10px; }
   .album-planches img { width: 100%; border: 1px solid var(--border); border-radius: 4px; display: block; background: #fff; }
+  #bandeau-maj { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 50; display: flex; white-space: nowrap; align-items: center; gap: 12px; max-width: calc(100% - 32px); background: #1b1f24; color: #fff; padding: 12px 16px; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.25); font-weight: 600; font-size: 14px; transition: opacity .4s; }
+  #bandeau-maj.parti { opacity: 0; }
+  #bandeau-maj button { padding: 7px 12px; font-size: 14px; background: #fff; color: var(--accent); border: none; }
   button:disabled { opacity: .45; cursor: default; }
   .planche img { width: 100%; border: 1px solid var(--border); border-radius: 4px; display: block; background: #fff; }
   .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
@@ -279,12 +282,42 @@
   if ('serviceWorker' in navigator) {
     const avaitUneVersion = !!navigator.serviceWorker.controller;
     let recharge = false;
+    // Bandeau discret en bas de l'ecran (disparait seul, ou d'un toucher)
+    const bandeau = (texte, bouton) => {
+      document.getElementById('bandeau-maj')?.remove();
+      const b = document.createElement('div');
+      b.id = 'bandeau-maj';
+      b.setAttribute('role', 'status');
+      b.innerHTML = `<span>${texte}</span>`;
+      if (bouton) {
+        const btn = document.createElement('button');
+        btn.textContent = bouton.texte;
+        btn.addEventListener('click', bouton.action);
+        b.appendChild(btn);
+      } else {
+        setTimeout(() => b.classList.add('parti'), 4000);
+        setTimeout(() => b.remove(), 4500);
+      }
+      b.addEventListener('click', (e) => { if (e.target === b || e.target.tagName === 'SPAN') b.remove(); });
+      document.body.appendChild(b);
+    };
+    const rechargerAvecMessage = () => {
+      try { sessionStorage.setItem('photo-identite-maj', '1'); } catch { /* facultatif */ }
+      location.reload();
+    };
+    try {
+      if (sessionStorage.getItem('photo-identite-maj')) {
+        sessionStorage.removeItem('photo-identite-maj');
+        window.addEventListener('load', () => bandeau('✓ Appli mise à jour'));
+      }
+    } catch { /* facultatif */ }
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (!avaitUneVersion || recharge) return;
-      const enCours = window.__photoIdentite?.etat?.source;
-      if (enCours) return;
       recharge = true;
-      location.reload();
+      const enCours = window.__photoIdentite?.etat?.source;
+      // en plein travail sur une photo : on propose, sans recharger d'office
+      if (enCours) bandeau('Nouvelle version disponible', { texte: 'Mettre à jour', action: rechargerAvecMessage });
+      else rechargerAvecMessage();
     });
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' }).then((reg) => {
