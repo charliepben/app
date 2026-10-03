@@ -223,8 +223,28 @@
 
 <script type="module" src="app.js"></script>
 <script>
+  // Mise a jour a l'ouverture : on demande au navigateur de verifier s'il y a
+  // une nouvelle version (aussi quand l'appli revient au premier plan). Si oui,
+  // elle s'installe et la page se recharge toute seule, sauf en plein travail
+  // sur une photo : on attend alors la prochaine ouverture.
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js').catch(() => {}));
+    const avaitUneVersion = !!navigator.serviceWorker.controller;
+    let recharge = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!avaitUneVersion || recharge) return;
+      const enCours = window.__photoIdentite?.etat?.source;
+      if (enCours) return;
+      recharge = true;
+      location.reload();
+    });
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' }).then((reg) => {
+        reg.update().catch(() => {});
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') reg.update().catch(() => {});
+        });
+      }).catch(() => {});
+    });
   }
 </script>
 </body>
