@@ -3,31 +3,84 @@
 // Aucune dependance : ce module ne fait que du calcul sur des canvas.
 
 // ---------------------------------------------------------------- Normes
-// Photo 35 x 45 mm. Tete (menton -> sommet du crane, HORS chevelure) : 32 a 36 mm.
-// Fond uni et clair, blanc interdit. Yeux : 50 a 70 % de la hauteur depuis le bas.
-export const NORME = {
-  largeur: 35,
-  hauteur: 45,
-  teteMin: 32,
-  teteMax: 36,
-  teteCible: 34,
-  teteSilhouette: 35, // repere = haut visible de cheveux courts ou plaques
-  teteVolume: 34.5,   // repere = crane estime sous des cheveux qui depassent
-  margeHaut: 3.5,      // sommet du crane -> bord haut, par defaut
-  margeHautMax: 6.5,   // au-dela, les yeux passent sous 50 % de la hauteur
-  teteReduite: 33,     // plus petite tete visee pour garder une coiffure haute dans le cadre
-  yeuxBasMin: 0.5,     // ligne des yeux, en fraction de la hauteur depuis le bas
-  yeuxBasMax: 0.7,
+// France (ANTS, ISO/IEC 19794-5) : photo 35 x 45 mm, tete du menton au sommet
+// du crane HORS chevelure : 32 a 36 mm. Fond clair uni, blanc interdit. Yeux :
+// 50 a 70 % de la hauteur depuis le bas.
+// Etats-Unis (passeport, visa) : 2 x 2 pouces (50,8 mm), tete du menton au HAUT
+// DES CHEVEUX : 1 a 1 3/8 pouce (25 a 35 mm), yeux a 1 1/8 - 1 3/8 pouce du bas
+// (28 a 35 mm). Fond blanc ou blanc casse. Pas de lunettes ; sourire naturel admis.
+export const NORMES = {
+  fr: {
+    id: 'fr', nom: 'France', drapeau: '🇫🇷', format: '35 × 45 mm', ref: 'ANTS · ISO/IEC 19794-5',
+    largeur: 35,
+    hauteur: 45,
+    mesure: 'crane',     // la tete se mesure jusqu'au sommet du crane, cheveux exclus
+    teteMin: 32,
+    teteMax: 36,
+    teteCible: 34,
+    teteSilhouette: 35, // repere = haut visible de cheveux courts ou plaques
+    teteVolume: 34.5,   // repere = crane estime sous des cheveux qui depassent
+    margeHaut: 3.5,      // sommet du crane -> bord haut, par defaut
+    margeHautMax: 6.5,   // au-dela, les yeux passent sous 50 % de la hauteur
+    teteReduite: 33,     // plus petite tete visee pour garder une coiffure haute dans le cadre
+    yeuxBasMin: 0.5,     // ligne des yeux, en fraction de la hauteur depuis le bas
+    yeuxBasMax: 0.7,
+    fonds: ['gris', 'bleu'],
+    sourireAdmis: false,
+    planche: { cols: 4, rangs: 2 },
+  },
+  us: {
+    id: 'us', nom: 'États-Unis', drapeau: '🇺🇸', format: '2 × 2 pouces (51 × 51 mm)', ref: 'U.S. Department of State',
+    largeur: 50.8,
+    hauteur: 50.8,
+    mesure: 'cheveux',   // la tete se mesure jusqu'au haut des cheveux
+    teteMin: 25.4,
+    teteMax: 34.9,
+    teteCible: 30.5,
+    margeHaut: 1.5,
+    margeHautMax: 10,
+    teteReduite: 26,
+    yeuxBasMin: 28.6 / 50.8,
+    yeuxBasMax: 34.9 / 50.8,
+    yeuxCible: 31.5 / 50.8,  // les yeux placent la photo, la tete en decoule
+    fonds: ['blanc'],
+    sourireAdmis: true,
+    planche: { cols: 2, rangs: 1 },
+  },
 };
 
+// Norme en cours : objet modifie sur place (les modules qui l'importent voient
+// le changement), W et H recalcules.
+export const NORME = { ...NORMES.fr };
 export const DPI_TRAVAIL = 600;
 export const PX_MM = DPI_TRAVAIL / 25.4;
-export const W = Math.round(NORME.largeur * PX_MM);   // 827
-export const H = Math.round(NORME.hauteur * PX_MM);   // 1063
+export let W = Math.round(NORME.largeur * PX_MM);   // 827
+export let H = Math.round(NORME.hauteur * PX_MM);   // 1063
+
+export function choisirNorme(id) {
+  const n = NORMES[id] || NORMES.fr;
+  for (const k of Object.keys(NORME)) delete NORME[k];
+  Object.assign(NORME, n);
+  W = Math.round(NORME.largeur * PX_MM);
+  H = Math.round(NORME.hauteur * PX_MM);
+  return NORME;
+}
+
+// Etats-Unis : la tete se mesure jusqu'au haut des cheveux. A appeler apres
+// affinerCrane (qui a trouve le haut de la silhouette).
+export function repereNorme(geo) {
+  if (NORME.mesure !== 'cheveux') return geo;
+  // haut des cheveux trouve sur le detourage ; sinon, crane estime + 4 % (cheveux courts)
+  geo.crane = geo.mode === 'estime' ? geo.craneEstime - 0.04 * (geo.menton - geo.craneEstime) : geo.hautCheveux;
+  geo.hautCheveux = geo.crane;
+  geo.teteCible = NORME.teteCible;
+  return geo;
+}
 
 export const FONDS = {
   gris: { nom: 'Gris clair', rgb: [214, 216, 219] },
   bleu: { nom: 'Bleu clair', rgb: [200, 219, 236] },
+  blanc: { nom: 'Blanc', rgb: [250, 250, 248] },
 };
 
 // Points du maillage MediaPipe Face Landmarker (478 points).
@@ -145,6 +198,13 @@ export function cadrageAuto(geo) {
   const cheveuxU = Math.max(0, geo.crane - geo.hautCheveux);
   const besoin = (t) => cheveuxU * (t / hTeteU) + 1;
   let tete = geo.teteCible ?? NORME.teteCible;
+  if (NORME.yeuxCible) {
+    // la ligne des yeux place la photo : marge = position des yeux - partie
+    // de la tete au-dessus des yeux (repere redresse : yeux en y = 0)
+    const auDessus = tete * (-geo.crane / hTeteU);
+    const marge = Math.max(NORME.margeHaut, NORME.hauteur * (1 - NORME.yeuxCible) - auDessus);
+    return { tete, marge };
+  }
   if (besoin(tete) > NORME.margeHautMax && cheveuxU > 0) {
     tete = Math.max(NORME.teteReduite, ((NORME.margeHautMax - 1) * hTeteU) / cheveuxU);
   }
@@ -771,40 +831,43 @@ export function angles(m) {
 
 // ---------------------------------------------------------------- Planche 10x15
 // Format reel des tirages "10x15" en labo : 4 x 6 pouces = 101,6 x 152,4 mm.
-export const PLANCHE = { largeurMM: 152.4, hauteurMM: 101.6, dpi: 300, cols: 4, rangs: 2 };
+export const PLANCHE = { largeurMM: 152.4, hauteurMM: 101.6, dpi: 300 };
+export const places = (norme = NORME) => { const N = typeof norme === 'string' ? NORMES[norme] : norme; return N.planche.cols * N.planche.rangs; };
 
 // photo : une image (repetee 8 fois) ou une liste de 8 cases { image, nom }
 // (null = case vide) pour composer une planche avec plusieurs personnes.
-export function planche(photo, { couleurTraits = '#9aa0a6', legende = '' } = {}) {
-  const cases = Array.isArray(photo) ? photo : Array(PLANCHE.cols * PLANCHE.rangs).fill({ image: photo, nom: '' });
-  const { largeurMM, hauteurMM, dpi, cols, rangs } = PLANCHE;
+export function planche(photo, { couleurTraits = '#9aa0a6', legende = '', norme = NORME } = {}) {
+  const N = typeof norme === 'string' ? NORMES[norme] : norme;
+  const { cols, rangs } = N.planche;
+  const cases = Array.isArray(photo) ? photo : Array(cols * rangs).fill({ image: photo, nom: '' });
+  const { largeurMM, hauteurMM, dpi } = PLANCHE;
   const k = dpi / 25.4;
   const c = document.createElement('canvas');
   c.width = Math.round(largeurMM * k); c.height = Math.round(hauteurMM * k);   // 1800 x 1200
   const x = c.getContext('2d');
   x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
-  const gx = (largeurMM - cols * NORME.largeur) / (cols + 1);
-  const gy = (hauteurMM - rangs * NORME.hauteur) / (rangs + 1);
+  const gx = (largeurMM - cols * N.largeur) / (cols + 1);
+  const gy = (hauteurMM - rangs * N.hauteur) / (rangs + 1);
   const xs = [], ys = [];
-  for (let i = 0; i < cols; i++) xs.push(gx + i * (NORME.largeur + gx));
-  for (let j = 0; j < rangs; j++) ys.push(gy + j * (NORME.hauteur + gy));
+  for (let i = 0; i < cols; i++) xs.push(gx + i * (N.largeur + gx));
+  for (let j = 0; j < rangs; j++) ys.push(gy + j * (N.hauteur + gy));
   // Traits de coupe : alignes sur les bords des photos, visibles dans les marges.
   x.strokeStyle = couleurTraits; x.lineWidth = 1;
   x.beginPath();
-  for (const v of xs.flatMap((p) => [p, p + NORME.largeur])) { const px = Math.round(v * k) + 0.5; x.moveTo(px, 0); x.lineTo(px, c.height); }
-  for (const v of ys.flatMap((p) => [p, p + NORME.hauteur])) { const py = Math.round(v * k) + 0.5; x.moveTo(0, py); x.lineTo(c.width, py); }
+  for (const v of xs.flatMap((p) => [p, p + N.largeur])) { const px = Math.round(v * k) + 0.5; x.moveTo(px, 0); x.lineTo(px, c.height); }
+  for (const v of ys.flatMap((p) => [p, p + N.hauteur])) { const py = Math.round(v * k) + 0.5; x.moveTo(0, py); x.lineTo(c.width, py); }
   x.stroke();
   x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
   let n = 0;
   for (const py of ys) for (const px of xs) {
     const c = cases[n++];
     if (!c) continue;
-    x.drawImage(c.image, Math.round(px * k), Math.round(py * k), Math.round(NORME.largeur * k), Math.round(NORME.hauteur * k));
+    x.drawImage(c.image, Math.round(px * k), Math.round(py * k), Math.round(N.largeur * k), Math.round(N.hauteur * k));
     if (c.nom) {
       // prenom en petit sous la photo, dans la marge (hors de la photo a decouper)
       x.fillStyle = '#80868b'; x.font = `${Math.round(1.5 * k)}px sans-serif`;
       x.textAlign = 'center'; x.textBaseline = 'middle';
-      x.fillText(c.nom.slice(0, 24), Math.round((px + NORME.largeur / 2) * k), Math.round((py + NORME.hauteur + gy / 2) * k));
+      x.fillText(c.nom.slice(0, 24), Math.round((px + N.largeur / 2) * k), Math.round((py + N.hauteur + gy / 2) * k));
       x.textAlign = 'start';
     }
   }

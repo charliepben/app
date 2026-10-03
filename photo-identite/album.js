@@ -2,10 +2,13 @@
 // n'est envoye), et on compose des planches 10x15 en choisissant combien de
 // chaque photo y mettre. Plusieurs personnes peuvent partager une planche.
 
-import { planche, jpeg, PLANCHE } from './photo.js';
+import { planche, jpeg, PLANCHE, NORMES, places } from './photo.js';
 
 const BASE = 'photo-identite', TABLE = 'photos';
-const PLACES = PLANCHE.cols * PLANCHE.rangs;   // 8 emplacements par planche
+// Une planche ne melange pas les normes (tailles differentes) : France 8 places
+// (35x45), Etats-Unis 2 places (2x2 pouces).
+const normeDe = (p) => (p.norme && NORMES[p.norme] ? p.norme : 'fr');
+const MAX_PAR_PHOTO = 32;
 
 // ---------------------------------------------------------------- Stockage
 function ouvrir() {
@@ -31,10 +34,10 @@ export const lister = async () => ((await table('readonly', (t) => t.getAll())) 
 const enregistrer = (photo) => table('readwrite', (t) => t.put(photo));
 const supprimer = (id) => table('readwrite', (t) => t.delete(id));
 
-export async function garder(blob, nom) {
+export async function garder(blob, nom, norme = 'fr') {
   // demande au navigateur de ne pas effacer ces donnees pour faire de la place
   try { await navigator.storage?.persist?.(); } catch { /* facultatif */ }
-  const photo = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, nom: nom.trim(), date: Date.now(), blob };
+  const photo = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, nom: nom.trim(), norme, date: Date.now(), blob };
   await enregistrer(photo);
   return photo;
 }
@@ -59,7 +62,7 @@ export async function initAlbum(o) {
     const id = b.closest('li').dataset.id;
     const action = b.dataset.action;
     if (action === 'plus' || action === 'moins') {
-      quantites[id] = Math.min(PLACES * 4, Math.max(0, (quantites[id] || 0) + (action === 'plus' ? 1 : -1)));
+      quantites[id] = Math.min(MAX_PAR_PHOTO, Math.max(0, (quantites[id] || 0) + (action === 'plus' ? 1 : -1)));
       b.closest('li').querySelector('output').textContent = quantites[id];
       memoriser();
       afficherPlanches();
@@ -83,10 +86,15 @@ export async function initAlbum(o) {
     afficherPlanches();
   });
   $('album-remplir').addEventListener('click', () => {
-    // repartit les 8 emplacements entre les photos choisies (ou toutes)
+    // repartit les places d'une planche entre les photos choisies (ou toutes),
+    // norme par norme
     const choisies = photos.filter((p) => quantites[p.id] > 0);
     const liste = choisies.length ? choisies : photos;
-    liste.forEach((p, i) => { quantites[p.id] = Math.floor(PLACES / liste.length) + (i < PLACES % liste.length ? 1 : 0); });
+    for (const n of Object.keys(NORMES)) {
+      const groupe = liste.filter((p) => normeDe(p) === n);
+      const P = places(n);
+      groupe.forEach((p, i) => { quantites[p.id] = Math.floor(P / groupe.length) + (i < P % groupe.length ? 1 : 0); });
+    }
     memoriser();
     rafraichir();
   });
@@ -116,7 +124,7 @@ export async function rafraichir() {
       <img src="${urls.get(p.id)}" alt="">
       <div class="album-infos">
         <input data-nom type="text" value="${echapper(p.nom || '')}" placeholder="Prénom" aria-label="Prénom">
-        <small>${date(p.date)}</small>
+        <small>${NORMES[normeDe(p)].drapeau} ${NORMES[normeDe(p)].format.split(' (')[0]} · ${date(p.date)}</small>
       </div>
       <div class="pas">
         <button data-action="moins" aria-label="Une de moins">−</button>
@@ -128,12 +136,13 @@ export async function rafraichir() {
   afficherPlanches();
 }
 
-// Emplacements dans l'ordre de la liste : chaque personne regroupee.
+// Emplacements par norme, dans l'ordre de la liste : chaque personne regroupee.
 function emplacements() {
-  const liste = [];
-  for (const p of photos) for (let k = 0; k < (quantites[p.id] || 0); k++) liste.push(p);
-  return liste;
+  const parNorme = {};
+  for (const p of photos) for (let k = 0; k < (quantites[p.id] || 0); k++) (parNorme[normeDe(p)] ||= []).push(p);
+  return parNorme;
 }
+const totalEmplacements = () => Object.values(emplacements()).reduce((a, l) => a + l.length, 0);
 
 let images = new Map();   // id -> HTMLImageElement decodee
 async function image(p) {
@@ -147,14 +156,16 @@ async function image(p) {
 }
 
 async function canvasPlanches() {
-  const liste = emplacements();
   const noms = $('album-noms').checked;
   const res = [];
-  for (let d = 0; d < liste.length; d += PLACES) {
-    const lot = liste.slice(d, d + PLACES);
-    const cases = [];
-    for (let i = 0; i < PLACES; i++) cases.push(lot[i] ? { image: await image(lot[i]), nom: noms ? lot[i].nom : '' } : null);
-    res.push(planche(cases));
+  for (const [n, liste] of Object.entries(emplacements())) {
+    const P = places(n);
+    for (let d = 0; d < liste.length; d += P) {
+      const lot = liste.slice(d, d + P);
+      const cases = [];
+      for (let i = 0; i < P; i++) cases.push(lot[i] ? { image: await image(lot[i]), nom: noms ? lot[i].nom : '' } : null);
+      res.push(planche(cases, { norme: n }));
+    }
   }
   return res;
 }
@@ -162,10 +173,13 @@ async function canvasPlanches() {
 let tour = 0;
 async function afficherPlanches() {
   const moi = ++tour;
-  const total = emplacements().length;
-  const nb = Math.ceil(total / PLACES);
+  const total = totalEmplacements();
+  const morceaux = Object.entries(emplacements()).map(([n, l]) => {
+    const P = places(n), nb = Math.ceil(l.length / P), vides = nb * P - l.length;
+    return `${NORMES[n].drapeau} ${l.length} photo${l.length > 1 ? 's' : ''} → ${nb} planche${nb > 1 ? 's' : ''}${vides ? ` (${vides} place${vides > 1 ? 's' : ''} vide${vides > 1 ? 's' : ''})` : ''}`;
+  });
   $('album-total').textContent = total
-    ? `${total} photo${total > 1 ? 's' : ''} → ${nb} planche${nb > 1 ? 's' : ''} 10×15${total % PLACES ? ` (${PLACES - (total % PLACES)} emplacement${PLACES - (total % PLACES) > 1 ? 's' : ''} vide${PLACES - (total % PLACES) > 1 ? 's' : ''})` : ''}`
+    ? morceaux.join(' · ')
     : 'Choisissez combien de chaque photo mettre sur la planche avec + et −.';
   for (const id of ['album-telecharger', 'album-imprimer', 'album-partager']) $(id).disabled = !total;
   const conteneur = $('album-planches');

@@ -33,6 +33,12 @@
   h1 { font-size: clamp(22px, 5vw, 30px); letter-spacing: -0.5px; }
   h1 span { color: var(--accent); }
   .sous-titre { color: var(--dim); font-size: 14px; margin-top: 2px; }
+  .normes { display: grid; grid-template-columns: 1fr 1fr; max-width: 420px; margin-top: 12px; border: 1px solid var(--border); border-radius: 12px; padding: 3px; background: var(--surface); gap: 3px; }
+  .normes button { border: none; border-radius: 9px; padding: 8px 10px; font-size: 15px; background: transparent; display: grid; grid-template-columns: auto 1fr; column-gap: 8px; text-align: left; justify-content: start; }
+  .normes button span { grid-row: span 2; font-size: 22px; align-self: center; }
+  .normes button small { color: var(--dim); font-weight: 400; font-size: 12px; }
+  .normes button[aria-checked="true"] { background: var(--accent); color: #fff; }
+  .normes button[aria-checked="true"] small { color: #dbe4f5; }
   h2 { font-size: 16px; margin-bottom: 10px; }
   .carte { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
   .cache { display: none !important; }
@@ -149,7 +155,11 @@
 <main>
   <header>
     <h1>Photo d'<span>identité</span></h1>
-    <p class="sous-titre">Norme française (ANTS · ISO/IEC 19794-5) · 35 × 45 mm · planche 10 × 15 prête à imprimer</p>
+    <p class="sous-titre" id="sous-titre">Norme française (ANTS · ISO/IEC 19794-5) · 35 × 45 mm · planche 10 × 15 prête à imprimer</p>
+    <div class="normes" id="normes" role="radiogroup" aria-label="Norme">
+      <button role="radio" data-norme="fr"><span>🇫🇷</span> France <small>35 × 45 mm</small></button>
+      <button role="radio" data-norme="us"><span>🇺🇸</span> États-Unis <small>2 × 2 pouces</small></button>
+    </div>
   </header>
 
   <div id="erreur" class="erreur cache" role="alert"></div>
@@ -231,7 +241,7 @@
       </div>
 
       <div class="carte planche">
-        <h2>Planche 10 × 15 — 8 photos</h2>
+        <h2 id="titre-planche">Planche 10 × 15 — 8 photos</h2>
         <img id="planche" alt="Planche de 8 photos d'identité au format 10 × 15">
         <div class="actions">
           <button class="principal" id="btn-planche">⬇︎ Télécharger la planche 10×15</button>
@@ -241,7 +251,7 @@
         </div>
         <p class="note" style="margin-top:12px">
           Faites tirer la planche au format <strong>10×15 « sans recadrage » / « taille réelle »</strong> (labo photo, borne en magasin, imprimante photo).
-          Chaque photo doit mesurer exactement 35 mm de large : vérifiez avec une règle, puis découpez le long des traits gris.
+          Chaque photo doit mesurer exactement <span id="largeur-regle">35 mm</span> de large : vérifiez avec une règle, puis découpez le long des traits gris.
         </p>
       </div>
 
@@ -250,7 +260,7 @@
         <div class="entete-carte" style="margin-top:12px"><span class="note">Repères bleus et verts : ce que l'appli a détecté.</span><button class="lien" id="btn-reinit">Réinitialiser</button></div>
         <div class="reglages">
           <div class="reglage"><label for="r-tete">Taille de la tête <output id="o-tete"></output></label><input id="r-tete" type="range" min="32" max="36" step="0.1"></div>
-          <div class="reglage"><label for="r-crane">Repère du sommet du crâne <output id="o-crane"></output></label><input id="r-crane" type="range" min="-4" max="4" step="0.1"></div>
+          <div class="reglage"><label for="r-crane"><span id="lib-crane">Repère du sommet du crâne</span> <output id="o-crane"></output></label><input id="r-crane" type="range" min="-4" max="4" step="0.1"></div>
           <div class="reglage"><label for="r-dy">Position verticale <output id="o-dy"></output></label><input id="r-dy" type="range" min="-3" max="3" step="0.1"></div>
           <div class="reglage"><label for="r-dx">Position horizontale <output id="o-dx"></output></label><input id="r-dx" type="range" min="-3" max="3" step="0.1"></div>
           <div class="reglage"><label for="r-rot">Rotation <output id="o-rot"></output></label><input id="r-rot" type="range" min="-5" max="5" step="0.1"></div>
@@ -265,7 +275,7 @@
             <div class="fonds" id="fonds"></div>
           </div>
         </div>
-        <p class="note" style="margin-top:12px">Le repère bleu doit toucher le haut de la tête, sans compter les cheveux qui dépassent (volume, chignon) : c'est de là que se mesurent les 32 à 36 mm jusqu'au menton.</p>
+        <p class="note" style="margin-top:12px" id="note-repere">Le repère bleu doit toucher le haut de la tête, sans compter les cheveux qui dépassent (volume, chignon) : c'est de là que se mesurent les 32 à 36 mm jusqu'au menton.</p>
       </details>
     </div>
   </section>
@@ -273,10 +283,10 @@
   <!-- Mes photos : planches composees -->
   <section id="album" class="carte album cache">
     <div class="entete-carte"><h2>Mes photos gardées</h2><span class="note" id="album-compte"></span></div>
-    <p class="note" style="margin-bottom:10px">Choisissez combien d'exemplaires de chaque photo mettre sur la planche (8 places par planche 10×15). Au-delà de 8, l'appli fait plusieurs planches.</p>
+    <p class="note" style="margin-bottom:10px">Choisissez combien d'exemplaires de chaque photo mettre sur la planche : 8 places par planche 10×15 pour la France, 2 pour les États-Unis (photos plus grandes). Au-delà, l'appli fait plusieurs planches ; les deux normes ne se mélangent pas.</p>
     <ul id="album-liste" class="album-liste"></ul>
     <div class="album-outils">
-      <button class="lien" id="album-remplir">Répartir les 8 places</button>
+      <button class="lien" id="album-remplir">Remplir une planche</button>
       <button class="lien" id="album-vider">Tout remettre à 0</button>
       <label class="note"><input type="checkbox" id="album-noms" checked> Prénoms sous les photos</label>
     </div>

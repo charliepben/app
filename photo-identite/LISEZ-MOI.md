@@ -1,8 +1,25 @@
-# Photo d'identité — norme française
+# Photo d'identité — normes française et américaine
 
 Une photo, et l'appli rend une planche 10×15 de 8 photos d'identité 35×45 mm
 aux normes ANTS (ISO/IEC 19794-5). Tout tourne dans le navigateur : la photo ne
 quitte pas l'appareil, pas de serveur, pas de clé d'API.
+
+## Normes au choix
+
+En haut de page, France ou États-Unis (le choix est gardé ; changer sur une photo
+en cours relance le traitement).
+
+| | France (ANTS) | États-Unis (passeport, visa) |
+|---|---|---|
+| Format | 35 × 45 mm | 2 × 2 pouces (50,8 mm) |
+| Tête | 32–36 mm, menton → sommet du crâne, **cheveux exclus** | 25,4–34,9 mm, menton → **haut des cheveux** |
+| Yeux | 50–70 % de la hauteur depuis le bas | 28,6–34,9 mm du bas (cadrage calé dessus : 31,5 mm) |
+| Fond | gris ou bleu clair (blanc interdit) | blanc |
+| Expression | neutre, sans sourire | neutre ou sourire naturel, bouche fermée |
+| Planche 10×15 | 8 photos | 2 photos (une rangée de plus ne tient pas) |
+
+Dans « Mes photos », chaque photo garde sa norme ; une planche ne mélange pas les
+deux tailles.
 
 ## Ce que fait l'appli
 
