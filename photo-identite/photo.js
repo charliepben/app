@@ -374,9 +374,20 @@ export function nettoyerBords(pixels, alpha, w, h, versU, geo) {
   // au-dessus du front, sans la peau (frange, front degarni)
   const cheveux = modele((x, y) => y < geo.front && y > geo.front - 0.3 * M && Math.abs(x) < 0.3 * Lv,
     peau ? (i) => dE(i, peau.m) < 2 * peau.ecart : null);
-  const habits = modele((x, y) => y > 1.3 * M && y < 1.9 * M && Math.abs(x) < 0.7 * Lv);
-  // au-dessus du menton : cheveux ou peau ; plus bas, aussi vetements/epaules
-  const haut = [cheveux, peau].filter(Boolean), bas = [cheveux, peau, habits].filter(Boolean);
+  // vetements : sous le menton, sur toute la largeur des epaules, en deux
+  // teintes (foncee / claire) pour un pull a rayures ou une chemise sous un pull
+  const zoneHabits = (x, y) => y > 1.15 * M && y < 1.9 * M && Math.abs(x) < 1.2 * Lv;
+  let medianeHabits = 50;
+  {
+    const ls = [];
+    for (let i = 0; i < N; i += 7) if (alpha[i * 4 + 3] > 242 && zoneHabits(U[i * 2] - cx, U[i * 2 + 1])) ls.push(Lab[i * 3]);
+    if (ls.length) medianeHabits = percentile(ls, 0.5);
+  }
+  const habitsF = modele((x, y) => zoneHabits(x, y), (i) => Lab[i * 3] > medianeHabits);
+  const habitsC = modele((x, y) => zoneHabits(x, y), (i) => Lab[i * 3] <= medianeHabits);
+  const habits = habitsF || habitsC;
+  // en haut : cheveux ou peau ; plus bas, aussi vetements/epaules
+  const haut = [cheveux, peau].filter(Boolean), bas = [cheveux, peau, habitsF, habitsC].filter(Boolean);
   if (!cheveux || !peau) return 0;
 
   const z = new Float32Array(N), Q = new Float32Array(N), dehors = new Float32Array(N);
@@ -387,15 +398,21 @@ export function nettoyerBords(pixels, alpha, w, h, versU, geo) {
     // estime) et le visage ; ce sont forcement des cheveux ou de la peau
     const crane = y < 0 ? (x / (0.5 * Lv)) ** 2 + (y / geo.craneEstime) ** 2 < 1 : Math.abs(x) < 0.5 * Lv && y < 1.05 * M;
     if (crane) continue;
-    if (y > M && !habits) continue;   // sans couleur de vetements apprise, on ne touche pas au buste
+    // Sous les yeux, les epaules peuvent monter haut (enfant, epaules hautes) :
+    // les vetements y sont permis des la mi-hauteur du visage, pas seulement
+    // sous le menton. Sans couleur de vetements apprise, on ne touche pas au buste.
+    const corps = y > 0.5 * M;
+    if (corps && !habits) continue;
     let zi = Infinity;
-    for (const md of (y > M ? bas : haut)) zi = Math.min(zi, dE(i, md.m) / md.ecart);
+    for (const md of (corps ? bas : haut)) zi = Math.min(zi, dE(i, md.m) / md.ecart);
     z[i] = zi;
     Q[i] = lisse(1.8, 3, zi);
   }
   const echelle = Math.hypot(versU(10, 0).x - versU(0, 0).x, versU(10, 0).y - versU(0, 0).y) / 10;
   const sig = (0.03 * M) / echelle;
   flou(Q, w, h, sig);
+  const avant = new Uint8ClampedArray(N);
+  for (let i = 0; i < N; i++) avant[i] = alpha[i * 4 + 3];
   let retires = 0;
   for (let passe = 0; passe < 6; passe++) {
     for (let i = 0; i < N; i++) dehors[i] = alpha[i * 4 + 3] < 25 ? 1 : 0;
@@ -410,6 +427,18 @@ export function nettoyerBords(pixels, alpha, w, h, versU, geo) {
     }
     retires += n;
     if (!n) break;
+  }
+
+  // Securite : le nettoyage vise de petits objets colles (coussin, livre). S'il
+  // a efface une grande surface sous le visage, c'est qu'il a pris le buste
+  // pour du decor : on annule tout ce qu'il a fait sous les yeux.
+  let opaque = 0, efface = 0;
+  for (let i = 0; i < N; i++) {
+    opaque += avant[i];
+    if (U[i * 2 + 1] > 0.5 * M) efface += avant[i] - alpha[i * 4 + 3];
+  }
+  if (efface > 0.03 * opaque) {
+    for (let i = 0; i < N; i++) if (U[i * 2 + 1] > 0.5 * M) alpha[i * 4 + 3] = avant[i];
   }
   return retires;
 }
