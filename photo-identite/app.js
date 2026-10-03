@@ -24,10 +24,106 @@ function erreur(msg) {
   e.classList.toggle('cache', !msg);
 }
 
-function progression(etape, fraction = null, detail = '') {
-  $('etape').textContent = etape;
-  $('detail').textContent = detail;
-  if (fraction !== null) $('barre').style.width = `${Math.round(fraction * 100)}%`;
+// ---------------------------------------------------------------- Progression
+// Deux barres : le telechargement des modeles (octets reels, une seule fois) et
+// le traitement de la photo. Le detourage ne donne pas d'avancement : la barre
+// avance selon la duree mesuree la fois precedente sur cet appareil, et ralentit
+// a l'approche de la fin si le calcul dure plus que prevu.
+const ETAPES = {   // part de la barre de traitement
+  lecture: [0, 0.05],
+  visage: [0.05, 0.15],
+  detourage: [0.15, 0.85],
+  finitions: [0.85, 1],
+};
+const progres = {
+  fichiers: new Map(),    // cle -> [fait, total]
+  etape: null, t0: 0, duree: 1, minuterie: null, valeur: 0,
+
+  depart() {
+    this.fichiers.clear();
+    this.valeur = 0;
+    $('bloc-telechargement').classList.add('cache');
+    $('barre-traitement').style.width = '0%';
+    $('pct-traitement').textContent = '0 %';
+    for (const li of $('etapes').children) li.className = '';
+    clearInterval(this.minuterie);
+    this.minuterie = setInterval(() => this.animer(), 200);
+  },
+  fin() { clearInterval(this.minuterie); this.poser(1); },
+
+  telechargement(cle, fait, total) {
+    if (!total) return;
+    const avant = this.fichiers.get(cle);
+    this.fichiers.set(cle, [fait, total]);
+    if (!avant && fait >= total) return;        // deja en cache : rien a montrer
+    let f = 0, t = 0;
+    for (const [a, b] of this.fichiers.values()) { f += a; t += b; }
+    const bloc = $('bloc-telechargement');
+    bloc.classList.remove('cache');
+    $('barre-telechargement').style.width = `${(100 * f) / t}%`;
+    $('pct-telechargement').textContent = `${Math.floor((100 * f) / t)} %`;
+    $('detail-telechargement').textContent = f >= t
+      ? `✓ ${(t / 1e6).toFixed(0)} Mo téléchargés, gardés sur le téléphone.`
+      : `${(f / 1e6).toFixed(1).replace('.', ',')} / ${(t / 1e6).toFixed(0)} Mo — une seule fois, ensuite ils restent sur le téléphone.`;
+    if (f < t) this.t0 = performance.now();      // le detourage ne demarre qu'apres
+  },
+  telechargeEnCours() {
+    for (const [a, b] of this.fichiers.values()) if (a < b) return true;
+    return false;
+  },
+
+  etapeDebut(nom, dureeEstimee = 1) {
+    const lis = [...$('etapes').children];
+    const i = lis.findIndex((li) => li.dataset.etape === nom);
+    lis.forEach((li, k) => { li.className = k < i ? 'fait' : k === i ? 'en-cours' : ''; });
+    this.etape = nom; this.t0 = performance.now(); this.duree = Math.max(0.5, dureeEstimee);
+    this.poser(ETAPES[nom][0]);
+  },
+  animer() {
+    if (!this.etape || this.telechargeEnCours()) return;
+    const [a, b] = ETAPES[this.etape];
+    const t = (performance.now() - this.t0) / 1000 / this.duree;
+    // lineaire jusqu'a 85 % de l'etape a la duree prevue, puis de plus en plus lent
+    const f = t < 1 ? 0.85 * t : 0.85 + 0.14 * (1 - Math.exp(-(t - 1) * 1.5));
+    this.poser(a + (b - a) * f);
+  },
+  poser(v) {
+    if (v < this.valeur) return;
+    this.valeur = v;
+    $('barre-traitement').style.width = `${(v * 100).toFixed(1)}%`;
+    $('pct-traitement').textContent = `${Math.floor(v * 100)} %`;
+  },
+};
+
+// Duree du detourage mesuree sur cet appareil, pour la prochaine estimation
+const cleDuree = () => `photo-identite-duree-${moteurDetourage()}`;
+function dureeDetourage() {
+  try { return +localStorage.getItem(cleDuree()) || 20; } catch { return 20; }
+}
+function noterDureeDetourage(s) {
+  try { localStorage.setItem(cleDuree(), String(Math.round(s * 10) / 10)); } catch { /* facultatif */ }
+}
+
+// Telechargement avec avancement (modele du visage)
+async function telechargerAvecProgres(url, cle) {
+  const rep = await fetch(url);
+  if (!rep.ok) throw new Error(`Téléchargement impossible (${rep.status})`);
+  const total = +rep.headers.get('content-length') || 0;
+  if (!rep.body || !total) return new Uint8Array(await rep.arrayBuffer());
+  const lecteur = rep.body.getReader();
+  const morceaux = [];
+  let fait = 0;
+  for (;;) {
+    const { done, value } = await lecteur.read();
+    if (done) break;
+    morceaux.push(value); fait += value.length;
+    progres.telechargement(cle, fait, total);
+  }
+  progres.telechargement(cle, fait, fait);
+  const buf = new Uint8Array(fait);
+  let o = 0;
+  for (const m of morceaux) { buf.set(m, o); o += m.length; }
+  return buf;
 }
 
 // ---------------------------------------------------------------- Etat
@@ -50,9 +146,12 @@ let landmarker = null;
 async function chargerLandmarker() {
   if (landmarker) return landmarker;
   const { FaceLandmarker, FilesetResolver } = await import('./vendor/vision_bundle.mjs');
-  const fileset = await FilesetResolver.forVisionTasks(MP_WASM);
+  const [fileset, modele] = await Promise.all([
+    FilesetResolver.forVisionTasks(MP_WASM),
+    telechargerAvecProgres(MP_MODELE, 'visage'),
+  ]);
   const options = (delegate) => ({
-    baseOptions: { modelAssetPath: MP_MODELE, delegate },
+    baseOptions: { modelAssetBuffer: modele, delegate },
     runningMode: 'IMAGE',
     numFaces: 3,
     outputFaceBlendshapes: true,
@@ -118,16 +217,19 @@ async function detecterVisage(source) {
   return { pts, bs, angles: angles(mat), visages: n };
 }
 
-// Moteur de detourage : isnet (IMG.LY, par defaut), modnet ou rmbg (voir
-// detourage.js). Choix par ?detourage=... dans l'adresse, garde ensuite.
+// Moteur de detourage : rmbg (BRIA RMBG-1.4, par defaut : le plus propre sur
+// les cheveux, et son calcul tourne hors de l'ecran), isnet (IMG.LY) ou modnet
+// (voir detourage.js). Choix par ?detourage=... dans l'adresse, garde ensuite.
+const MOTEUR_DEFAUT = 'rmbg';
 function moteurDetourage() {
+  const valide = (m) => m === 'isnet' || !!MOTEURS[m];
   const demande = new URLSearchParams(location.search).get('detourage');
   try {
-    if (demande && (demande === 'isnet' || MOTEURS[demande])) localStorage.setItem('photo-identite-moteur', demande);
+    if (demande && valide(demande)) localStorage.setItem('photo-identite-moteur', demande);
     const m = localStorage.getItem('photo-identite-moteur');
-    return m && (m === 'isnet' || MOTEURS[m]) ? m : 'isnet';
+    return m && valide(m) ? m : MOTEUR_DEFAUT;
   } catch {
-    return demande && MOTEURS[demande] ? demande : 'isnet';
+    return demande && valide(demande) ? demande : MOTEUR_DEFAUT;
   }
 }
 
@@ -146,6 +248,7 @@ async function detourer(source, zone, onProgres) {
     model: DETOURAGE_MODELE,
     device,
     output: { format: 'image/x-rgba8' },
+    proxyToWorker: true,   // calcul hors de l'ecran : la barre de progression reste fluide
     progress: (cle, fait, total) => onProgres?.(cle, fait, total),
   });
   let data;
@@ -187,10 +290,11 @@ async function traiter(fichier) {
   erreur('');
   montrer('vue-progression');
   try {
-    progression('Lecture de la photo…', 0.03);
+    progres.depart();
+    progres.etapeDebut('lecture', 0.5);
     const source = await lireImage(fichier);
 
-    progression('Recherche du visage…', 0.08, 'Chargement du modèle de repères du visage');
+    progres.etapeDebut('visage', landmarker ? 1 : 3);
     const visage = await detecterVisage(source);
     if (!visage) throw new Error("Aucun visage n'a été trouvé. Prenez une photo de face, bien éclairée, la tête entière dans l'image.");
 
@@ -203,18 +307,15 @@ async function traiter(fichier) {
     const tLarge = transformation({ ...geo, crane: Math.min(geo.crane, -1.2 * geo.menton) }, { ...DEFAUTS, tete: NORME.teteMin, marge: 7 });
     let zone = zoneUtile(tLarge, source.width, source.height, 0.3);
 
-    progression('Détourage…', 0.15, 'Chargement du modèle de détourage');
-    const suivi = (cle, fait, total) => {
-      if (cle.includes('/models/')) {
-        progression('Téléchargement du modèle de détourage (une seule fois)…', 0.15 + 0.7 * (fait / total),
-          `${(fait / 1e6).toFixed(0)} / ${(total / 1e6).toFixed(0)} Mo`);
-      } else if (fait === total) {
-        progression('Détourage en cours…', 0.88, 'Quelques secondes');
-      }
-    };
+    progres.etapeDebut('detourage', dureeDetourage());
+    const suivi = (cle, fait, total) => { if (cle !== 'fin') progres.telechargement(cle, fait, total); };
+    const tDebut = performance.now();
     let masque = await detourer(source, zone, suivi);
+    // duree du seul calcul (le telechargement remet t0 a jour tant qu'il dure)
+    noterDureeDetourage((performance.now() - Math.max(tDebut, progres.t0)) / 1000);
 
-    progression('Lumière et cadrage…', 0.95);
+    progres.etapeDebut('finitions', 2);
+    await new Promise((ok) => setTimeout(ok, 30));   // laisse la barre s'afficher
     masque.nettoyer(geo);
     affinerCrane(geo, masque.alphaEn);
     auto = cadrageAuto(geo);
@@ -226,7 +327,6 @@ async function traiter(fichier) {
     if (besoin.x < zone.x || besoin.y < zone.y || besoin.x + besoin.w > zone.x + zone.w || besoin.y + besoin.h > zone.y + zone.h) {
       const x0 = Math.min(zone.x, besoin.x), y0 = Math.min(zone.y, besoin.y);
       zone = { x: x0, y: y0, w: Math.max(zone.x + zone.w, besoin.x + besoin.w) - x0, h: Math.max(zone.y + zone.h, besoin.y + besoin.h) - y0 };
-      progression('Détourage (cadre élargi)…', 0.9);
       masque = await detourer(source, zone, suivi);
       masque.nettoyer(geo);
     }
@@ -237,6 +337,7 @@ async function traiter(fichier) {
       auto,
       reglages: { ...DEFAUTS, ...auto },
     });
+    progres.fin();
     synchroniserCurseurs();
     $('garder-ok').classList.add('cache');
     $('garder-nom').value = '';
@@ -244,6 +345,7 @@ async function traiter(fichier) {
     rendre();
   } catch (e) {
     console.error(e);
+    clearInterval(progres.minuterie);
     montrer('vue-accueil');
     erreur(e?.message || String(e));
   }

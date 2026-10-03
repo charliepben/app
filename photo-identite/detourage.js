@@ -18,7 +18,7 @@ export const MOTEURS = {
   rmbg: {
     nom: 'BRIA RMBG-1.4',
     fichiers: [1, 2, 3, 4, 5].map((n) => `${CDN}@rmbg/model-briaai@0.0.1/briaai-${n}.onnx`),
-    taille: 44404026,
+    taille: 44403226,
     sha256: 'a6648479275dfd0ede0f3a8abc20aa5c437b394681b05e5af6d268250aaf40f3',
   },
 };
@@ -40,6 +40,7 @@ async function telechargerModele(m, onProgres) {
       onProgres?.(fait, m.taille);
     }
   }
+  onProgres?.(fait, fait);   // termine, quelle que soit la taille annoncee
   const buf = new Uint8Array(fait);
   let o = 0;
   for (const c of morceaux) { buf.set(c, o); o += c.length; }
@@ -52,6 +53,8 @@ async function session(ort, nom, onProgres) {
   if (sessions[nom]) return sessions[nom];
   ort.env.wasm.wasmPaths = `${CDN}onnxruntime-web@${ORT_VERSION}/dist/`;
   ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 4) : 1;
+  // calcul dans un worker : l'ecran (barre de progression) reste fluide
+  ort.env.wasm.proxy = true;
   const buf = await telechargerModele(MOTEURS[nom], onProgres);
   const essais = navigator.gpu ? [['webgpu'], ['wasm']] : [['wasm']];
   let derniere;
