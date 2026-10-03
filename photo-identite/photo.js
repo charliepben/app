@@ -40,6 +40,13 @@ export const OVALE = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288,
 const K_CRANE = 0.85;      // estimation quand la silhouette est inutilisable
 const K_PLAFOND = 0.9;     // au-dessus, ce sont des cheveux qui depassent
 const K_SILHOUETTE_MIN = 0.7;
+// Ces rapports valent pour un adulte. Un enfant a un crane plus grand par
+// rapport au visage : ses yeux sont plus bas dans la tete. Le maillage le voit
+// au front (point 10) : sa hauteur au-dessus des pupilles vaut ~0,43 x la
+// distance pupilles-menton chez l'adulte, ~0,52 chez un enfant de 6-8 ans.
+// On met les rapports a l'echelle de cette mesure.
+const FRONT_ADULTE = 0.43;
+const proportion = (geo) => Math.min(1.3, Math.max(0.9, -geo.front / geo.menton / FRONT_ADULTE));
 
 // ---------------------------------------------------------------- Geometrie
 const rot = (x, y, a) => ({ x: x * Math.cos(a) - y * Math.sin(a), y: x * Math.sin(a) + y * Math.cos(a) });
@@ -59,7 +66,7 @@ export function geometrie(pts) {
   const ovale = OVALE.map((i) => versR(pts[i]));
   const xs = ovale.map((p) => p.x);
   const gauche = Math.min(...xs), droite = Math.max(...xs);
-  const crane = -K_CRANE * menton.y;
+  const crane = -K_CRANE * Math.min(1.3, Math.max(0.9, -front.y / menton.y / FRONT_ADULTE)) * menton.y;
 
   return {
     angle, pivot, versR, versS,
@@ -111,13 +118,16 @@ export function affinerCrane(geo, alphaEnSource) {
   const haut = hauts[Math.floor(hauts.length / 2)];
   const k = -haut / geo.menton;
   geo.hautCheveux = haut;
-  if (k < K_SILHOUETTE_MIN) { geo.mode = 'estime'; return geo; }
-  geo.mode = k <= K_PLAFOND ? 'silhouette' : 'volume';
-  geo.crane = -Math.min(k, K_PLAFOND) * geo.menton;
+  const p = proportion(geo);
+  const kMax = K_PLAFOND * p, court = 0.85 * p;
+  geo.proportion = p;
+  if (k < K_SILHOUETTE_MIN * p) { geo.mode = 'estime'; return geo; }
+  geo.mode = k <= kMax ? 'silhouette' : 'volume';
+  geo.crane = -Math.min(k, kMax) * geo.menton;
   // Taille visee : 35 mm quand le repere est le haut visible de cheveux courts
   // (le crane est ~1 mm dessous) ; 34,5 mm quand il est plafonne, ce qui centre
   // la tolerance pour un crane reel entre 0,8 et 0,95.
-  const f = Math.min(1, Math.max(0, (k - 0.85) / (K_PLAFOND - 0.85)));
+  const f = Math.min(1, Math.max(0, (k - court) / (kMax - court)));
   geo.teteCible = NORME.teteSilhouette + (NORME.teteVolume - NORME.teteSilhouette) * f;
   return geo;
 }
@@ -315,6 +325,80 @@ export function affinerMasque(pixels, alpha, w, h) {
     if (residu > 0.12) an = Math.min(an, a * (1 - lisse(0.12, 0.3, residu)) + 0.2 * a);
     alpha[i * 4 + 3] = Math.round(Math.min(1, Math.max(0, an)) * 255);
   }
+}
+
+// ---------------------------------------------------------------- Objets colles a la tete
+// Un coussin, un dossier ou un mur clair juste derriere la tete est parfois
+// detoure avec les cheveux. Au-dessus du front, tout ce qui est detoure devrait
+// etre des cheveux : on apprend leur teinte juste au-dessus du front, puis on
+// retire plus haut ce qui n'a pas du tout cette teinte. Une chevelure grise
+// ou un crane rase donnent une teinte apprise grise ou de peau : rien n'est
+// retire a tort.
+// versU(x, y) : pixel du masque -> repere redresse du visage (voir geometrie).
+export function nettoyerDessusTete(pixels, alpha, w, h, versU, geo) {
+  const haut = geo.front, bande = 0.25 * geo.menton;
+  // teinte = couleur a clarte egale ; mal definie dans le noir (racines,
+  // ombres) : ces pixels ne servent ni a apprendre ni a juger
+  const clarte = (i) => 0.2126 * lin[pixels[i * 4]] + 0.7152 * lin[pixels[i * 4 + 1]] + 0.0722 * lin[pixels[i * 4 + 2]];
+  const teinte = (i) => {
+    const r = lin[pixels[i * 4]], g = lin[pixels[i * 4 + 1]], b = lin[pixels[i * 4 + 2]];
+    const l = 0.2126 * r + 0.7152 * g + 0.0722 * b + 1e-4;
+    return [r / l, g / l, b / l];
+  };
+  let n = 0;
+  const m = [0, 0, 0];
+  const ech = [];
+  for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) {
+    const i = y * w + x;
+    if (alpha[i * 4 + 3] < 242) continue;
+    const u = versU(x, y);
+    if (u.y >= haut || u.y < haut - bande || Math.abs(u.x - geo.centreX) > 0.25 * geo.largeurVisage) continue;
+    if (clarte(i) < 0.03) continue;
+    const c = teinte(i);
+    m[0] += c[0]; m[1] += c[1]; m[2] += c[2]; n++;
+    ech.push(c);
+  }
+  if (n < 200) return 0;
+  m[0] /= n; m[1] /= n; m[2] /= n;
+  const dist = (c) => Math.hypot(c[0] - m[0], c[1] - m[1], c[2] - m[2]);
+  const ecart = Math.max(0.06, percentile(ech.map(dist), 0.8));
+  // Ecart a la teinte des cheveux, pixel par pixel, au-dessus du front
+  const N = w * h;
+  const z = new Float32Array(N), Q = new Float32Array(N), dehors = new Float32Array(N);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x;
+    const a = alpha[i * 4 + 3];
+    dehors[i] = a < 25 ? 1 : 0;
+    if (a < 8) continue;
+    const u = versU(x, y);
+    // seulement au-dessus du crane estime : en dessous, ce sont forcement des cheveux
+    if (u.y >= Math.min(haut - 0.05 * geo.menton, geo.craneEstime) || clarte(i) < 0.02) continue;
+    z[i] = dist(teinte(i)) / ecart;
+    Q[i] = lisse(1.8, 3, z[i]);
+  }
+  // On ne retire qu'une ZONE d'une autre couleur qui touche l'exterieur de la
+  // silhouette (un coussin derriere la tete) ; un reflet clair ou une meche
+  // grise au milieu des cheveux n'y touche pas : on n'y touche pas. Plusieurs
+  // passes : chaque passe ronge l'objet depuis l'exterieur, jusqu'aux cheveux.
+  const echelle = Math.hypot(versU(10, 0).x - versU(0, 0).x, versU(10, 0).y - versU(0, 0).y) / 10;  // unites visage par pixel
+  const sig = (0.03 * geo.menton) / echelle;
+  flou(Q, w, h, sig);
+  let retires = 0;
+  for (let passe = 0; passe < 6; passe++) {
+    for (let i = 0; i < N; i++) dehors[i] = alpha[i * 4 + 3] < 25 ? 1 : 0;
+    flou(dehors, w, h, sig * 0.5);
+    let n = 0;
+    for (let i = 0; i < N; i++) {
+      if (!z[i] || alpha[i * 4 + 3] < 25) continue;
+      const q = lisse(0.25, 0.5, Q[i]) * lisse(0.05, 0.15, dehors[i]) * lisse(1.5, 2.5, z[i]);
+      if (q <= 0.02) continue;
+      alpha[i * 4 + 3] = Math.round(alpha[i * 4 + 3] * (1 - q));
+      n++;
+    }
+    retires += n;
+    if (!n) break;
+  }
+  return retires;
 }
 
 // ---------------------------------------------------------------- Rendu

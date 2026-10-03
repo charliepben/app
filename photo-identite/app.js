@@ -1,7 +1,7 @@
 import {
   NORME, PX_MM, W, H, FONDS,
   geometrie, affinerCrane, cadrageAuto, transformation, appliquerTransfo, zoneUtile,
-  rendrePhoto, mesures, angles, planche, jpeg, PLANCHE, versPhoto, affinerMasque,
+  rendrePhoto, mesures, angles, planche, jpeg, PLANCHE, versPhoto, affinerMasque, nettoyerDessusTete,
 } from './photo.js';
 
 // Les modeles sont charges depuis les CDN officiels, puis gardes en cache.
@@ -149,7 +149,15 @@ async function detourer(source, zone, onProgres) {
     if (px < 0 || py < 0 || px >= w || py >= h) return 0;
     return data[(py * w + px) * 4 + 3];
   };
-  return { canvas: m, alphaEn };
+  // Retire ce qui est colle au-dessus de la tete sans etre des cheveux
+  // (coussin, dossier), puis remet le masque a jour.
+  const nettoyer = (geo) => {
+    const versU = (px, py) => geo.versR({ x: px / k + zone.x, y: py / k + zone.y });
+    if (nettoyerDessusTete(pixels, data, w, h, versU, geo)) {
+      m.getContext('2d').putImageData(new ImageData(data, w, h), 0, 0);
+    }
+  };
+  return { canvas: m, alphaEn, nettoyer };
 }
 
 async function traiter(fichier) {
@@ -179,6 +187,7 @@ async function traiter(fichier) {
     });
 
     progression('Lumière et cadrage…', 0.95);
+    masque.nettoyer(geo);
     affinerCrane(geo, masque.alphaEn);
     auto = cadrageAuto(geo);
 
