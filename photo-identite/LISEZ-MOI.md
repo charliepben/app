@@ -8,7 +8,7 @@ quitte pas l'appareil, pas de serveur, pas de clé d'API.
 
 1. **Repères du visage** (MediaPipe Face Landmarker, 478 points) : yeux, menton,
    ovale, orientation de la tête, yeux ouverts, sourire, bouche ouverte.
-2. **Détourage** (IMG.LY, modèle ISNet fp16) sur la seule zone utile autour de la
+2. **Détourage** (BRIA RMBG-1.4, voir `detourage.js`) sur la seule zone utile autour de la
    tête, pour mettre toute la résolution du modèle sur les cheveux et les épaules.
 3. **Cadrage** : tête redressée et centrée, ligne des yeux entre 50 et 70 % de
    la hauteur, sommet de la tête à 3,5–5 mm du bord haut. La norme mesure la
@@ -73,9 +73,10 @@ sert aux dossiers papier.
 
 - `index.html`, `app.js` : interface.
 - `album.js` : photos gardées et planches composées.
-- `detourage.js` : moteurs de détourage au choix, `?detourage=rmbg` (BRIA
-  RMBG-1.4, 44 Mo, gratuit pour un usage non commercial), `?detourage=modnet`
-  (MODNet, 26 Mo) ou `?detourage=isnet` (IMG.LY, par défaut). Le choix est gardé.
+- `detourage.js` : moteurs de détourage. Par défaut BRIA RMBG-1.4 (44 Mo,
+  gratuit pour un usage non commercial, calcul dans un worker). Au choix
+  `?detourage=isnet` (IMG.LY ISNet, 88 Mo) ou `?detourage=modnet` (MODNet,
+  26 Mo) ; le choix est gardé, `?detourage=rmbg` revient au défaut.
 - `photo.js` : géométrie, cadrage, lumière, planche, export JPEG (pur calcul).
 - `vendor/vision_bundle.mjs` : `@mediapipe/tasks-vision@1.0.1`, tel quel.
 - `vendor/background-removal.mjs` : `@imgly/background-removal@1.7.0` +

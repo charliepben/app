@@ -58,11 +58,21 @@
   .note { font-size: 13px; color: var(--dim); }
 
   /* Progression */
-  .progression { text-align: center; padding: 34px 16px; }
-  .barre { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin: 14px auto 8px; max-width: 360px; }
-  .barre div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
-  #etape { font-weight: 600; }
-  #detail { color: var(--dim); font-size: 13px; min-height: 1.4em; }
+  .progression { padding: 24px 20px; display: grid; gap: 22px; max-width: 520px; margin: 0 auto; }
+  .titre-progres { display: flex; justify-content: space-between; font-weight: 600; }
+  .titre-progres span:last-child { font-variant-numeric: tabular-nums; color: var(--accent); }
+  .barre { height: 10px; background: var(--border); border-radius: 5px; overflow: hidden; margin: 8px 0 6px; }
+  .barre div { height: 100%; width: 0; background: var(--accent); border-radius: 5px; transition: width .35s ease-out; }
+  #barre-telechargement { background: #2f7d4f; }
+  .bloc-progres .detail { color: var(--dim); font-size: 13px; }
+  .etapes { list-style: none; display: grid; gap: 6px; margin-top: 10px; font-size: 14px; color: var(--dim); }
+  .etapes li { display: flex; align-items: center; gap: 10px; }
+  .etapes li::before { content: ""; flex: none; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--border); box-sizing: border-box; }
+  .etapes li.en-cours { color: var(--text); font-weight: 600; }
+  .etapes li.en-cours::before { border-color: var(--accent); border-right-color: transparent; animation: tourne .8s linear infinite; }
+  .etapes li.fait { color: var(--text); }
+  .etapes li.fait::before { content: "✓"; border: none; width: 12px; height: auto; color: var(--ok); font-weight: 800; line-height: 1; }
+  @keyframes tourne { to { transform: rotate(360deg); } }
 
   /* Editeur */
   .editeur { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
@@ -167,14 +177,26 @@
         <li>Le fond d'origine importe peu : il sera remplacé par un fond uni gris ou bleu clair.</li>
       </ul>
     </div>
-    <p class="note">Au premier usage, l'appli télécharge ses modèles d'intelligence artificielle (environ 100 Mo, une seule fois). Ensuite tout fonctionne hors connexion.</p>
+    <p class="note">Au premier usage, l'appli télécharge ses modèles d'intelligence artificielle (environ 50 Mo, une seule fois). Ensuite tout fonctionne hors connexion.</p>
   </section>
 
   <!-- 2. Traitement -->
   <section id="vue-progression" class="carte progression cache" aria-live="polite">
-    <div id="etape">Préparation…</div>
-    <div class="barre"><div id="barre"></div></div>
-    <div id="detail"></div>
+    <div id="bloc-telechargement" class="bloc-progres cache">
+      <div class="titre-progres"><span>⬇︎ Téléchargement des modèles d'IA</span><span id="pct-telechargement"></span></div>
+      <div class="barre"><div id="barre-telechargement"></div></div>
+      <div class="detail" id="detail-telechargement">Une seule fois : ensuite ils restent sur le téléphone.</div>
+    </div>
+    <div class="bloc-progres">
+      <div class="titre-progres"><span>⚙︎ Traitement de la photo</span><span id="pct-traitement"></span></div>
+      <div class="barre"><div id="barre-traitement"></div></div>
+      <ol class="etapes" id="etapes">
+        <li data-etape="lecture">Lecture de la photo</li>
+        <li data-etape="visage">Repères du visage</li>
+        <li data-etape="detourage">Détourage</li>
+        <li data-etape="finitions">Lumière, couleurs et cadrage</li>
+      </ol>
+    </div>
   </section>
 
   <!-- 3. Edition -->
@@ -269,7 +291,7 @@
 
   <footer>
     <p>Rappel ANTS : photo de moins de 6 mois, ressemblante, sans retouche du visage. Pour une démarche <em>en ligne</em> (permis de conduire, titre de séjour…), il faut une e-photo avec code numérique, faite chez un photographe ou une cabine agréés : cette appli convient aux dossiers papier (CNI, passeport en mairie, etc.).</p>
-    <p style="margin-top:6px">Traitement 100 % local : détourage <a href="https://github.com/imgly/background-removal-js" target="_blank" rel="noopener">IMG.LY</a> (AGPL), repères du visage <a href="https://ai.google.dev/edge/mediapipe" target="_blank" rel="noopener">MediaPipe</a>.</p>
+    <p style="margin-top:6px">Traitement 100 % local : détourage <a href="https://huggingface.co/briaai/RMBG-1.4" target="_blank" rel="noopener">BRIA RMBG-1.4</a> (usage non commercial), repères du visage <a href="https://ai.google.dev/edge/mediapipe" target="_blank" rel="noopener">MediaPipe</a>.</p>
   </footer>
 </main>
 
