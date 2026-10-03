@@ -808,6 +808,55 @@ function horsSource(t, sw, sh) {
   return n / tot;
 }
 
+// ---------------------------------------------------------------- Dents
+// Dents visibles ? Les reperes du visage ne disent pas si l'on voit les dents :
+// on mesure l'ecart entre les levres (contour interieur de la bouche) et on
+// cherche, dans cette ouverture, des pixels clairs et peu colores (l'email des
+// dents, plus blanc que les levres et la peau).
+const LEVRE_HAUT = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308];
+const LEVRE_BAS = [324, 318, 402, 317, 14, 87, 178, 88, 95];
+export function dentsVisibles(source, pts) {
+  const M = Math.hypot(pts[152].x - pts[168].x, pts[152].y - pts[168].y) || 1;   // nez -> menton
+  const ecart = Math.hypot(pts[13].x - pts[14].x, pts[13].y - pts[14].y) / M;
+  const poly = [...LEVRE_HAUT, ...LEVRE_BAS].map((i) => pts[i]);
+  const xs = poly.map((p) => p.x), ys = poly.map((p) => p.y);
+  const x0 = Math.max(0, Math.floor(Math.min(...xs))), y0 = Math.max(0, Math.floor(Math.min(...ys)));
+  const w = Math.max(1, Math.ceil(Math.max(...xs)) - x0), h = Math.max(1, Math.ceil(Math.max(...ys)) - y0);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(source, x0, y0, w, h, 0, 0, w, h);
+  const img = x.getImageData(0, 0, w, h).data;
+  // masque de l'ouverture
+  const m = document.createElement('canvas'); m.width = w; m.height = h;
+  const mx = m.getContext('2d', { willReadFrequently: true });
+  mx.fillStyle = '#fff'; mx.beginPath();
+  poly.forEach((p, i) => (i ? mx.lineTo(p.x - x0, p.y - y0) : mx.moveTo(p.x - x0, p.y - y0)));
+  mx.closePath(); mx.fill();
+  const md = mx.getImageData(0, 0, w, h).data;
+  // reference : les levres = le contour de la boite hors ouverture
+  // Les dents se distinguent des levres par une couleur bien moins saturee et
+  // une clarte au moins egale. En relatif : sous une lumiere chaude, l'email
+  // parait jaune et ne serait jamais « blanc » dans l'absolu.
+  let n = 0, blancs = 0, lRef = 0, nRef = 0;
+  const L = (i) => 0.2126 * lin[img[i]] + 0.7152 * lin[img[i + 1]] + 0.0722 * lin[img[i + 2]];
+  const S = (i) => { const mxc = Math.max(img[i], img[i + 1], img[i + 2]); return mxc ? (mxc - Math.min(img[i], img[i + 1], img[i + 2])) / mxc : 0; };
+  const sats = [];
+  for (let i = 0; i < w * h * 4; i += 4) if (md[i + 3] < 128) { lRef += L(i); nRef++; sats.push(S(i)); }
+  lRef = nRef ? lRef / nRef : 0.2;
+  sats.sort((a, b) => a - b);
+  const satRef = sats.length ? sats[Math.floor(sats.length / 2)] : 0.4;
+  for (let i = 0; i < w * h * 4; i += 4) {
+    if (md[i + 3] < 128) continue;
+    n++;
+    if (S(i) < Math.min(0.3, satRef * 0.8) + 0.05 && L(i) > lRef * 1.1) blancs++;
+  }
+  const partBlanche = n ? blancs / n : 0;
+  const surface = n / (M * M);
+  // levres jointes : ecart < 2 % ; dents : une part nette de blanc dans l'ouverture
+  const visible = ecart > 0.03 && surface > 0.004 && partBlanche > 0.15;
+  return { visible, entrouverte: ecart > 0.03, ecart, partBlanche };
+}
+
 // ---------------------------------------------------------------- Mesures
 // Position (en mm, depuis le haut de la photo) du crane, du menton, des yeux.
 export function mesures(geo, t) {
