@@ -20,10 +20,20 @@ quitte pas l'appareil, pas de serveur, pas de clé d'API.
      0,9 × la distance pupilles–menton au-dessus des pupilles, réglé à 34,5 mm ;
    - silhouette inutilisable : estimation à 0,85 ×, 34 mm.
    Pupilles, menton et sommet détectés sont marqués sur le gabarit.
-4. **Lumière** : exposition automatique, atténuation des ombres sur le visage
-   (l'éclairage basse fréquence est égalisé, la texture de la peau est gardée),
-   décontamination des bords (les cheveux ne gardent pas la couleur de l'ancien
-   fond), légère netteté.
+4. **Lumière** :
+   - balance des blancs : la couleur de la peau varie peu d'une personne à
+     l'autre dans le plan a*b* de CIELAB (teinte 47–58°, chroma ≤ 30), seule sa
+     clarté change vraiment. Si une lampe (jaune) ou l'ombre (bleue) l'en fait
+     sortir, des gains vert et bleu (von Kries, comme un appareil photo) l'y
+     ramènent en bougeant le moins possible ; une peau déjà dans la zone n'est
+     pas touchée ;
+   - reflets : un point du visage plus clair ET plus blanc que la peau (front,
+     nez qui brillent) est ramené vers la couleur moyenne de la peau, avec une
+     clarté comprimée pour garder le relief ;
+   - ombres : l'éclairage basse fréquence du visage est égalisé (moitié dans
+     l'ombre, ombre sous le menton), la texture de la peau est gardée ;
+   - exposition automatique, décontamination des bords (les cheveux ne gardent
+     pas la couleur de l'ancien fond), légère netteté.
 5. **Fond** uni gris clair ou bleu clair (le blanc est interdit).
 6. **Contrôles** : taille de tête, position des yeux, centrage, tête de face,
    yeux ouverts, expression neutre, résolution, cadre complet.
