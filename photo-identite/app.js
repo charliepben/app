@@ -287,15 +287,16 @@ async function detourer(source, zone, onProgres) {
   return { canvas: m, alphaEn, nettoyer };
 }
 
-let dernierFichier = null;
-async function traiter(fichier) {
-  dernierFichier = fichier;
+// source : image deja lue (changement de norme). On ne relit pas le fichier :
+// sur Android, un fichier choisi ou pris en photo n'est souvent plus lisible
+// une fois le selecteur referme.
+async function traiter(fichier, sourceDejaLue = null) {
   erreur('');
   montrer('vue-progression');
   try {
     progres.depart();
     progres.etapeDebut('lecture', 0.5);
-    const source = await lireImage(fichier);
+    const source = sourceDejaLue || await lireImage(fichier);
 
     progres.etapeDebut('visage', landmarker ? 1 : 3);
     const visage = await detecterVisage(source);
@@ -796,7 +797,7 @@ $('normes').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-norme]');
   if (!b || b.dataset.norme === NORME.id) return;
   appliquerNorme(b.dataset.norme);
-  if (dernierFichier && !$('vue-editeur').classList.contains('cache')) traiter(dernierFichier);
+  if (etat.source && !$('vue-editeur').classList.contains('cache')) traiter(null, etat.source);
 });
 
 // Pour les tests automatises
