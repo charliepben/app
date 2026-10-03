@@ -18,8 +18,13 @@ en cours relance le traitement).
 | Expression | neutre, sans sourire | neutre ou sourire naturel, bouche fermée |
 | Planche 10×15 | 8 photos | 2 photos (une rangée de plus ne tient pas) |
 
-Dans « Mes photos », chaque photo garde sa norme ; une planche ne mélange pas les
-deux tailles.
+Dans « Mes photos », chaque photo garde sa norme, et les deux tailles se
+mélangent sur les planches : `agencer()` place chaque photo à la position libre
+la plus haute puis la plus à gauche, droite ou tournée d'un quart de tour
+(marge et écart 2,4 mm). Exemples : 8 françaises ; 2 américaines + 4
+françaises (dont 2 tournées). Plus de 2 américaines ne tiennent pas avec des
+marges : 3 × 50,8 = 152,4 mm et 2 × 50,8 = 101,6 mm, soit la planche entière
+bord à bord, que la borne risque de rogner.
 
 ## Ce que fait l'appli
 
