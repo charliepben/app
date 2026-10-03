@@ -10,12 +10,16 @@ quitte pas l'appareil, pas de serveur, pas de clé d'API.
    ovale, orientation de la tête, yeux ouverts, sourire, bouche ouverte.
 2. **Détourage** (IMG.LY, modèle ISNet fp16) sur la seule zone utile autour de la
    tête, pour mettre toute la résolution du modèle sur les cheveux et les épaules.
-3. **Cadrage** : tête redressée, centrée, **34 mm du menton au sommet du crâne**
-   (tolérance 32–36 mm, cheveux exclus), sommet du crâne à 3,5–5 mm du bord haut,
-   ligne des yeux entre 50 et 70 % de la hauteur.
-   Le sommet du crâne est estimé à 0,85 × la distance pupilles–menton au-dessus
-   des pupilles, puis rabaissé si la silhouette détourée s'arrête plus bas (crâne
-   rasé, cheveux courts). Un curseur permet de corriger ce repère à l'œil.
+3. **Cadrage** : tête redressée et centrée, ligne des yeux entre 50 et 70 % de
+   la hauteur, sommet de la tête à 3,5–5 mm du bord haut. La norme mesure la
+   tête « du menton au sommet du crâne, hors cheveux qui dépassent » (32–36 mm).
+   Le sommet est trouvé sur le détourage, en remontant depuis le front :
+   - cheveux courts ou plaqués, crâne rasé : c'est le haut visible de la tête,
+     réglé à 35 mm (le crâne est ~1 mm dessous, toujours dans la tolérance) ;
+   - cheveux qui dépassent (volume, chignon) : le repère est plafonné à
+     0,9 × la distance pupilles–menton au-dessus des pupilles, réglé à 34,5 mm ;
+   - silhouette inutilisable : estimation à 0,85 ×, 34 mm.
+   Pupilles, menton et sommet détectés sont marqués sur le gabarit.
 4. **Lumière** : exposition automatique, atténuation des ombres sur le visage
    (l'éclairage basse fréquence est égalisé, la texture de la peau est gardée),
    décontamination des bords (les cheveux ne gardent pas la couleur de l'ancien
