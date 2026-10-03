@@ -41,7 +41,7 @@ const etat = {
   avant: false,
 };
 
-const DEFAUTS = { dx: 0, dy: 0, rot: 0, crane: 0, lumiere: 0, ombres: 0.8, reflets: 0.6, temperature: 0, nettete: 0.35, fond: 'gris' };
+const DEFAUTS = { dx: 0, dy: 0, rot: 0, crane: 0, lumiere: 0, ombres: 0.8, reflets: 0.6, meches: 0.8, temperature: 0, nettete: 0.35, fond: 'gris' };
 
 // ---------------------------------------------------------------- Chargement des modeles
 let landmarker = null;
@@ -373,6 +373,7 @@ const CURSEURS = {
   lumiere: (v) => `${v > 0 ? '+' : ''}${v.toFixed(2).replace('.', ',')}`,
   ombres: (v) => `${Math.round(v * 100)} %`,
   reflets: (v) => `${Math.round(v * 100)} %`,
+  meches: (v) => `${Math.round(v * 100)} %`,
   temperature: (v) => (Math.abs(v) < 0.01 ? 'neutre' : `${v > 0 ? '+' : ''}${Math.round(v * 100)}`),
   nettete: (v) => `${Math.round(v * 100)} %`,
 };

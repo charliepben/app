@@ -264,6 +264,8 @@ export function rendrePhoto({ source, masque, zone, geo, reglages: r, fond }) {
   const od = xo.getImageData(0, 0, W, H).data;
   const N = W * H;
 
+  const largV = geo.largeurVisage * t.s;
+
   // --- Alpha : leger resserrement du bord pour eviter le liseré de l'ancien fond
   const A = new Float32Array(N);
   for (let i = 0; i < N; i++) {
@@ -271,29 +273,55 @@ export function rendrePhoto({ source, masque, zone, geo, reglages: r, fond }) {
     A[i] = Math.min(1, Math.max(0, (a - 0.08) / 0.84));
   }
 
+  // --- Meches folles et ilots : un cheveu isole qui part loin de la chevelure,
+  // ou un bout de decor detoure par erreur, n'a presque pas de « masse » opaque
+  // autour de lui. On l'efface progressivement ; le bord de la chevelure, qui
+  // touche une masse pleine, reste doux et intact. Comme un photographe qui
+  // lisse la coiffure avant la prise de vue.
+  const discipline = r.meches ?? 0.8;
+  if (discipline > 0) {
+    const masse = new Float32Array(N);
+    for (let i = 0; i < N; i++) masse[i] = A[i] > 0.6 ? 1 : 0;
+    flou(masse, W, H, largV * 0.03);
+    for (let i = 0; i < N; i++) {
+      if (A[i] <= 0) continue;
+      const garde = lisse(0.22, 0.5, masse[i]);
+      A[i] *= 1 - discipline * (1 - garde);
+    }
+  }
+
   // --- Couleurs en lineaire
   const R = new Float32Array(N), G = new Float32Array(N), B = new Float32Array(N);
   for (let i = 0; i < N; i++) { R[i] = lin[d[i * 4]]; G[i] = lin[d[i * 4 + 1]]; B[i] = lin[d[i * 4 + 2]]; }
 
-  // --- Decontamination des bords : la couleur des pixels semi-transparents est
-  // tiree vers celle du sujet voisin (sinon les cheveux gardent la teinte du mur).
+  // --- Decontamination des bords : un pixel semi-transparent (cheveu fin, bord
+  // flou) melange le sujet et l'ancien fond ; sur un fond sombre, les meches
+  // ressortent sales. On remplace sa couleur par celle du sujet le plus proche,
+  // cherchee a plusieurs echelles (3, 10, 30 px) pour que meme une meche loin de
+  // la chevelure prenne la couleur des cheveux et non celle du decor.
   {
-    const wgt = new Float32Array(N), fr = new Float32Array(N), fg = new Float32Array(N), fb = new Float32Array(N);
-    for (let i = 0; i < N; i++) { const q = A[i] ** 4; wgt[i] = q; fr[i] = R[i] * q; fg[i] = G[i] * q; fb[i] = B[i] * q; }
-    const sig = 3;
-    flou(wgt, W, H, sig); flou(fr, W, H, sig); flou(fg, W, H, sig); flou(fb, W, H, sig);
+    const echelles = [3, 10, 30].map((sig) => {
+      const w = new Float32Array(N), fr = new Float32Array(N), fg = new Float32Array(N), fb = new Float32Array(N);
+      for (let i = 0; i < N; i++) { const q = A[i] > 0.85 ? A[i] ** 4 : 0; w[i] = q; fr[i] = R[i] * q; fg[i] = G[i] * q; fb[i] = B[i] * q; }
+      flou(w, W, H, sig); flou(fr, W, H, sig); flou(fg, W, H, sig); flou(fb, W, H, sig);
+      return { w, fr, fg, fb };
+    });
     for (let i = 0; i < N; i++) {
       const a = A[i];
-      if (a <= 0.001 || a >= 0.98 || wgt[i] < 1e-4) continue;
-      const m = Math.sqrt(1 - a);
-      R[i] += (fr[i] / wgt[i] - R[i]) * m;
-      G[i] += (fg[i] / wgt[i] - G[i]) * m;
-      B[i] += (fb[i] / wgt[i] - B[i]) * m;
+      if (a <= 0.001 || a >= 0.98) continue;
+      // echelle la plus fine qui « voit » assez de sujet
+      let e = null;
+      for (const c of echelles) if (c.w[i] > 0.02) { e = c; break; }
+      if (!e) e = echelles[2].w[i] > 1e-5 ? echelles[2] : null;
+      if (!e) continue;
+      const m = Math.min(1, (1 - a) * 1.6);
+      R[i] += (e.fr[i] / e.w[i] - R[i]) * m;
+      G[i] += (e.fg[i] / e.w[i] - G[i]) * m;
+      B[i] += (e.fb[i] / e.w[i] - B[i]) * m;
     }
   }
 
   // --- Poids du visage (ovale adouci) et zone d'influence (visage + cou + oreilles)
-  const largV = geo.largeurVisage * t.s;
   const Fv = new Float32Array(N), Zone = new Float32Array(N);
   for (let i = 0; i < N; i++) { Fv[i] = (od[i * 4 + 3] / 255) * A[i]; Zone[i] = od[i * 4 + 3] / 255; }
   flou(Fv, W, H, largV * 0.03);
@@ -435,7 +463,7 @@ export function rendrePhoto({ source, masque, zone, geo, reglages: r, fond }) {
     const fl = Float32Array.from(lum); flou(fl, W, H, 1.2);
     const q = r.nettete ?? 0.35;
     for (let i = 0; i < N; i++) {
-      const det = (lum[i] - fl[i]) * q * A[i];
+      const det = (lum[i] - fl[i]) * q * A[i] * A[i];   // pas sur les bords fins : halo
       R[i] += det; G[i] += det; B[i] += det;
     }
   }

@@ -32,7 +32,10 @@ quitte pas l'appareil, pas de serveur, pas de clé d'API.
      clarté comprimée pour garder le relief ;
    - ombres : l'éclairage basse fréquence du visage est égalisé (moitié dans
      l'ombre, ombre sous le menton), la texture de la peau est gardée ;
-   - exposition automatique, décontamination des bords (les cheveux ne gardent
+   - mèches rebelles : un cheveu isolé loin de la chevelure (ou un bout de
+     décor détouré par erreur) n'a presque pas de masse opaque autour de lui ;
+     il est effacé, le bord de la chevelure reste doux ;
+   - exposition automatique, décontamination des bords sur plusieurs échelles (les cheveux ne gardent
      pas la couleur de l'ancien fond), légère netteté.
 5. **Fond** uni gris clair ou bleu clair (le blanc est interdit).
 6. **Contrôles** : taille de tête, position des yeux, centrage, tête de face,
