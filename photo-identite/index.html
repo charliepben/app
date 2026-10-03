@@ -104,6 +104,26 @@
   .bilan.warn { background: #fff3e0; color: var(--warn); }
   .bilan.bad { background: #fdecea; color: var(--bad); }
 
+  .garder-ligne { display: flex; gap: 8px; margin-top: 10px; }
+  .garder-ligne input { flex: 1; min-width: 0; font: inherit; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; }
+  .ok-texte { color: var(--ok); font-weight: 600; margin-top: 8px; }
+  .album { margin-top: 16px; }
+  .album-liste { list-style: none; display: grid; gap: 8px; }
+  .album-liste li { display: grid; grid-template-columns: 56px 1fr auto auto; align-items: center; gap: 10px; padding: 6px; border: 1px solid var(--border); border-radius: 10px; }
+  .album-liste img { width: 56px; height: 72px; object-fit: cover; border-radius: 3px; display: block; }
+  .album-infos { min-width: 0; display: grid; gap: 2px; }
+  .album-infos input { font: inherit; font-weight: 600; border: 1px solid transparent; border-radius: 6px; padding: 4px 6px; width: 100%; background: transparent; }
+  .album-infos input:focus { border-color: var(--border); background: #fff; }
+  .album-infos small { color: var(--dim); padding-left: 6px; }
+  .pas { display: flex; align-items: center; gap: 4px; }
+  .pas button { width: 36px; height: 36px; padding: 0; font-size: 20px; }
+  .pas output { min-width: 22px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+  @media (max-width: 480px) { .album-liste li { grid-template-columns: 56px 1fr auto; } .album-liste li > .lien { grid-column: 2 / -1; justify-self: start; padding: 0 6px; } }
+  .album-outils { display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .album-outils label { display: flex; gap: 6px; align-items: center; }
+  .album-planches { display: grid; gap: 10px; }
+  .album-planches img { width: 100%; border: 1px solid var(--border); border-radius: 4px; display: block; background: #fff; }
+  button:disabled { opacity: .45; cursor: default; }
   .planche img { width: 100%; border: 1px solid var(--border); border-radius: 4px; display: block; background: #fff; }
   .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
   .actions > * { flex: 1 1 200px; }
@@ -175,6 +195,16 @@
         <ul class="controles" id="controles"></ul>
       </div>
 
+      <div class="carte garder">
+        <h2>Garder cette photo</h2>
+        <p class="note">Elle reste sur ce téléphone, dans « Mes photos », pour composer plus tard une planche avec plusieurs personnes.</p>
+        <form id="form-garder" class="garder-ligne">
+          <input id="garder-nom" type="text" placeholder="Prénom (facultatif)" aria-label="Prénom" autocomplete="off">
+          <button class="principal" type="submit" id="btn-garder">✓ Garder</button>
+        </form>
+        <p id="garder-ok" class="note ok-texte cache" role="status"></p>
+      </div>
+
       <div class="carte planche">
         <h2>Planche 10 × 15 — 8 photos</h2>
         <img id="planche" alt="Planche de 8 photos d'identité au format 10 × 15">
@@ -212,6 +242,25 @@
         </div>
         <p class="note" style="margin-top:12px">Le repère bleu doit toucher le haut de la tête, sans compter les cheveux qui dépassent (volume, chignon) : c'est de là que se mesurent les 32 à 36 mm jusqu'au menton.</p>
       </details>
+    </div>
+  </section>
+
+  <!-- Mes photos : planches composees -->
+  <section id="album" class="carte album cache">
+    <div class="entete-carte"><h2>Mes photos gardées</h2><span class="note" id="album-compte"></span></div>
+    <p class="note" style="margin-bottom:10px">Choisissez combien d'exemplaires de chaque photo mettre sur la planche (8 places par planche 10×15). Au-delà de 8, l'appli fait plusieurs planches.</p>
+    <ul id="album-liste" class="album-liste"></ul>
+    <div class="album-outils">
+      <button class="lien" id="album-remplir">Répartir les 8 places</button>
+      <button class="lien" id="album-vider">Tout remettre à 0</button>
+      <label class="note"><input type="checkbox" id="album-noms" checked> Prénoms sous les photos</label>
+    </div>
+    <p class="note" id="album-total" style="margin:8px 0"></p>
+    <div id="album-planches" class="album-planches"></div>
+    <div class="actions">
+      <button class="principal" id="album-telecharger">⬇︎ Télécharger la planche</button>
+      <button id="album-partager" class="cache">Partager…</button>
+      <button id="album-imprimer">🖨️ Imprimer</button>
     </div>
   </section>
 

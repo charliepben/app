@@ -51,6 +51,15 @@ quitte pas l'appareil, pas de serveur, pas de clé d'API.
 7. **Planche** 1800×1200 px à 300 dpi (format réel des tirages « 10×15 » :
    101,6 × 152,4 mm), 8 photos avec traits de coupe. Photo seule 35×45 à 600 dpi.
 
+## Mes photos (planches à plusieurs personnes)
+
+« Garder » enregistre la photo finale (35×45 à 600 dpi) sur l'appareil
+(IndexedDB, rien n'est envoyé ; l'appli demande au navigateur de ne pas
+l'effacer). En bas de page, « Mes photos gardées » liste ces photos : on
+choisit combien d'exemplaires de chacune mettre sur la planche (8 places par
+10×15, au-delà plusieurs planches), avec le prénom en petit sous chaque photo
+si on veut. Téléchargement, impression (une page par planche) et partage.
+
 ## Imprimer
 
 Tirage 10×15 **sans recadrage / taille réelle**. Vérifier à la règle qu'une
@@ -63,6 +72,7 @@ sert aux dossiers papier.
 ## Fichiers
 
 - `index.html`, `app.js` : interface.
+- `album.js` : photos gardées et planches composées.
 - `photo.js` : géométrie, cadrage, lumière, planche, export JPEG (pur calcul).
 - `vendor/vision_bundle.mjs` : `@mediapipe/tasks-vision@1.0.1`, tel quel.
 - `vendor/background-removal.mjs` : `@imgly/background-removal@1.7.0` +

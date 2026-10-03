@@ -1,8 +1,9 @@
 import {
   NORME, PX_MM, W, H, FONDS,
   geometrie, affinerCrane, cadrageAuto, transformation, appliquerTransfo, zoneUtile,
-  rendrePhoto, mesures, angles, planche, jpeg, PLANCHE, versPhoto, affinerMasque, nettoyerDessusTete,
+  rendrePhoto, mesures, angles, planche, jpeg, PLANCHE, versPhoto, affinerMasque, nettoyerBords,
 } from './photo.js';
+import { initAlbum, garder, rafraichir as rafraichirAlbum } from './album.js';
 
 // Les modeles sont charges depuis les CDN officiels, puis gardes en cache.
 const MP_VERSION = '1.0.1';
@@ -153,7 +154,7 @@ async function detourer(source, zone, onProgres) {
   // (coussin, dossier), puis remet le masque a jour.
   const nettoyer = (geo) => {
     const versU = (px, py) => geo.versR({ x: px / k + zone.x, y: py / k + zone.y });
-    if (nettoyerDessusTete(pixels, data, w, h, versU, geo)) {
+    if (nettoyerBords(pixels, data, w, h, versU, geo)) {
       m.getContext('2d').putImageData(new ImageData(data, w, h), 0, 0);
     }
   };
@@ -198,6 +199,8 @@ async function traiter(fichier) {
       reglages: { ...DEFAUTS, ...auto },
     });
     synchroniserCurseurs();
+    $('garder-ok').classList.add('cache');
+    $('garder-nom').value = '';
     montrer('vue-editeur');
     rendre();
   } catch (e) {
@@ -464,6 +467,20 @@ async function fichiers() {
   };
 }
 
+// Impression d'une ou plusieurs planches, une par page 10x15
+function imprimer(files) {
+  const urlsPlanches = files.map((f) => URL.createObjectURL(f));
+  const w = window.open('', '_blank');
+  if (!w) { files.forEach(telecharger); return; }
+  w.document.write(`<!DOCTYPE html><html><head><title>Planche 10x15</title><style>
+    @page { size: ${PLANCHE.largeurMM}mm ${PLANCHE.hauteurMM}mm; margin: 0; }
+    html, body { margin: 0; padding: 0; }
+    img { width: ${PLANCHE.largeurMM}mm; height: ${PLANCHE.hauteurMM}mm; display: block; page-break-after: always; }
+  </style></head><body>${urlsPlanches.map((u) => `<img src="${u}">`).join('')}
+  <script>Promise.all([...document.images].map((i) => i.decode())).then(() => setTimeout(() => print(), 200));<\/script></body></html>`);
+  w.document.close();
+}
+
 function telecharger(fichier) {
   const url = URL.createObjectURL(fichier);
   const a = document.createElement('a');
@@ -487,18 +504,36 @@ $('btn-partager').addEventListener('click', async () => {
   try { await navigator.share({ files: [f.planche], title: 'Photo d\'identité 10×15' }); } catch { /* annule */ }
 });
 
-$('btn-imprimer').addEventListener('click', async () => {
-  const f = await fichiers();
-  const url = URL.createObjectURL(f.planche);
-  const w = window.open('', '_blank');
-  if (!w) { telecharger(f.planche); return; }
-  w.document.write(`<!DOCTYPE html><html><head><title>Planche 10x15</title><style>
-    @page { size: ${PLANCHE.largeurMM}mm ${PLANCHE.hauteurMM}mm; margin: 0; }
-    html, body { margin: 0; padding: 0; }
-    img { width: ${PLANCHE.largeurMM}mm; height: ${PLANCHE.hauteurMM}mm; display: block; }
-  </style></head><body><img src="${url}" onload="setTimeout(() => print(), 200)"></body></html>`);
-  w.document.close();
+$('btn-imprimer').addEventListener('click', async () => imprimer([(await fichiers()).planche]));
+
+// ---------------------------------------------------------------- Mes photos
+$('form-garder').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!etat.rendu) return;
+  const b = $('btn-garder');
+  b.disabled = true;
+  try {
+    const nom = $('garder-nom').value;
+    await garder(await jpeg(etat.rendu.canvas, 600), nom);
+    await rafraichirAlbum();
+    const ok = $('garder-ok');
+    ok.textContent = `✓ Photo${nom.trim() ? ` de ${nom.trim()}` : ''} gardée dans « Mes photos », en bas de la page.`;
+    ok.classList.remove('cache');
+  } catch (err) {
+    console.error(err);
+    erreur("Impossible d'enregistrer la photo sur ce téléphone (mémoire pleine ou navigation privée ?).");
+  } finally {
+    b.disabled = false;
+  }
 });
+
+let partageFichiers = null;
+try {
+  if (navigator.canShare?.({ files: [new File([new Blob(['x'], { type: 'image/jpeg' })], 'a.jpg', { type: 'image/jpeg' })] })) {
+    partageFichiers = async (files) => { try { await navigator.share({ files, title: 'Planche photo d\'identité 10×15' }); } catch { /* annule */ } };
+  }
+} catch { /* partage de fichiers non pris en charge */ }
+initAlbum({ telecharger, imprimer, partager: partageFichiers }).catch((err) => console.error('Mes photos indisponible', err));
 
 // ---------------------------------------------------------------- Entree
 function choisir(fichier) {

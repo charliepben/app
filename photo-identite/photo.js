@@ -288,8 +288,8 @@ export function affinerMasque(pixels, alpha, w, h) {
   // Couleur de reference la plus proche, cherchee a plusieurs echelles.
   const remplir = (m) => {
     const out = [new Float32Array(N), new Float32Array(N), new Float32Array(N)];
-    const trouve = new Uint8Array(N);
-    for (const sig of [4, 12, 36, 100]) {
+    const trouve = new Uint8Array(N);   // 1 a 4 : echelle a laquelle la reference a ete trouvee
+    for (const [niveau, sig] of [[1, 4], [2, 12], [3, 36], [4, 100]]) {
       const ww = Float32Array.from(m), rr = new Float32Array(N), gg = new Float32Array(N), bb = new Float32Array(N);
       for (let i = 0; i < N; i++) { rr[i] = R[i] * m[i]; gg[i] = G[i] * m[i]; bb[i] = B[i] * m[i]; }
       const sg = sig * echelle;
@@ -297,7 +297,7 @@ export function affinerMasque(pixels, alpha, w, h) {
       for (let i = 0; i < N; i++) {
         if (trouve[i] || ww[i] < 0.03) continue;
         out[0][i] = rr[i] / ww[i]; out[1][i] = gg[i] / ww[i]; out[2][i] = bb[i] / ww[i];
-        trouve[i] = 1;
+        trouve[i] = niveau;
       }
     }
     return { c: out, trouve };
@@ -309,7 +309,11 @@ export function affinerMasque(pixels, alpha, w, h) {
     if (a <= 0.01 || a >= 0.99 || sujet[i] || !F.trouve[i] || !D.trouve[i]) continue;
     const dr = F.c[0][i] - D.c[0][i], dg = F.c[1][i] - D.c[1][i], db = F.c[2][i] - D.c[2][i];
     const den = dr * dr + dg * dg + db * db;
-    const conf = lisse(0.03, 0.12, Math.sqrt(den));   // ecart de couleur sujet / decor
+    // ecart de couleur sujet / decor, et references prises assez pres : une
+    // reference lointaine (le visage pour un vetement sur lequel le modele
+    // hesite en entier) ne dit rien du pixel, on garde alors l'avis du modele
+    const proche = (n) => (n <= 2 ? 1 : n === 3 ? 0.4 : 0);
+    const conf = lisse(0.03, 0.12, Math.sqrt(den)) * proche(F.trouve[i]) * proche(D.trouve[i]);
     if (conf <= 0) continue;
     const ir = R[i] - D.c[0][i], ig = G[i] - D.c[1][i], ib = B[i] - D.c[2][i];
     let ac = (ir * dr + ig * dg + ib * db) / den;
@@ -322,66 +326,75 @@ export function affinerMasque(pixels, alpha, w, h) {
     let an = a + (ac - a) * fiable * 0.85;
     // pixel qui ne ressemble ni au sujet ni au decor proche : on ne le garde que
     // si le modele en etait sur
-    if (residu > 0.12) an = Math.min(an, a * (1 - lisse(0.12, 0.3, residu)) + 0.2 * a);
+    if (residu > 0.12 && conf > 0) an = Math.min(an, a * (1 - lisse(0.12, 0.3, residu) * Math.min(1, conf * 2)) + 0.2 * a);
     alpha[i * 4 + 3] = Math.round(Math.min(1, Math.max(0, an)) * 255);
   }
 }
 
-// ---------------------------------------------------------------- Objets colles a la tete
-// Un coussin, un dossier ou un mur clair juste derriere la tete est parfois
-// detoure avec les cheveux. Au-dessus du front, tout ce qui est detoure devrait
-// etre des cheveux : on apprend leur teinte juste au-dessus du front, puis on
-// retire plus haut ce qui n'a pas du tout cette teinte. Une chevelure grise
-// ou un crane rase donnent une teinte apprise grise ou de peau : rien n'est
-// retire a tort.
+// ---------------------------------------------------------------- Objets colles au sujet
+// Un coussin, une horloge, le dos d'un livre juste derriere la personne est
+// parfois detoure avec elle. On apprend trois couleurs de reference sur l'image
+// (CIELAB, clarte comprise) : cheveux (juste au-dessus du front), peau (joues)
+// et vetements ou epaules (sous le menton). Une zone du contour qui ne
+// ressemble a aucune des trois et qui touche l'exterieur de la silhouette est
+// retiree, par passes depuis l'exterieur. Le crane et le visage sont proteges :
+// un reflet ou une meche grise au milieu des cheveux reste.
 // versU(x, y) : pixel du masque -> repere redresse du visage (voir geometrie).
-export function nettoyerDessusTete(pixels, alpha, w, h, versU, geo) {
-  const haut = geo.front, bande = 0.25 * geo.menton;
-  // teinte = couleur a clarte egale ; mal definie dans le noir (racines,
-  // ombres) : ces pixels ne servent ni a apprendre ni a juger
-  const clarte = (i) => 0.2126 * lin[pixels[i * 4]] + 0.7152 * lin[pixels[i * 4 + 1]] + 0.0722 * lin[pixels[i * 4 + 2]];
-  const teinte = (i) => {
-    const r = lin[pixels[i * 4]], g = lin[pixels[i * 4 + 1]], b = lin[pixels[i * 4 + 2]];
-    const l = 0.2126 * r + 0.7152 * g + 0.0722 * b + 1e-4;
-    return [r / l, g / l, b / l];
-  };
-  let n = 0;
-  const m = [0, 0, 0];
-  const ech = [];
-  for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) {
-    const i = y * w + x;
-    if (alpha[i * 4 + 3] < 242) continue;
-    const u = versU(x, y);
-    if (u.y >= haut || u.y < haut - bande || Math.abs(u.x - geo.centreX) > 0.25 * geo.largeurVisage) continue;
-    if (clarte(i) < 0.03) continue;
-    const c = teinte(i);
-    m[0] += c[0]; m[1] += c[1]; m[2] += c[2]; n++;
-    ech.push(c);
-  }
-  if (n < 200) return 0;
-  m[0] /= n; m[1] /= n; m[2] /= n;
-  const dist = (c) => Math.hypot(c[0] - m[0], c[1] - m[1], c[2] - m[2]);
-  const ecart = Math.max(0.06, percentile(ech.map(dist), 0.8));
-  // Ecart a la teinte des cheveux, pixel par pixel, au-dessus du front
+export function nettoyerBords(pixels, alpha, w, h, versU, geo) {
   const N = w * h;
-  const z = new Float32Array(N), Q = new Float32Array(N), dehors = new Float32Array(N);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const i = y * w + x;
-    const a = alpha[i * 4 + 3];
-    dehors[i] = a < 25 ? 1 : 0;
-    if (a < 8) continue;
-    const u = versU(x, y);
-    // seulement au-dessus du crane estime : en dessous, ce sont forcement des cheveux
-    if (u.y >= Math.min(haut - 0.05 * geo.menton, geo.craneEstime) || clarte(i) < 0.02) continue;
-    z[i] = dist(teinte(i)) / ecart;
-    Q[i] = lisse(1.8, 3, z[i]);
+  const Lab = new Float32Array(N * 3);
+  const f = (v) => (v > 0.008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116);
+  for (let i = 0; i < N; i++) {
+    const r = lin[pixels[i * 4]], g = lin[pixels[i * 4 + 1]], b = lin[pixels[i * 4 + 2]];
+    const fx = f((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.9505);
+    const fy = f(0.2126 * r + 0.7152 * g + 0.0722 * b);
+    const fz = f((0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.089);
+    Lab[i * 3] = 116 * fy - 16; Lab[i * 3 + 1] = 500 * (fx - fy); Lab[i * 3 + 2] = 200 * (fy - fz);
   }
-  // On ne retire qu'une ZONE d'une autre couleur qui touche l'exterieur de la
-  // silhouette (un coussin derriere la tete) ; un reflet clair ou une meche
-  // grise au milieu des cheveux n'y touche pas : on n'y touche pas. Plusieurs
-  // passes : chaque passe ronge l'objet depuis l'exterieur, jusqu'aux cheveux.
-  const echelle = Math.hypot(versU(10, 0).x - versU(0, 0).x, versU(10, 0).y - versU(0, 0).y) / 10;  // unites visage par pixel
-  const sig = (0.03 * geo.menton) / echelle;
+  const U = new Float32Array(N * 2);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const u = versU(x, y), i = y * w + x;
+    U[i * 2] = u.x; U[i * 2 + 1] = u.y;
+  }
+  const M = geo.menton, Lv = geo.largeurVisage, cx = geo.centreX;
+  const dE = (i, m) => Math.hypot(Lab[i * 3] - m[0], (Lab[i * 3 + 1] - m[1]) * 1.5, (Lab[i * 3 + 2] - m[2]) * 1.5);
+  const modele = (dedans, exclure = null) => {
+    const ech = [];
+    for (let i = 0; i < N; i += 3) {
+      if (alpha[i * 4 + 3] > 242 && dedans(U[i * 2] - cx, U[i * 2 + 1]) && !(exclure && exclure(i))) ech.push(i);
+    }
+    if (ech.length < 150) return null;
+    const m = [0, 0, 0];
+    for (const i of ech) { m[0] += Lab[i * 3]; m[1] += Lab[i * 3 + 1]; m[2] += Lab[i * 3 + 2]; }
+    m[0] /= ech.length; m[1] /= ech.length; m[2] /= ech.length;
+    const ecart = Math.max(8, percentile(ech.map((i) => dE(i, m)), 0.85));
+    return { m, ecart };
+  };
+  const peau = modele((x, y) => y > 0.15 * M && y < 0.55 * M && Math.abs(x) < 0.3 * Lv);
+  // au-dessus du front, sans la peau (frange, front degarni)
+  const cheveux = modele((x, y) => y < geo.front && y > geo.front - 0.3 * M && Math.abs(x) < 0.3 * Lv,
+    peau ? (i) => dE(i, peau.m) < 2 * peau.ecart : null);
+  const habits = modele((x, y) => y > 1.3 * M && y < 1.9 * M && Math.abs(x) < 0.7 * Lv);
+  // au-dessus du menton : cheveux ou peau ; plus bas, aussi vetements/epaules
+  const haut = [cheveux, peau].filter(Boolean), bas = [cheveux, peau, habits].filter(Boolean);
+  if (!cheveux || !peau) return 0;
+
+  const z = new Float32Array(N), Q = new Float32Array(N), dehors = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    if (alpha[i * 4 + 3] < 8) continue;
+    const x = U[i * 2] - cx, y = U[i * 2 + 1];
+    // protege : le crane (demi-ellipse au-dessus des yeux, jusqu'au crane
+    // estime) et le visage ; ce sont forcement des cheveux ou de la peau
+    const crane = y < 0 ? (x / (0.5 * Lv)) ** 2 + (y / geo.craneEstime) ** 2 < 1 : Math.abs(x) < 0.5 * Lv && y < 1.05 * M;
+    if (crane) continue;
+    if (y > M && !habits) continue;   // sans couleur de vetements apprise, on ne touche pas au buste
+    let zi = Infinity;
+    for (const md of (y > M ? bas : haut)) zi = Math.min(zi, dE(i, md.m) / md.ecart);
+    z[i] = zi;
+    Q[i] = lisse(1.8, 3, zi);
+  }
+  const echelle = Math.hypot(versU(10, 0).x - versU(0, 0).x, versU(10, 0).y - versU(0, 0).y) / 10;
+  const sig = (0.03 * M) / echelle;
   flou(Q, w, h, sig);
   let retires = 0;
   for (let passe = 0; passe < 6; passe++) {
@@ -731,7 +744,10 @@ export function angles(m) {
 // Format reel des tirages "10x15" en labo : 4 x 6 pouces = 101,6 x 152,4 mm.
 export const PLANCHE = { largeurMM: 152.4, hauteurMM: 101.6, dpi: 300, cols: 4, rangs: 2 };
 
+// photo : une image (repetee 8 fois) ou une liste de 8 cases { image, nom }
+// (null = case vide) pour composer une planche avec plusieurs personnes.
 export function planche(photo, { couleurTraits = '#9aa0a6', legende = '' } = {}) {
+  const cases = Array.isArray(photo) ? photo : Array(PLANCHE.cols * PLANCHE.rangs).fill({ image: photo, nom: '' });
   const { largeurMM, hauteurMM, dpi, cols, rangs } = PLANCHE;
   const k = dpi / 25.4;
   const c = document.createElement('canvas');
@@ -750,8 +766,18 @@ export function planche(photo, { couleurTraits = '#9aa0a6', legende = '' } = {})
   for (const v of ys.flatMap((p) => [p, p + NORME.hauteur])) { const py = Math.round(v * k) + 0.5; x.moveTo(0, py); x.lineTo(c.width, py); }
   x.stroke();
   x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
-  for (const px of xs) for (const py of ys) {
-    x.drawImage(photo, Math.round(px * k), Math.round(py * k), Math.round(NORME.largeur * k), Math.round(NORME.hauteur * k));
+  let n = 0;
+  for (const py of ys) for (const px of xs) {
+    const c = cases[n++];
+    if (!c) continue;
+    x.drawImage(c.image, Math.round(px * k), Math.round(py * k), Math.round(NORME.largeur * k), Math.round(NORME.hauteur * k));
+    if (c.nom) {
+      // prenom en petit sous la photo, dans la marge (hors de la photo a decouper)
+      x.fillStyle = '#80868b'; x.font = `${Math.round(1.5 * k)}px sans-serif`;
+      x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillText(c.nom.slice(0, 24), Math.round((px + NORME.largeur / 2) * k), Math.round((py + NORME.hauteur + gy / 2) * k));
+      x.textAlign = 'start';
+    }
   }
   if (legende) {
     x.fillStyle = '#80868b'; x.font = `${Math.round(1.6 * k)}px sans-serif`; x.textBaseline = 'middle';
