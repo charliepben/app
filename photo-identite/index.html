@@ -84,6 +84,11 @@
   .pastille { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); }
   .entete-carte { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
   .entete-carte h2 { margin: 0; }
+  details > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary h2 { margin: 0; }
+  details > summary h2::before { content: "▸ "; color: var(--accent); }
+  details[open] > summary h2::before { content: "▾ "; }
   .lien { background: none; border: none; color: var(--accent); padding: 4px; font-weight: 600; font-size: 13px; }
 
   .controles li { list-style: none; display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 7px 0; border-top: 1px solid #eef0f3; font-size: 14px; }
@@ -170,8 +175,24 @@
         <ul class="controles" id="controles"></ul>
       </div>
 
-      <div class="carte">
-        <div class="entete-carte"><h2>Réglages</h2><button class="lien" id="btn-reinit">Réinitialiser</button></div>
+      <div class="carte planche">
+        <h2>Planche 10 × 15 — 8 photos</h2>
+        <img id="planche" alt="Planche de 8 photos d'identité au format 10 × 15">
+        <div class="actions">
+          <button class="principal" id="btn-planche">⬇︎ Télécharger la planche 10×15</button>
+          <button id="btn-photo">⬇︎ Photo seule 35×45</button>
+          <button id="btn-partager" class="cache">Partager…</button>
+          <button id="btn-imprimer">🖨️ Imprimer</button>
+        </div>
+        <p class="note" style="margin-top:12px">
+          Faites tirer la planche au format <strong>10×15 « sans recadrage » / « taille réelle »</strong> (labo photo, borne en magasin, imprimante photo).
+          Chaque photo doit mesurer exactement 35 mm de large : vérifiez avec une règle, puis découpez le long des traits gris.
+        </p>
+      </div>
+
+      <details class="carte" id="ajuster">
+        <summary><h2>Ajuster à la main</h2><span class="note">facultatif — tout est déjà réglé</span></summary>
+        <div class="entete-carte" style="margin-top:12px"><span class="note">Repères bleus et verts : ce que l'appli a détecté.</span><button class="lien" id="btn-reinit">Réinitialiser</button></div>
         <div class="reglages">
           <div class="reglage"><label for="r-tete">Taille de la tête <output id="o-tete"></output></label><input id="r-tete" type="range" min="32" max="36" step="0.1"></div>
           <div class="reglage"><label for="r-crane">Repère du sommet du crâne <output id="o-crane"></output></label><input id="r-crane" type="range" min="-4" max="4" step="0.1"></div>
@@ -187,23 +208,8 @@
             <div class="fonds" id="fonds"></div>
           </div>
         </div>
-        <p class="note" style="margin-top:12px">Le repère « sommet du crâne » doit toucher le haut du crâne, <strong>sous</strong> les cheveux : c'est de là que se mesurent les 32 à 36 mm jusqu'au menton.</p>
-      </div>
-
-      <div class="carte planche">
-        <h2>Planche 10 × 15 — 8 photos</h2>
-        <img id="planche" alt="Planche de 8 photos d'identité au format 10 × 15">
-        <div class="actions">
-          <button class="principal" id="btn-planche">⬇︎ Télécharger la planche 10×15</button>
-          <button id="btn-photo">⬇︎ Photo seule 35×45</button>
-          <button id="btn-partager" class="cache">Partager…</button>
-          <button id="btn-imprimer">🖨️ Imprimer</button>
-        </div>
-        <p class="note" style="margin-top:12px">
-          Faites tirer la planche au format <strong>10×15 « sans recadrage » / « taille réelle »</strong> (labo photo, borne en magasin, imprimante photo).
-          Chaque photo doit mesurer exactement 35 mm de large : vérifiez avec une règle, puis découpez le long des traits gris.
-        </p>
-      </div>
+        <p class="note" style="margin-top:12px">Le repère bleu doit toucher le haut de la tête, sans compter les cheveux qui dépassent (volume, chignon) : c'est de là que se mesurent les 32 à 36 mm jusqu'au menton.</p>
+      </details>
     </div>
   </section>
 

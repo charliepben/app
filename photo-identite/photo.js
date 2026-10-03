@@ -11,6 +11,8 @@ export const NORME = {
   teteMin: 32,
   teteMax: 36,
   teteCible: 34,
+  teteSilhouette: 35, // repere = haut visible de cheveux courts ou plaques
+  teteVolume: 34.5,   // repere = crane estime sous des cheveux qui depassent
   margeHaut: 3.5,      // sommet du crane -> bord haut, par defaut
   margeHautMax: 5,     // au-dela, les yeux passent sous 50 % de la hauteur
   yeuxBasMin: 0.5,     // ligne des yeux, en fraction de la hauteur depuis le bas
@@ -32,13 +34,11 @@ const IRIS_A = 468, IRIS_B = 473, MENTON = 152, FRONT = 10;
 export const OVALE = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379,
   378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
 
-// Sommet du crane estime au-dessus des pupilles, en fraction de la distance
-// pupilles -> menton (point 152 du maillage). Etalonne sur des portraits de face :
-// 0,8 a 0,9 ; a 0,85 l'erreur reste < 1 mm sur une tete de 34 mm.
-const K_CRANE = 0.85;
-// Epaisseur de cheveux minimale supposee au-dessus du crane quand c'est la
-// silhouette qui fixe le sommet (fraction de la hauteur de tete).
-const CHEVEUX_MIN = 0.03;
+// Sommet de la tete, en fraction de la distance pupilles -> menton (point 152)
+// au-dessus des pupilles. Le crane (sans cheveux) tombe entre 0,8 et 0,95.
+const K_CRANE = 0.85;      // estimation quand la silhouette est inutilisable
+const K_PLAFOND = 0.9;     // au-dessus, ce sont des cheveux qui depassent
+const K_SILHOUETTE_MIN = 0.7;
 
 // ---------------------------------------------------------------- Geometrie
 const rot = (x, y, a) => ({ x: x * Math.cos(a) - y * Math.sin(a), y: x * Math.sin(a) + y * Math.cos(a) });
@@ -67,6 +67,9 @@ export function geometrie(pts) {
     craneEstime: crane,
     crane,                     // affine ensuite avec le detourage
     hautCheveux: crane,
+    mode: 'estime',
+    yeux: [versR(a), versR(b)],
+    mentonX: menton.x,
     centreX: (gauche + droite) / 2,
     largeurVisage: droite - gauche,
     ecartYeux: Math.hypot(b.x - a.x, b.y - a.y),
@@ -74,27 +77,47 @@ export function geometrie(pts) {
   };
 }
 
-// Affine le sommet du crane avec le masque de detourage : si le haut de la
-// silhouette est plus bas que l'estimation (crane rase, cheveux tres courts),
-// c'est lui qui fait foi. Note aussi ou s'arretent les cheveux, pour le cadrage.
-// alphaEn(p) : opacite (0-255) du detourage au point p de l'image source.
+// Trouve le sommet de la tete sur le detourage. On part du front (dans le
+// visage, donc opaque) et on monte colonne par colonne jusqu'a sortir de la
+// silhouette : un objet du decor detoure par erreur au-dessus ne gene pas.
+// alphaEnSource(p) : opacite (0-255) du detourage au point p de l'image source.
+//
+// Norme : tete mesuree « du menton au sommet du crane, hors cheveux qui
+// depassent ». Trois cas :
+//  - silhouette plausible (cheveux courts ou plaques, crane rase) : c'est le
+//    haut de la tete visible qui sert de repere ;
+//  - silhouette trop haute (volume, chignon) : on revient a l'anatomie ;
+//  - silhouette introuvable ou trop basse : estimation anatomique.
 export function affinerCrane(geo, alphaEnSource) {
   const hTete = geo.menton - geo.craneEstime;
   const alphaEn = (u) => alphaEnSource(geo.versS(u));
+  const pas = Math.max(0.5, hTete / 400);
+  const sortie = Math.max(2, Math.round(hTete * 0.015 / pas));   // ~1,5 % de la tete hors masque = bord
+  const plafond = -1.6 * geo.menton;
   const hauts = [];
   for (let k = -4; k <= 4; k++) {
     const x = geo.centreX + (k / 4) * geo.largeurVisage * 0.22;
-    let trouve = null;
-    for (let y = geo.craneEstime - hTete * 0.7; y < geo.front; y += 1) {
-      if (alphaEn({ x, y }) > 128) { trouve = y; break; }
+    if (alphaEn({ x, y: geo.front }) <= 128) continue;
+    let y = geo.front, dehors = 0, haut = null;
+    while (y > plafond) {
+      y -= pas;
+      if (alphaEn({ x, y }) > 128) { dehors = 0; haut = y; } else if (++dehors >= sortie) break;
     }
-    if (trouve !== null) hauts.push(trouve);
+    if (haut !== null && y > plafond) hauts.push(haut);
   }
-  if (hauts.length < 5) return geo;
+  if (hauts.length < 5) { geo.mode = 'estime'; return geo; }
   hauts.sort((p, q) => p - q);
   const haut = hauts[Math.floor(hauts.length / 2)];
+  const k = -haut / geo.menton;
   geo.hautCheveux = haut;
-  geo.crane = Math.max(geo.craneEstime, haut + CHEVEUX_MIN * hTete);
+  if (k < K_SILHOUETTE_MIN) { geo.mode = 'estime'; return geo; }
+  geo.mode = k <= K_PLAFOND ? 'silhouette' : 'volume';
+  geo.crane = -Math.min(k, K_PLAFOND) * geo.menton;
+  // Taille visee : 35 mm quand le repere est le haut visible de cheveux courts
+  // (le crane est ~1 mm dessous) ; 34,5 mm quand il est plafonne, ce qui centre
+  // la tolerance pour un crane reel entre 0,8 et 0,95.
+  const f = Math.min(1, Math.max(0, (k - 0.85) / (K_PLAFOND - 0.85)));
+  geo.teteCible = NORME.teteSilhouette + (NORME.teteVolume - NORME.teteSilhouette) * f;
   return geo;
 }
 
@@ -102,12 +125,11 @@ export function affinerCrane(geo, alphaEnSource) {
 // Choisit taille de tete et marge haute pour que la tete fasse 34 mm, que les
 // cheveux ne soient pas coupes si possible, et que les yeux restent dans la zone.
 export function cadrageAuto(geo) {
-  // La tete reste a 34 mm, au milieu de la tolerance : l'estimation du crane
-  // a une marge d'erreur, on ne la mange pas pour sauver une coiffure haute.
-  // Les cheveux qui depassent encore sont coupes par le bord, ce qui est admis.
+  // Taille choisie par affinerCrane selon le repere (voir plus haut). Les
+  // cheveux qui depassent encore sont coupes par le bord, ce qui est admis.
   const hTeteU = geo.menton - geo.crane;
   const cheveuxU = Math.max(0, geo.crane - geo.hautCheveux);
-  const tete = NORME.teteCible;
+  const tete = geo.teteCible ?? NORME.teteCible;
   const marge = Math.min(NORME.margeHautMax, Math.max(NORME.margeHaut, cheveuxU * (tete / hTeteU) + 0.6));
   return { tete, marge };
 }

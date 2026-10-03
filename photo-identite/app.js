@@ -1,7 +1,7 @@
 import {
   NORME, PX_MM, W, H, FONDS,
   geometrie, affinerCrane, cadrageAuto, transformation, appliquerTransfo, zoneUtile,
-  rendrePhoto, mesures, angles, planche, jpeg, PLANCHE,
+  rendrePhoto, mesures, angles, planche, jpeg, PLANCHE, versPhoto,
 } from './photo.js';
 
 // Les modeles sont charges depuis les CDN officiels, puis gardes en cache.
@@ -56,11 +56,9 @@ async function chargerLandmarker() {
     outputFaceBlendshapes: true,
     outputFacialTransformationMatrixes: true,
   });
-  try {
-    landmarker = await FaceLandmarker.createFromOptions(fileset, options('GPU'));
-  } catch {
-    landmarker = await FaceLandmarker.createFromOptions(fileset, options('CPU'));
-  }
+  // CPU : sur une seule image c'est rapide, et le GPU donne parfois des repères
+  // faux sur mobile.
+  landmarker = await FaceLandmarker.createFromOptions(fileset, options('CPU'));
   return landmarker;
 }
 
@@ -257,6 +255,17 @@ function dessinerGabarit() {
   ligne(m.yeux, 'rgba(31,79,163,0.5)', [4, 6]);
   x.setLineDash([]);
 
+  // Points detectes : pupilles, menton, sommet de la tete
+  const t = etat.rendu.t, geo = etat.geo;
+  const point = (u, couleur, r = 9) => {
+    const p = versPhoto(t, u);
+    x.lineWidth = 3; x.strokeStyle = '#fff'; x.fillStyle = couleur;
+    x.beginPath(); x.arc(p.x, p.y, r, 0, 2 * Math.PI); x.fill(); x.stroke();
+  };
+  for (const u of geo.yeux) point(u, '#1f4fa3', 7);
+  point({ x: geo.mentonX, y: geo.menton }, '#17803d');
+  point({ x: geo.centreX, y: t.craneU }, '#1f4fa3');
+
   // Etiquettes
   x.font = '600 26px -apple-system, Segoe UI, Roboto, sans-serif';
   const etiquette = (txt, y, couleur) => {
@@ -264,7 +273,7 @@ function dessinerGabarit() {
     x.fillStyle = 'rgba(255,255,255,0.85)'; x.fillRect(10, y - 17, l, 32);
     x.fillStyle = couleur; x.fillText(txt, 18, y + 8);
   };
-  etiquette('sommet du crâne', mm(m.crane), '#1f4fa3');
+  etiquette(etat.geo.mode === 'silhouette' ? 'haut de la tête' : 'sommet du crâne', mm(m.crane), '#1f4fa3');
   etiquette(`menton · tête ${m.tete.toFixed(1).replace('.', ',')} mm`, mm(m.menton), '#17803d');
 }
 
@@ -291,8 +300,13 @@ function afficherControles() {
     infos.visages === 1 ? 'Un seul visage' : `${infos.visages} visages détectés`,
     infos.visages === 1 ? '' : 'Seul le plus grand est utilisé ; la personne doit être seule sur la photo.');
 
-  ajouter(m.tete >= NORME.teteMin && m.tete <= NORME.teteMax ? 'ok' : 'bad',
-    `Hauteur de la tête : ${f(m.tete)} mm`, 'Norme : 32 à 36 mm du menton au sommet du crâne (cheveux exclus).');
+  const modes = {
+    silhouette: 'Mesurée jusqu\'au haut de la tête détectée ; sous les cheveux, environ 1 mm de moins. Norme : 32 à 36 mm.',
+    volume: 'Cheveux volumineux détectés : mesurée jusqu\'au crâne estimé sous les cheveux, comme le veut la norme (32 à 36 mm).',
+    estime: 'Haut de la tête mal visible : crâne estimé d\'après les yeux et le menton. Vérifiez sur le gabarit. Norme : 32 à 36 mm.',
+  };
+  ajouter(m.tete >= NORME.teteMin && m.tete <= NORME.teteMax ? (geo.mode === 'estime' ? 'warn' : 'ok') : 'bad',
+    `Hauteur de la tête : ${f(m.tete)} mm`, modes[geo.mode]);
 
   const yeux = m.yeuxBas;
   ajouter(yeux >= NORME.yeuxBasMin && yeux <= NORME.yeuxBasMax ? 'ok' : 'warn',
