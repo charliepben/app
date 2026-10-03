@@ -41,7 +41,7 @@ const etat = {
   avant: false,
 };
 
-const DEFAUTS = { dx: 0, dy: 0, rot: 0, crane: 0, lumiere: 0, ombres: 0.8, temperature: 0, nettete: 0.35, fond: 'gris' };
+const DEFAUTS = { dx: 0, dy: 0, rot: 0, crane: 0, lumiere: 0, ombres: 0.8, reflets: 0.6, temperature: 0, nettete: 0.35, fond: 'gris' };
 
 // ---------------------------------------------------------------- Chargement des modeles
 let landmarker = null;
@@ -344,6 +344,10 @@ function afficherControles() {
   ajouter(rendu.hors < 0.02 ? 'ok' : 'warn', rendu.hors < 0.02 ? 'Cadre complet' : 'Photo d\'origine trop serrée',
     rendu.hors < 0.02 ? '' : 'Le bas du cadre (épaules) manque dans la photo d\'origine : il est complété par le fond. Reculez un peu.');
 
+  if (Math.abs(rendu.balance?.c || 0) > 0.05) {
+    ajouter('ok', 'Dominante de couleur corrigée',
+      rendu.balance.c > 0 ? 'Lumière jaune-orangée (lampe d\'intérieur) neutralisée.' : 'Lumière bleutée (ombre, écran) neutralisée.');
+  }
   if (rendu.gain > 1.6) ajouter('warn', 'Photo d\'origine sombre', 'Éclaircie automatiquement ; une photo mieux éclairée donnera un rendu plus naturel.');
 
   ajouter('ok', `Fond uni ${FONDS[etat.reglages.fond].nom.toLowerCase()}`, 'Fond remplacé, sans ombre portée (le blanc est interdit).');
@@ -368,6 +372,7 @@ const CURSEURS = {
   rot: (v) => `${v > 0 ? '+' : ''}${v.toFixed(1).replace('.', ',')}°`,
   lumiere: (v) => `${v > 0 ? '+' : ''}${v.toFixed(2).replace('.', ',')}`,
   ombres: (v) => `${Math.round(v * 100)} %`,
+  reflets: (v) => `${Math.round(v * 100)} %`,
   temperature: (v) => (Math.abs(v) < 0.01 ? 'neutre' : `${v > 0 ? '+' : ''}${Math.round(v * 100)}`),
   nettete: (v) => `${Math.round(v * 100)} %`,
 };

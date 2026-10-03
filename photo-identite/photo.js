@@ -217,6 +217,21 @@ export function flou(arr, w, h, sigma) {
 const lin = new Float32Array(256).map((_, i) => { const c = i / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
 const versSRGB = (v) => { v = v <= 0 ? 0 : v >= 1 ? 1 : v; return 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055); };
 
+const lisse = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+// Teinte (degres) et chroma dans le plan a*b* de CIELAB d'une couleur RVB lineaire (D65).
+export const TEINTE_PEAU = [47, 58];
+export const CHROMA_PEAU_MAX = 30;
+export function teinteChroma(r, g, b) {
+  const X = 0.4124 * r + 0.3576 * g + 0.1805 * b;
+  const Y = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const Z = 0.0193 * r + 0.1192 * g + 0.9505 * b;
+  const f = (v) => (v > 0.008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116);
+  const fx = f(X / 0.9505), fy = f(Y), fz = f(Z / 1.089);
+  const a = 500 * (fx - fy), bb = 200 * (fy - fz);
+  return [(Math.atan2(bb, a) * 180) / Math.PI, Math.hypot(a, bb)];
+}
+
 function percentile(valeurs, p) {
   if (!valeurs.length) return 0;
   const tri = Float32Array.from(valeurs).sort();
@@ -286,8 +301,84 @@ export function rendrePhoto({ source, masque, zone, geo, reglages: r, fond }) {
   let zMax = 0; for (let i = 0; i < N; i++) zMax = Math.max(zMax, Zone[i]);
   for (let i = 0; i < N; i++) Zone[i] = Math.min(1, (Zone[i] / (zMax || 1)) * 1.6) * A[i];
 
+  // --- Balance des blancs. La couleur de la peau varie peu d'une personne a
+  // l'autre dans le plan a*b* de CIELAB : teinte entre 47 et 58 deg, saturation
+  // (chroma) moderee ; seule la clarte change vraiment. Une lampe d'interieur
+  // pousse le visage vers le jaune-orange et le sature, l'ombre ou un ecran vers
+  // le bleu-rose. On cherche les gains vert et bleu (adaptation chromatique de
+  // von Kries, comme un appareil photo) qui ramenent le visage dans cette zone,
+  // en bougeant le moins possible : une peau deja dedans n'est pas touchee.
+  let balance = { teinte: null, chroma: null, c: 0 };
+  {
+    let sr = 0, sg = 0, sb = 0, n = 0;
+    for (let i = 0; i < N; i += 2) {
+      const l = 0.2126 * R[i] + 0.7152 * G[i] + 0.0722 * B[i];
+      if (Fv[i] > 0.8 && l > 0.01 && l < 0.9) { sr += R[i]; sg += G[i]; sb += B[i]; n++; }
+    }
+    if (n > 200) {
+      sr /= n; sg /= n; sb /= n;
+      const [t0, c0] = teinteChroma(sr, sg, sb);
+      balance.teinte = t0; balance.chroma = c0;
+      const cout = (kg, kb) => {
+        const [t, c] = teinteChroma(sr, sg * kg, sb * kb);
+        const dt = t > TEINTE_PEAU[1] ? t - TEINTE_PEAU[1] : t < TEINTE_PEAU[0] ? TEINTE_PEAU[0] - t : 0;
+        const dc = Math.max(0, c - CHROMA_PEAU_MAX);
+        return dt * dt + 4 * dc * dc + 40 * (Math.log(kg) ** 2 + Math.log(kb) ** 2);
+      };
+      let kg = 1, kb = 1, meilleur = cout(1, 1);
+      for (let lg = -0.25; lg <= 0.2501; lg += 0.01) for (let lb = -0.4; lb <= 0.7001; lb += 0.01) {
+        const v = cout(Math.exp(lg), Math.exp(lb));
+        if (v < meilleur) { meilleur = v; kg = Math.exp(lg); kb = Math.exp(lb); }
+      }
+      const f = r.balance ?? 1;
+      kg = kg ** f; kb = kb ** f;
+      if (kg !== 1 || kb !== 1) {
+        // gains normalises pour garder la luminance moyenne du visage
+        const norm = (0.2126 * sr + 0.7152 * sg + 0.0722 * sb) / (0.2126 * sr + 0.7152 * sg * kg + 0.0722 * sb * kb);
+        for (let i = 0; i < N; i++) { R[i] *= norm; G[i] *= kg * norm; B[i] *= kb * norm; }
+      }
+      // c > 0 : on a refroidi (dominante chaude), c < 0 : rechauffe
+      balance.c = Math.log(kb) - Math.log(kg) * 0.5;
+      balance.gains = [kg, kb];
+    }
+  }
+
   const L = new Float32Array(N);
   for (let i = 0; i < N; i++) L[i] = 0.2126 * R[i] + 0.7152 * G[i] + 0.0722 * B[i];
+
+  // --- Reflets (front, nez, pommettes qui brillent). Une brillance est plus
+  // claire ET plus blanche que la peau du visage : un front simplement bien
+  // eclaire garde sa couleur, il n'est pas touche. Les pixels brillants sont
+  // ramenes vers la couleur moyenne de la peau, a une clarte comprimee.
+  const brillance = r.reflets ?? 0.6;
+  if (brillance > 0) {
+    const sat = (i) => { const mx = Math.max(R[i], G[i], B[i]); return mx > 1e-4 ? (mx - Math.min(R[i], G[i], B[i])) / mx : 0; };
+    const lums = [], sats = [];
+    let sr = 0, sg = 0, sb = 0, sl = 0;
+    for (let i = 0; i < N; i += 2) {
+      if (Fv[i] <= 0.8) continue;
+      lums.push(L[i]); sats.push(sat(i));
+      sr += R[i]; sg += G[i]; sb += B[i]; sl += L[i];
+    }
+    if (lums.length > 200) {
+      const lRef = percentile(lums, 0.6), satRef = percentile(sats, 0.5);
+      const cr = sr / sl, cg = sg / sl, cb = sb / sl;   // couleur moyenne de la peau, a luminance 1
+      for (let i = 0; i < N; i++) {
+        const z = Fv[i];
+        if (z < 0.05) continue;
+        const exces = L[i] / lRef;
+        if (exces < 1.1) continue;
+        let q = lisse(1.1, 1.45, exces) * lisse(0.15, 0.6, 1 - sat(i) / Math.max(satRef, 1e-3));
+        q *= z * brillance;
+        if (q <= 0) continue;
+        const lc = lRef * (1.1 + 0.25 * (exces - 1.1));   // clarte comprimee, le relief reste
+        R[i] += (cr * lc - R[i]) * q;
+        G[i] += (cg * lc - G[i]) * q;
+        B[i] += (cb * lc - B[i]) * q;
+        L[i] = 0.2126 * R[i] + 0.7152 * G[i] + 0.0722 * B[i];
+      }
+    }
+  }
 
   // --- Exposition : le point le plus clair du sujet (hors reflets) vers ~ 0.80 lineaire
   const sujet = [], visage = [];
@@ -357,7 +448,7 @@ export function rendrePhoto({ source, masque, zone, geo, reglages: r, fond }) {
 
   const hors = horsSource(t, source.width, source.height);
 
-  return { canvas: cImg, t, gain: autoGain, hors };
+  return { canvas: cImg, t, gain: autoGain, hors, balance };
 }
 
 // Part du bas du cadre (epaules) qui tombe hors de l'image d'origine. Le haut
