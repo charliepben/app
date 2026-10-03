@@ -2,6 +2,7 @@ import {
   NORME, PX_MM, W, H, FONDS,
   geometrie, affinerCrane, cadrageAuto, transformation, appliquerTransfo, zoneUtile,
   rendrePhoto, mesures, angles, planche, jpeg, PLANCHE, versPhoto, affinerMasque, nettoyerBords,
+  NORMES, choisirNorme, repereNorme, places,
 } from './photo.js';
 import { initAlbum, garder, rafraichir as rafraichirAlbum } from './album.js';
 import { MOTEURS, segmenter } from './detourage.js';
@@ -286,7 +287,9 @@ async function detourer(source, zone, onProgres) {
   return { canvas: m, alphaEn, nettoyer };
 }
 
+let dernierFichier = null;
 async function traiter(fichier) {
+  dernierFichier = fichier;
   erreur('');
   montrer('vue-progression');
   try {
@@ -318,6 +321,7 @@ async function traiter(fichier) {
     await new Promise((ok) => setTimeout(ok, 30));   // laisse la barre s'afficher
     masque.nettoyer(geo);
     affinerCrane(geo, masque.alphaEn);
+    repereNorme(geo);
     auto = cadrageAuto(geo);
 
     // Garde-fou : si le cadre final deborde quand meme de la zone detouree,
@@ -335,7 +339,7 @@ async function traiter(fichier) {
       source, geo, masque: masque.canvas, zone,
       infos: { ...visage, hauteurTetePx: geo.menton - geo.crane },
       auto,
-      reglages: { ...DEFAUTS, ...auto },
+      reglages: { ...DEFAUTS, ...auto, fond: fondNorme() },
     });
     progres.fin();
     synchroniserCurseurs();
@@ -395,7 +399,8 @@ function dessinerGabarit() {
   const ligne = (y, couleur, tirets = []) => {
     x.strokeStyle = couleur; x.setLineDash(tirets); x.beginPath(); x.moveTo(0, mm(y)); x.lineTo(W, mm(y)); x.stroke();
   };
-  x.lineWidth = 2.5;
+  const e = W / 827;   // echelle : les reperes gardent la meme taille a l'ecran quelle que soit la norme
+  x.lineWidth = 2.5 * e;
   // Zone des yeux (ISO : 50 a 70 % de la hauteur depuis le bas)
   x.fillStyle = 'rgba(31,79,163,0.07)';
   x.fillRect(0, mm(NORME.hauteur * (1 - NORME.yeuxBasMax)), W, mm(NORME.hauteur * (NORME.yeuxBasMax - NORME.yeuxBasMin)));
@@ -403,7 +408,7 @@ function dessinerGabarit() {
   x.fillStyle = 'rgba(23,128,61,0.16)';
   x.fillRect(0, mm(m.crane + NORME.teteMin), W, mm(NORME.teteMax - NORME.teteMin));
   // Axe vertical
-  x.strokeStyle = 'rgba(31,79,163,0.55)'; x.setLineDash([10, 8]); x.beginPath(); x.moveTo(W / 2, 0); x.lineTo(W / 2, H); x.stroke();
+  x.strokeStyle = 'rgba(31,79,163,0.55)'; x.setLineDash([10 * e, 8 * e]); x.beginPath(); x.moveTo(W / 2, 0); x.lineTo(W / 2, H); x.stroke();
   ligne(m.crane, '#1f4fa3', []);
   ligne(m.menton, '#17803d', []);
   ligne(m.yeux, 'rgba(31,79,163,0.5)', [4, 6]);
@@ -411,9 +416,9 @@ function dessinerGabarit() {
 
   // Points detectes : pupilles, menton, sommet de la tete
   const t = etat.rendu.t, geo = etat.geo;
-  const point = (u, couleur, r = 9) => {
+  const point = (u, couleur, r = 9 * e) => {
     const p = versPhoto(t, u);
-    x.lineWidth = 3; x.strokeStyle = '#fff'; x.fillStyle = couleur;
+    x.lineWidth = 3 * e; x.strokeStyle = '#fff'; x.fillStyle = couleur;
     x.beginPath(); x.arc(p.x, p.y, r, 0, 2 * Math.PI); x.fill(); x.stroke();
   };
   for (const u of geo.yeux) point(u, '#1f4fa3', 7);
@@ -421,13 +426,13 @@ function dessinerGabarit() {
   point({ x: geo.centreX, y: t.craneU }, '#1f4fa3');
 
   // Etiquettes
-  x.font = '600 26px -apple-system, Segoe UI, Roboto, sans-serif';
+  x.font = `600 ${Math.round(26 * e)}px -apple-system, Segoe UI, Roboto, sans-serif`;
   const etiquette = (txt, y, couleur) => {
-    const l = x.measureText(txt).width + 16;
-    x.fillStyle = 'rgba(255,255,255,0.85)'; x.fillRect(10, y - 17, l, 32);
-    x.fillStyle = couleur; x.fillText(txt, 18, y + 8);
+    const l = x.measureText(txt).width + 16 * e;
+    x.fillStyle = 'rgba(255,255,255,0.85)'; x.fillRect(10 * e, y - 17 * e, l, 32 * e);
+    x.fillStyle = couleur; x.fillText(txt, 18 * e, y + 8 * e);
   };
-  etiquette(etat.geo.mode === 'silhouette' ? 'haut de la tête' : 'sommet du crâne', mm(m.crane), '#1f4fa3');
+  etiquette(NORME.mesure === 'cheveux' || etat.geo.mode === 'silhouette' ? 'haut de la tête' : 'sommet du crâne', mm(m.crane), '#1f4fa3');
   etiquette(`menton · tête ${m.tete.toFixed(1).replace('.', ',')} mm`, mm(m.menton), '#17803d');
 }
 
@@ -454,21 +459,28 @@ function afficherControles() {
     infos.visages === 1 ? 'Un seul visage' : `${infos.visages} visages détectés`,
     infos.visages === 1 ? '' : 'Seul le plus grand est utilisé ; la personne doit être seule sur la photo.');
 
-  const modes = {
-    silhouette: 'Mesurée jusqu\'au haut de la tête détectée ; sous les cheveux, environ 1 mm de moins. Norme : 32 à 36 mm.',
-    volume: 'Cheveux volumineux détectés : mesurée jusqu\'au crâne estimé sous les cheveux, comme le veut la norme (32 à 36 mm).',
-    estime: 'Haut de la tête mal visible : crâne estimé d\'après les yeux et le menton. Vérifiez sur le gabarit. Norme : 32 à 36 mm.',
+  const plage = `${f(NORME.teteMin)} à ${f(NORME.teteMax)} mm`;
+  const modes = NORME.mesure === 'cheveux' ? {
+    silhouette: `Mesurée du menton au haut des cheveux, comme le veut la norme américaine (${plage}).`,
+    volume: `Mesurée du menton au haut des cheveux, comme le veut la norme américaine (${plage}).`,
+    estime: `Haut de la tête mal visible : estimé d'après les yeux et le menton. Vérifiez sur le gabarit. Norme : ${plage}.`,
+  } : {
+    silhouette: `Mesurée jusqu'au haut de la tête détectée ; sous les cheveux, environ 1 mm de moins. Norme : ${plage}.`,
+    volume: `Cheveux volumineux détectés : mesurée jusqu'au crâne estimé sous les cheveux, comme le veut la norme (${plage}).`,
+    estime: `Haut de la tête mal visible : crâne estimé d'après les yeux et le menton. Vérifiez sur le gabarit. Norme : ${plage}.`,
   };
   ajouter(m.tete >= NORME.teteMin && m.tete <= NORME.teteMax ? (geo.mode === 'estime' ? 'warn' : 'ok') : 'bad',
     `Hauteur de la tête : ${f(m.tete)} mm`, modes[geo.mode]);
 
   const yeux = m.yeuxBas;
   ajouter(yeux >= NORME.yeuxBasMin && yeux <= NORME.yeuxBasMax ? 'ok' : 'warn',
-    `Ligne des yeux à ${Math.round(yeux * 100)} % de la hauteur`, 'Recommandé : entre 50 et 70 % depuis le bas.');
+    NORME.mesure === 'cheveux' ? `Yeux à ${f(yeux * NORME.hauteur)} mm du bas` : `Ligne des yeux à ${Math.round(yeux * 100)} % de la hauteur`,
+    NORME.mesure === 'cheveux' ? `Norme : entre ${f(NORME.yeuxBasMin * NORME.hauteur)} et ${f(NORME.yeuxBasMax * NORME.hauteur)} mm.` : 'Recommandé : entre 50 et 70 % depuis le bas.');
 
   ajouter(Math.abs(m.centre - NORME.largeur / 2) <= 1 ? 'ok' : 'warn', 'Visage centré horizontalement');
 
-  ajouter(m.crane >= 0 ? 'ok' : 'bad', m.crane >= 0 ? 'Haut du crâne dans le cadre' : 'Le haut du crâne sort du cadre');
+  const quoi = NORME.mesure === 'cheveux' ? 'Haut de la tête' : 'Haut du crâne';
+  ajouter(m.crane >= 0 ? 'ok' : 'bad', m.crane >= 0 ? `${quoi} dans le cadre` : `Le ${quoi.toLowerCase()} sort du cadre`);
   if (m.crane >= 0 && m.cheveux < -0.5) {
     ajouter('warn', 'Haut des cheveux coupé',
       'Admis par la norme, qui mesure le crâne et non la coiffure. Pour une photo plus jolie : reprenez-la à hauteur des yeux et à 1,5 m. Prise d\'en haut ou de près, le dessus de la tête paraît plus gros.');
@@ -488,9 +500,15 @@ function afficherControles() {
     ajouter(ouverts ? 'ok' : 'bad', ouverts ? 'Yeux ouverts' : 'Yeux fermés ou plissés');
     const sourire = Math.max(bs.mouthSmileLeft || 0, bs.mouthSmileRight || 0);
     const bouche = (bs.jawOpen || 0) > 0.15;
-    const neutre = sourire < 0.35 && !bouche;
-    ajouter(neutre ? 'ok' : 'bad', neutre ? 'Expression neutre, bouche fermée' : (sourire >= 0.35 ? 'Sourire détecté' : 'Bouche ouverte'),
-      neutre ? '' : 'La norme exige une expression neutre, bouche fermée, sans sourire : reprenez la photo.');
+    if (NORME.sourireAdmis) {
+      // Etats-Unis : expression neutre ou sourire naturel, bouche fermee
+      ajouter(bouche ? 'bad' : 'ok', bouche ? 'Bouche ouverte' : (sourire >= 0.35 ? 'Sourire naturel (admis)' : 'Expression neutre, bouche fermée'),
+        bouche ? 'La norme demande la bouche fermée : reprenez la photo.' : '');
+    } else {
+      const neutre = sourire < 0.35 && !bouche;
+      ajouter(neutre ? 'ok' : 'bad', neutre ? 'Expression neutre, bouche fermée' : (sourire >= 0.35 ? 'Sourire détecté' : 'Bouche ouverte'),
+        neutre ? '' : 'La norme exige une expression neutre, bouche fermée, sans sourire : reprenez la photo.');
+    }
   }
 
   const px = infos.hauteurTetePx;
@@ -508,9 +526,15 @@ function afficherControles() {
   }
   if (rendu.gain > 1.6) ajouter('warn', 'Photo d\'origine sombre', 'Éclaircie automatiquement ; une photo mieux éclairée donnera un rendu plus naturel.');
 
-  ajouter('ok', `Fond uni ${FONDS[etat.reglages.fond].nom.toLowerCase()}`, 'Fond remplacé, sans ombre portée (le blanc est interdit).');
-  ajouter('info', 'À vérifier vous-même',
-    'Pas de couvre-chef, cheveux hors des yeux, pas de reflet sur le visage ni sur d\'éventuelles lunettes (montures fines, ne cachant pas les yeux), photo de moins de 6 mois.');
+  if (NORME.id === 'us') {
+    ajouter('ok', 'Fond blanc uni', 'Fond remplacé, sans ombre portée (blanc ou blanc cassé exigé).');
+    ajouter('info', 'À vérifier vous-même',
+      'Pas de lunettes (interdites depuis 2016), pas de couvre-chef, cheveux hors des yeux, pas de reflet sur le visage, photo de moins de 6 mois.');
+  } else {
+    ajouter('ok', `Fond uni ${FONDS[etat.reglages.fond].nom.toLowerCase()}`, 'Fond remplacé, sans ombre portée (le blanc est interdit).');
+    ajouter('info', 'À vérifier vous-même',
+      'Pas de couvre-chef, cheveux hors des yeux, pas de reflet sur le visage ni sur d\'éventuelles lunettes (montures fines, ne cachant pas les yeux), photo de moins de 6 mois.');
+  }
 
   const symb = { ok: '✓', warn: '!', bad: '✕', info: 'i' };
   $('controles').innerHTML = lignes.map((l) =>
@@ -553,8 +577,11 @@ for (const [cle, fmt] of Object.entries(CURSEURS)) {
   });
 }
 
-$('fonds').innerHTML = Object.entries(FONDS).map(([cle, f]) =>
-  `<label><input type="radio" name="fond" value="${cle}"><span class="pastille" style="background:rgb(${f.rgb.join(',')})"></span>${f.nom}</label>`).join('');
+function afficherFonds() {
+  $('fonds').innerHTML = NORME.fonds.map((cle) => [cle, FONDS[cle]]).map(([cle, f]) =>
+    `<label><input type="radio" name="fond" value="${cle}"><span class="pastille" style="background:rgb(${f.rgb.join(',')})"></span>${f.nom}</label>`).join('');
+}
+const fondNorme = () => (etat.reglages && NORME.fonds.includes(etat.reglages.fond) ? etat.reglages.fond : NORME.fonds[0]);
 $('fonds').addEventListener('change', (e) => { etat.reglages.fond = e.target.value; rendre(); });
 
 $('btn-reinit').addEventListener('click', () => {
@@ -603,8 +630,8 @@ const horodatage = () => new Date().toISOString().slice(0, 10);
 async function fichiers() {
   const p = planche(etat.rendu.canvas);
   return {
-    planche: new File([await jpeg(p, PLANCHE.dpi)], `photo-identite-10x15-${horodatage()}.jpg`, { type: 'image/jpeg' }),
-    photo: new File([await jpeg(etat.rendu.canvas, 600)], `photo-identite-35x45-${horodatage()}.jpg`, { type: 'image/jpeg' }),
+    planche: new File([await jpeg(p, PLANCHE.dpi)], `photo-identite-${NORME.id}-10x15-${horodatage()}.jpg`, { type: 'image/jpeg' }),
+    photo: new File([await jpeg(etat.rendu.canvas, 600)], `photo-identite-${NORME.id === 'us' ? '2x2in' : '35x45'}-${horodatage()}.jpg`, { type: 'image/jpeg' }),
   };
 }
 
@@ -655,7 +682,7 @@ $('form-garder').addEventListener('submit', async (e) => {
   b.disabled = true;
   try {
     const nom = $('garder-nom').value;
-    await garder(await jpeg(etat.rendu.canvas, 600), nom);
+    await garder(await jpeg(etat.rendu.canvas, 600), nom, NORME.id);
     await rafraichirAlbum();
     const ok = $('garder-ok');
     ok.textContent = `✓ Photo${nom.trim() ? ` de ${nom.trim()}` : ''} gardée dans « Mes photos », en bas de la page.`;
@@ -689,6 +716,36 @@ const depot = $('depot');
 depot.addEventListener('dragover', (e) => { e.preventDefault(); depot.classList.add('survol'); });
 depot.addEventListener('dragleave', () => depot.classList.remove('survol'));
 depot.addEventListener('drop', (e) => { e.preventDefault(); depot.classList.remove('survol'); choisir(e.dataTransfer.files[0]); });
+
+// ---------------------------------------------------------------- Norme
+// France ou Etats-Unis : choix garde sur l'appareil. Changer de norme sur une
+// photo en cours relance le traitement (cadrage et detourage different).
+function appliquerNorme(id) {
+  choisirNorme(id);
+  try { localStorage.setItem('photo-identite-norme', NORME.id); } catch { /* facultatif */ }
+  for (const b of document.querySelectorAll('#normes button')) b.setAttribute('aria-checked', String(b.dataset.norme === NORME.id));
+  $('sous-titre').textContent = `${NORME.id === 'us' ? 'Norme américaine (passeport, visa)' : 'Norme française'} (${NORME.ref}) · ${NORME.format} · planche 10 × 15 prête à imprimer`;
+  document.querySelector('.apercu').style.aspectRatio = `${NORME.largeur} / ${NORME.hauteur}`;
+  const t = $('r-tete');
+  t.min = NORME.teteMin; t.max = NORME.teteMax;
+  const n = places();
+  $('titre-planche').textContent = `Planche 10 × 15 — ${n} photo${n > 1 ? 's' : ''}`;
+  $('largeur-regle').textContent = NORME.id === 'us' ? '51 mm (2 pouces)' : '35 mm';
+  $('lib-crane').textContent = NORME.mesure === 'cheveux' ? 'Repère du haut de la tête' : 'Repère du sommet du crâne';
+  $('note-repere').textContent = NORME.mesure === 'cheveux'
+    ? 'Le repère bleu doit toucher le haut des cheveux : la norme américaine mesure la tête du menton au haut des cheveux (25 à 35 mm).'
+    : 'Le repère bleu doit toucher le haut de la tête, sans compter les cheveux qui dépassent (volume, chignon) : c\'est de là que se mesurent les 32 à 36 mm jusqu\'au menton.';
+  afficherFonds();
+}
+let normeInitiale = 'fr';
+try { normeInitiale = localStorage.getItem('photo-identite-norme') || 'fr'; } catch { /* facultatif */ }
+appliquerNorme(normeInitiale);
+$('normes').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-norme]');
+  if (!b || b.dataset.norme === NORME.id) return;
+  appliquerNorme(b.dataset.norme);
+  if (dernierFichier && !$('vue-editeur').classList.contains('cache')) traiter(dernierFichier);
+});
 
 // Pour les tests automatises
 window.__photoIdentite = { etat, traiter };
