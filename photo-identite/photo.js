@@ -878,6 +878,83 @@ export function planche(photo, { couleurTraits = '#9aa0a6', legende = '', norme 
   return c;
 }
 
+// ---------------------------------------------------------------- Planche composee
+// Photos de tailles differentes (France 35x45, Etats-Unis 51x51) sur une meme
+// planche 10x15. Placement « en haut a gauche d'abord » : chaque photo va a la
+// position libre la plus haute puis la plus a gauche, droite ou tournee d'un
+// quart de tour (une photo tournee se decoupe pareil). Marge et ecart de
+// 2,4 mm, comme la planche francaise (la borne peut rogner un peu le bord).
+// Ex. : 2 photos americaines + 4 francaises (2 tournees) sur une planche.
+const MARGE_PLANCHE = 2.4, ECART_PLANCHE = 2.4;
+
+// items : [{ largeur, hauteur }] en mm. Renvoie les pages : [[{ i, x, y, w, h, tourne }]].
+export function agencer(items) {
+  const PW = PLANCHE.largeurMM, PH = PLANCHE.hauteurMM, m = MARGE_PLANCHE, g = ECART_PLANCHE;
+  // les plus grandes d'abord, l'ordre d'origine ensuite (personnes regroupees)
+  let reste = items.map((it, i) => ({ ...it, i })).sort((a, b) => b.largeur * b.hauteur - a.largeur * a.hauteur || a.i - b.i);
+  const pages = [];
+  while (reste.length) {
+    const places = [], refusees = [];
+    for (const it of reste) {
+      const xs = [m, ...places.map((r) => r.x + r.w + g)];
+      const ys = [m, ...places.map((r) => r.y + r.h + g)];
+      let meilleur = null;
+      for (const [w, h, tourne] of [[it.largeur, it.hauteur, false], [it.hauteur, it.largeur, true]]) {
+        for (const y of ys) for (const x of xs) {
+          if (x + w > PW - m + 1e-6 || y + h > PH - m + 1e-6) continue;
+          const chevauche = places.some((r) => x < r.x + r.w + g - 1e-6 && r.x < x + w + g - 1e-6 && y < r.y + r.h + g - 1e-6 && r.y < y + h + g - 1e-6);
+          if (chevauche) continue;
+          const score = y * 1000 + x + (tourne ? 0.5 : 0);
+          if (!meilleur || score < meilleur.score) meilleur = { i: it.i, x, y, w, h, tourne, score };
+        }
+      }
+      if (meilleur) places.push(meilleur); else refusees.push(it);
+    }
+    if (!places.length) break;   // photo plus grande que la planche : impossible
+    // centre l'ensemble sur la planche
+    const bx = Math.max(...places.map((r) => r.x + r.w)), by = Math.max(...places.map((r) => r.y + r.h));
+    const dx = (PW - bx - m) / 2, dy = (PH - by - m) / 2;
+    pages.push(places.map((r) => ({ i: r.i, x: r.x + dx, y: r.y + dy, w: r.w, h: r.h, tourne: r.tourne })));
+    reste = refusees;
+  }
+  return pages;
+}
+
+// cases : [{ image, nom, largeur, hauteur }] ; page : resultat d'agencer pour ces cases.
+export function plancheComposee(cases, page) {
+  const { largeurMM, hauteurMM, dpi } = PLANCHE;
+  const k = dpi / 25.4;
+  const c = document.createElement('canvas');
+  c.width = Math.round(largeurMM * k); c.height = Math.round(hauteurMM * k);
+  const x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+  x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+  for (const r of page) {
+    const cs = cases[r.i];
+    const px = Math.round(r.x * k), py = Math.round(r.y * k), pw = Math.round(r.w * k), ph = Math.round(r.h * k);
+    if (r.tourne) {
+      // quart de tour : le haut de la photo vers la gauche
+      x.save();
+      x.translate(px, py + ph);
+      x.rotate(-Math.PI / 2);
+      x.drawImage(cs.image, 0, 0, ph, pw);
+      x.restore();
+    } else {
+      x.drawImage(cs.image, px, py, pw, ph);
+    }
+    // trait de coupe : contour fin juste autour de la photo
+    x.strokeStyle = '#9aa0a6'; x.lineWidth = 1;
+    x.strokeRect(px - 0.5, py - 0.5, pw + 1, ph + 1);
+    if (cs.nom) {
+      x.fillStyle = '#80868b'; x.font = `${Math.round(1.4 * k)}px sans-serif`;
+      x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillText(cs.nom.slice(0, 24), px + pw / 2, py + ph + Math.round((ECART_PLANCHE / 2) * k));
+      x.textAlign = 'start';
+    }
+  }
+  return c;
+}
+
 // ---------------------------------------------------------------- Export JPEG
 // Ecrit la resolution (dpi) dans l'en-tete JFIF : le labo imprime alors a la
 // bonne taille sans deviner.

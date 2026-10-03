@@ -2,11 +2,11 @@
 // n'est envoye), et on compose des planches 10x15 en choisissant combien de
 // chaque photo y mettre. Plusieurs personnes peuvent partager une planche.
 
-import { planche, jpeg, PLANCHE, NORMES, places } from './photo.js';
+import { jpeg, PLANCHE, NORMES, agencer, plancheComposee } from './photo.js';
 
 const BASE = 'photo-identite', TABLE = 'photos';
-// Une planche ne melange pas les normes (tailles differentes) : France 8 places
-// (35x45), Etats-Unis 2 places (2x2 pouces).
+// Les photos francaises (35x45) et americaines (2x2 pouces) se melangent sur
+// les planches : agencer() place tout sur le moins de planches possible.
 const normeDe = (p) => (p.norme && NORMES[p.norme] ? p.norme : 'fr');
 const MAX_PAR_PHOTO = 32;
 
@@ -86,14 +86,20 @@ export async function initAlbum(o) {
     afficherPlanches();
   });
   $('album-remplir').addEventListener('click', () => {
-    // repartit les places d'une planche entre les photos choisies (ou toutes),
-    // norme par norme
+    // ajoute un exemplaire de chaque photo choisie (ou de toutes), a tour de
+    // role, tant que tout tient sur une seule planche de plus
     const choisies = photos.filter((p) => quantites[p.id] > 0);
     const liste = choisies.length ? choisies : photos;
-    for (const n of Object.keys(NORMES)) {
-      const groupe = liste.filter((p) => normeDe(p) === n);
-      const P = places(n);
-      groupe.forEach((p, i) => { quantites[p.id] = Math.floor(P / groupe.length) + (i < P % groupe.length ? 1 : 0); });
+    if (!liste.length) return;
+    const pagesAvant = Math.max(1, agencer(itemsDe(listeEmplacements())).length);
+    for (let tour = 0; tour < 40; tour++) {
+      let ajoute = false;
+      for (const p of liste) {
+        quantites[p.id] = (quantites[p.id] || 0) + 1;
+        if (agencer(itemsDe(listeEmplacements())).length > pagesAvant) { quantites[p.id]--; continue; }
+        ajoute = true;
+      }
+      if (!ajoute) break;
     }
     memoriser();
     rafraichir();
@@ -136,13 +142,13 @@ export async function rafraichir() {
   afficherPlanches();
 }
 
-// Emplacements par norme, dans l'ordre de la liste : chaque personne regroupee.
-function emplacements() {
-  const parNorme = {};
-  for (const p of photos) for (let k = 0; k < (quantites[p.id] || 0); k++) (parNorme[normeDe(p)] ||= []).push(p);
-  return parNorme;
+// Emplacements dans l'ordre de la liste : chaque personne regroupee.
+function listeEmplacements() {
+  const liste = [];
+  for (const p of photos) for (let k = 0; k < (quantites[p.id] || 0); k++) liste.push(p);
+  return liste;
 }
-const totalEmplacements = () => Object.values(emplacements()).reduce((a, l) => a + l.length, 0);
+const itemsDe = (liste) => liste.map((p) => { const n = NORMES[normeDe(p)]; return { largeur: n.largeur, hauteur: n.hauteur }; });
 
 let images = new Map();   // id -> HTMLImageElement decodee
 async function image(p) {
@@ -157,29 +163,24 @@ async function image(p) {
 
 async function canvasPlanches() {
   const noms = $('album-noms').checked;
-  const res = [];
-  for (const [n, liste] of Object.entries(emplacements())) {
-    const P = places(n);
-    for (let d = 0; d < liste.length; d += P) {
-      const lot = liste.slice(d, d + P);
-      const cases = [];
-      for (let i = 0; i < P; i++) cases.push(lot[i] ? { image: await image(lot[i]), nom: noms ? lot[i].nom : '' } : null);
-      res.push(planche(cases, { norme: n }));
-    }
+  const liste = listeEmplacements();
+  const cases = [];
+  for (const p of liste) {
+    const n = NORMES[normeDe(p)];
+    cases.push({ image: await image(p), nom: noms ? p.nom : '', largeur: n.largeur, hauteur: n.hauteur });
   }
-  return res;
+  return agencer(itemsDe(liste)).map((page) => plancheComposee(cases, page));
 }
 
 let tour = 0;
 async function afficherPlanches() {
   const moi = ++tour;
-  const total = totalEmplacements();
-  const morceaux = Object.entries(emplacements()).map(([n, l]) => {
-    const P = places(n), nb = Math.ceil(l.length / P), vides = nb * P - l.length;
-    return `${NORMES[n].drapeau} ${l.length} photo${l.length > 1 ? 's' : ''} → ${nb} planche${nb > 1 ? 's' : ''}${vides ? ` (${vides} place${vides > 1 ? 's' : ''} vide${vides > 1 ? 's' : ''})` : ''}`;
-  });
+  const liste = listeEmplacements();
+  const total = liste.length;
+  const nb = total ? agencer(itemsDe(liste)).length : 0;
+  const parNorme = Object.keys(NORMES).map((n) => [n, liste.filter((p) => normeDe(p) === n).length]).filter(([, k]) => k);
   $('album-total').textContent = total
-    ? morceaux.join(' · ')
+    ? `${parNorme.map(([n, k]) => `${NORMES[n].drapeau} ${k}`).join(' + ')} photo${total > 1 ? 's' : ''} → ${nb} planche${nb > 1 ? 's' : ''} 10×15`
     : 'Choisissez combien de chaque photo mettre sur la planche avec + et −.';
   for (const id of ['album-telecharger', 'album-imprimer', 'album-partager']) $(id).disabled = !total;
   const conteneur = $('album-planches');
