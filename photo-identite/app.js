@@ -1,7 +1,7 @@
 import {
   NORME, PX_MM, W, H, FONDS,
   geometrie, affinerCrane, cadrageAuto, transformation, appliquerTransfo, zoneUtile,
-  rendrePhoto, mesures, angles, planche, jpeg, PLANCHE, versPhoto,
+  rendrePhoto, mesures, angles, planche, jpeg, PLANCHE, versPhoto, affinerMasque,
 } from './photo.js';
 
 // Les modeles sont charges depuis les CDN officiels, puis gardes en cache.
@@ -41,7 +41,7 @@ const etat = {
   avant: false,
 };
 
-const DEFAUTS = { dx: 0, dy: 0, rot: 0, crane: 0, lumiere: 0, ombres: 0.8, reflets: 0.6, meches: 0.8, temperature: 0, nettete: 0.35, fond: 'gris' };
+const DEFAUTS = { dx: 0, dy: 0, rot: 0, crane: 0, lumiere: 0, ombres: 1, reflets: 0.6, meches: 0.8, temperature: 0, nettete: 0.35, fond: 'gris' };
 
 // ---------------------------------------------------------------- Chargement des modeles
 let landmarker = null;
@@ -141,6 +141,7 @@ async function detourer(source, zone, onProgres) {
     sortie = await segmentForeground(entree, config('cpu'));
   }
   const data = new Uint8ClampedArray(await sortie.arrayBuffer());
+  affinerMasque(pixels, data, w, h);
   const m = document.createElement('canvas'); m.width = w; m.height = h;
   m.getContext('2d').putImageData(new ImageData(data, w, h), 0, 0);
   const alphaEn = (p) => {
@@ -315,6 +316,10 @@ function afficherControles() {
   ajouter(Math.abs(m.centre - NORME.largeur / 2) <= 1 ? 'ok' : 'warn', 'Visage centré horizontalement');
 
   ajouter(m.crane >= 0 ? 'ok' : 'bad', m.crane >= 0 ? 'Haut du crâne dans le cadre' : 'Le haut du crâne sort du cadre');
+  if (m.crane >= 0 && m.cheveux < -0.5) {
+    ajouter('warn', 'Haut des cheveux coupé',
+      'Admis par la norme, qui mesure le crâne et non la coiffure. Pour une photo plus jolie : reprenez-la à hauteur des yeux et à 1,5 m. Prise d\'en haut ou de près, le dessus de la tête paraît plus gros.');
+  }
 
   const roulis = Math.abs((geo.angle * 180) / Math.PI);
   const a = infos.angles;
