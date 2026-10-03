@@ -196,23 +196,40 @@ async function traiter(fichier) {
 
     const geo = geometrie(visage.pts);
     let auto = cadrageAuto(geo);
-    const t0 = transformation(geo, { ...DEFAUTS, ...auto });
-    const zone = zoneUtile(t0, source.width, source.height, 0.3);
+    // Zone a detourer : le cadre le plus large possible, pas celui de la
+    // premiere estimation. Le cadrage final peut reduire la tete (coiffure
+    // haute, enfant) et les curseurs vont jusqu'a 32 mm : tout ce qui sortirait
+    // de la zone detouree serait pris pour du fond (epaules coupees net).
+    const tLarge = transformation({ ...geo, crane: Math.min(geo.crane, -1.2 * geo.menton) }, { ...DEFAUTS, tete: NORME.teteMin, marge: 7 });
+    let zone = zoneUtile(tLarge, source.width, source.height, 0.3);
 
     progression('Détourage…', 0.15, 'Chargement du modèle de détourage');
-    const masque = await detourer(source, zone, (cle, fait, total) => {
+    const suivi = (cle, fait, total) => {
       if (cle.includes('/models/')) {
         progression('Téléchargement du modèle de détourage (une seule fois)…', 0.15 + 0.7 * (fait / total),
           `${(fait / 1e6).toFixed(0)} / ${(total / 1e6).toFixed(0)} Mo`);
       } else if (fait === total) {
         progression('Détourage en cours…', 0.88, 'Quelques secondes');
       }
-    });
+    };
+    let masque = await detourer(source, zone, suivi);
 
     progression('Lumière et cadrage…', 0.95);
     masque.nettoyer(geo);
     affinerCrane(geo, masque.alphaEn);
     auto = cadrageAuto(geo);
+
+    // Garde-fou : si le cadre final deborde quand meme de la zone detouree,
+    // on refait le detourage sur une zone qui le contient.
+    const tFinal = transformation(geo, { ...DEFAUTS, ...auto, tete: Math.min(auto.tete, NORME.teteMin) });
+    const besoin = zoneUtile(tFinal, source.width, source.height, 0.12);
+    if (besoin.x < zone.x || besoin.y < zone.y || besoin.x + besoin.w > zone.x + zone.w || besoin.y + besoin.h > zone.y + zone.h) {
+      const x0 = Math.min(zone.x, besoin.x), y0 = Math.min(zone.y, besoin.y);
+      zone = { x: x0, y: y0, w: Math.max(zone.x + zone.w, besoin.x + besoin.w) - x0, h: Math.max(zone.y + zone.h, besoin.y + besoin.h) - y0 };
+      progression('Détourage (cadre élargi)…', 0.9);
+      masque = await detourer(source, zone, suivi);
+      masque.nettoyer(geo);
+    }
 
     Object.assign(etat, {
       source, geo, masque: masque.canvas, zone,
