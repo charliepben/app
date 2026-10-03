@@ -561,20 +561,52 @@ const CURSEURS = {
 };
 
 function synchroniserCurseurs() {
-  for (const [cle, fmt] of Object.entries(CURSEURS)) {
+  for (const cle of Object.keys(CURSEURS)) {
     $(`r-${cle}`).value = etat.reglages[cle];
-    $(`o-${cle}`).textContent = fmt(+etat.reglages[cle]);
+    afficherValeur(cle);
   }
   for (const input of document.querySelectorAll('input[name="fond"]')) input.checked = input.value === etat.reglages.fond;
 }
 
-for (const [cle, fmt] of Object.entries(CURSEURS)) {
-  $(`r-${cle}`).addEventListener('input', (e) => {
-    const v = +e.target.value;
-    etat.reglages[cle] = v;
-    $(`o-${cle}`).textContent = fmt(v);
-    rendre();
-  });
+// Reglages en boutons - / + (et pas en curseurs : sur telephone, faire
+// defiler la page en passant le doigt sur un curseur le deplacait sans le
+// vouloir). Maintenir le bouton appuye repete. « auto » = valeur choisie par
+// l'appli.
+const PAS = { tete: 0.2, crane: 0.2, dy: 0.2, dx: 0.2, rot: 0.2, lumiere: 0.05, ombres: 0.1, reflets: 0.1, meches: 0.1, temperature: 0.1, nettete: 0.1 };
+const valeurAuto = (cle) => (etat.auto && cle in etat.auto ? etat.auto[cle] : DEFAUTS[cle]);
+function afficherValeur(cle) {
+  const v = +etat.reglages[cle];
+  const auto = Math.abs(v - valeurAuto(cle)) < 1e-6;
+  $(`o-${cle}`).innerHTML = `${CURSEURS[cle](v)}${auto ? ' <span class="auto">auto</span>' : ''}`;
+}
+function changer(cle, sens) {
+  const input = $(`r-${cle}`);
+  const v = Math.round((+etat.reglages[cle] + sens * PAS[cle]) * 1000) / 1000;
+  const borne = Math.min(+input.max, Math.max(+input.min, v));
+  if (borne === etat.reglages[cle]) return;
+  etat.reglages[cle] = borne;
+  input.value = borne;
+  afficherValeur(cle);
+  rendre();
+}
+for (const cle of Object.keys(CURSEURS)) {
+  const input = $(`r-${cle}`);
+  input.classList.add('cache');
+  const sortie = $(`o-${cle}`);
+  const boite = document.createElement('div');
+  boite.className = 'pas-reglage';
+  const bouton = (sens, texte, aria) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = texte; b.setAttribute('aria-label', aria);
+    let repete = null, attente = null;
+    const stop = () => { clearTimeout(attente); clearInterval(repete); attente = repete = null; };
+    b.addEventListener('click', () => changer(cle, sens));
+    b.addEventListener('pointerdown', () => { stop(); attente = setTimeout(() => { repete = setInterval(() => changer(cle, sens), 90); }, 450); });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, stop);
+    return b;
+  };
+  boite.append(bouton(-1, '−', 'Moins'), sortie, bouton(1, '+', 'Plus'));
+  input.parentNode.appendChild(boite);
 }
 
 function afficherFonds() {
@@ -607,8 +639,14 @@ $('btn-nouvelle').addEventListener('click', () => { montrer('vue-accueil'); });
 {
   let depart = null;
   const ap = $('apercu');
+  // seulement quand « Ajuster a la main » est ouvert : sinon, faire defiler
+  // la page avec le doigt sur l'apercu deplacait la photo
+  const actif = () => !!etat.rendu && $('ajuster').open;
+  const majToucher = () => { ap.style.touchAction = actif() ? 'none' : 'pan-y'; ap.classList.toggle('deplacable', actif()); };
+  $('ajuster').addEventListener('toggle', majToucher);
+  majToucher();
   ap.addEventListener('pointerdown', (e) => {
-    if (!etat.rendu) return;
+    if (!actif()) return;
     depart = { x: e.clientX, y: e.clientY, dx: etat.reglages.dx, dy: etat.reglages.dy };
     ap.setPointerCapture(e.pointerId);
   });

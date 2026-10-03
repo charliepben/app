@@ -83,7 +83,7 @@
   /* Editeur */
   .editeur { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
   @media (min-width: 860px) { .editeur { grid-template-columns: 380px minmax(0, 1fr); align-items: start; } }
-  .apercu { position: relative; width: 100%; max-width: 380px; margin: 0 auto; aspect-ratio: 35 / 45; border-radius: 4px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.18); background: #ddd; touch-action: none; }
+  .apercu { position: relative; width: 100%; max-width: 380px; margin: 0 auto; aspect-ratio: 35 / 45; border-radius: 4px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.18); background: #ddd; }
   .apercu canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   .sous-apercu { display: flex; gap: 8px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
   .sous-apercu button { padding: 8px 12px; font-size: 13px; }
@@ -92,7 +92,11 @@
 
   .reglages { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 22px; }
   .reglage label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--dim); }
-  .reglage output { color: var(--text); font-variant-numeric: tabular-nums; }
+  .reglage output { color: var(--text); font-variant-numeric: tabular-nums; flex: 1; text-align: center; font-weight: 600; font-size: 15px; }
+  .reglage output .auto { font-size: 11px; font-weight: 700; color: var(--ok); background: #e7f5ec; border-radius: 6px; padding: 1px 6px; margin-left: 4px; vertical-align: 1px; }
+  .pas-reglage { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .pas-reglage button { width: 44px; height: 38px; padding: 0; font-size: 22px; flex: none; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+  .apercu.deplacable { cursor: grab; outline: 2px dashed var(--accent); outline-offset: 3px; }
   input[type="range"] { width: 100%; accent-color: var(--accent); margin-top: 4px; }
   .fonds { display: flex; gap: 8px; flex-wrap: wrap; }
   .fonds label { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 10px; padding: 7px 12px; cursor: pointer; font-size: 14px; }
@@ -257,7 +261,7 @@
 
       <details class="carte" id="ajuster">
         <summary><h2>Ajuster à la main</h2><span class="note">facultatif — tout est déjà réglé</span></summary>
-        <div class="entete-carte" style="margin-top:12px"><span class="note">Repères bleus et verts : ce que l'appli a détecté.</span><button class="lien" id="btn-reinit">Réinitialiser</button></div>
+        <div class="entete-carte" style="margin-top:12px"><span class="note">« auto » : la valeur choisie par l'appli. Vous pouvez aussi faire glisser la photo avec le doigt.</span><button class="lien" id="btn-reinit">Réinitialiser</button></div>
         <div class="reglages">
           <div class="reglage"><label for="r-tete">Taille de la tête <output id="o-tete"></output></label><input id="r-tete" type="range" min="32" max="36" step="0.1"></div>
           <div class="reglage"><label for="r-crane"><span id="lib-crane">Repère du sommet du crâne</span> <output id="o-crane"></output></label><input id="r-crane" type="range" min="-4" max="4" step="0.1"></div>
