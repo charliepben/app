@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photo d'identité — norme française</title>
+<meta name="description" content="Détourage, lumière et cadrage aux normes ANTS, planche 10×15 prête à imprimer. Tout se passe sur l'appareil.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#f4f5f7">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Photo ID">
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --border: #dfe2e7;
+    --text: #1b1f24;
+    --dim: #5f6773;
+    --accent: #1f4fa3;
+    --accent-soft: #e6edf9;
+    --ok: #17803d;
+    --warn: #b25e00;
+    --bad: #c62828;
+    --radius: 12px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 15px; line-height: 1.45; min-height: 100vh; }
+  main { max-width: 1080px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { margin-bottom: 18px; }
+  h1 { font-size: clamp(22px, 5vw, 30px); letter-spacing: -0.5px; }
+  h1 span { color: var(--accent); }
+  .sous-titre { color: var(--dim); font-size: 14px; margin-top: 2px; }
+  h2 { font-size: 16px; margin-bottom: 10px; }
+  .carte { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .cache { display: none !important; }
+
+  /* Accueil */
+  .boutons { display: flex; gap: 10px; flex-wrap: wrap; }
+  button, .bouton {
+    font: inherit; font-weight: 600; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); padding: 11px 16px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;
+  }
+  button:hover, .bouton:hover { border-color: #b9c0ca; }
+  .principal { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .principal:hover { background: #18408a; border-color: #18408a; }
+  .grand { padding: 15px 20px; font-size: 16px; flex: 1 1 220px; }
+  .accueil { display: grid; gap: 16px; }
+  .depot { border: 2px dashed #c4cad3; border-radius: var(--radius); padding: 22px 16px; text-align: center; background: var(--surface); }
+  .depot.survol { border-color: var(--accent); background: var(--accent-soft); }
+  .depot p { color: var(--dim); font-size: 13px; margin-top: 10px; }
+  .conseils { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px 20px; }
+  .conseils li { list-style: none; padding-left: 22px; position: relative; font-size: 14px; }
+  .conseils li::before { content: "•"; position: absolute; left: 6px; color: var(--accent); font-weight: 700; }
+  .note { font-size: 13px; color: var(--dim); }
+
+  /* Progression */
+  .progression { text-align: center; padding: 34px 16px; }
+  .barre { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin: 14px auto 8px; max-width: 360px; }
+  .barre div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  #etape { font-weight: 600; }
+  #detail { color: var(--dim); font-size: 13px; min-height: 1.4em; }
+
+  /* Editeur */
+  .editeur { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  @media (min-width: 860px) { .editeur { grid-template-columns: 380px minmax(0, 1fr); align-items: start; } }
+  .apercu { position: relative; width: 100%; max-width: 380px; margin: 0 auto; aspect-ratio: 35 / 45; border-radius: 4px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.18); background: #ddd; touch-action: none; }
+  .apercu canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .sous-apercu { display: flex; gap: 8px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+  .sous-apercu button { padding: 8px 12px; font-size: 13px; }
+  .sous-apercu button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .colonne { display: grid; gap: 16px; min-width: 0; }
+
+  .reglages { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 22px; }
+  .reglage label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--dim); }
+  .reglage output { color: var(--text); font-variant-numeric: tabular-nums; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); margin-top: 4px; }
+  .fonds { display: flex; gap: 8px; flex-wrap: wrap; }
+  .fonds label { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 10px; padding: 7px 12px; cursor: pointer; font-size: 14px; }
+  .fonds input { accent-color: var(--accent); }
+  .pastille { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); }
+  .entete-carte { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .entete-carte h2 { margin: 0; }
+  .lien { background: none; border: none; color: var(--accent); padding: 4px; font-weight: 600; font-size: 13px; }
+
+  .controles li { list-style: none; display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 7px 0; border-top: 1px solid #eef0f3; font-size: 14px; }
+  .controles li:first-child { border-top: none; }
+  .controles .icone { font-weight: 800; text-align: center; }
+  .controles .ok .icone { color: var(--ok); }
+  .controles .warn .icone { color: var(--warn); }
+  .controles .bad .icone { color: var(--bad); }
+  .controles .info .icone { color: var(--dim); }
+  .controles small { display: block; color: var(--dim); font-size: 12.5px; }
+  .bilan { padding: 10px 12px; border-radius: 10px; font-weight: 600; margin-bottom: 10px; font-size: 14px; }
+  .bilan.ok { background: #e7f5ec; color: var(--ok); }
+  .bilan.warn { background: #fff3e0; color: var(--warn); }
+  .bilan.bad { background: #fdecea; color: var(--bad); }
+
+  .planche img { width: 100%; border: 1px solid var(--border); border-radius: 4px; display: block; background: #fff; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .actions > * { flex: 1 1 200px; }
+  .erreur { background: #fdecea; color: var(--bad); border: 1px solid #f5c2bd; border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; }
+  footer { margin-top: 28px; font-size: 12.5px; color: var(--dim); }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Photo d'<span>identité</span></h1>
+    <p class="sous-titre">Norme française (ANTS · ISO/IEC 19794-5) · 35 × 45 mm · planche 10 × 15 prête à imprimer</p>
+  </header>
+
+  <div id="erreur" class="erreur cache" role="alert"></div>
+
+  <!-- 1. Choix de la photo -->
+  <section id="vue-accueil" class="accueil">
+    <div class="depot" id="depot">
+      <div class="boutons">
+        <label class="bouton principal grand" for="fichier-camera">📷 Prendre une photo</label>
+        <label class="bouton grand" for="fichier">🖼️ Choisir une photo</label>
+      </div>
+      <input id="fichier-camera" type="file" accept="image/*" capture="user" class="cache">
+      <input id="fichier" type="file" accept="image/*" class="cache">
+      <p>…ou glissez une photo ici. Elle reste sur votre appareil : rien n'est envoyé sur Internet.</p>
+    </div>
+
+    <div class="carte">
+      <h2>Pour une photo acceptée du premier coup</h2>
+      <ul class="conseils">
+        <li>Faites-vous photographier par quelqu'un, à 1,5–2 m, l'appareil à hauteur des yeux (un selfie à bout de bras déforme le visage).</li>
+        <li>Face à une fenêtre, lumière douce et égale sur les deux côtés du visage. Pas de soleil direct, pas de flash.</li>
+        <li>Regard droit vers l'objectif, tête droite, bouche fermée, expression neutre : pas de sourire.</li>
+        <li>Visage et oreilles dégagés, cheveux hors des yeux. Pas de couvre-chef ; lunettes déconseillées.</li>
+        <li>Cadrez de la tête au haut du buste, sans couper le haut des cheveux ni les épaules.</li>
+        <li>Le fond d'origine importe peu : il sera remplacé par un fond uni gris ou bleu clair.</li>
+      </ul>
+    </div>
+    <p class="note">Au premier usage, l'appli télécharge ses modèles d'intelligence artificielle (environ 100 Mo, une seule fois). Ensuite tout fonctionne hors connexion.</p>
+  </section>
+
+  <!-- 2. Traitement -->
+  <section id="vue-progression" class="carte progression cache" aria-live="polite">
+    <div id="etape">Préparation…</div>
+    <div class="barre"><div id="barre"></div></div>
+    <div id="detail"></div>
+  </section>
+
+  <!-- 3. Edition -->
+  <section id="vue-editeur" class="editeur cache">
+    <div>
+      <div class="apercu" id="apercu">
+        <canvas id="photo"></canvas>
+        <canvas id="gabarit"></canvas>
+      </div>
+      <div class="sous-apercu">
+        <button id="btn-gabarit" aria-pressed="true">Gabarit</button>
+        <button id="btn-avant" title="Maintenir pour voir la photo d'origine">Avant / après</button>
+        <button id="btn-nouvelle">Autre photo</button>
+      </div>
+    </div>
+
+    <div class="colonne">
+      <div class="carte">
+        <h2>Conformité</h2>
+        <div id="bilan" class="bilan"></div>
+        <ul class="controles" id="controles"></ul>
+      </div>
+
+      <div class="carte">
+        <div class="entete-carte"><h2>Réglages</h2><button class="lien" id="btn-reinit">Réinitialiser</button></div>
+        <div class="reglages">
+          <div class="reglage"><label for="r-tete">Taille de la tête <output id="o-tete"></output></label><input id="r-tete" type="range" min="32" max="36" step="0.1"></div>
+          <div class="reglage"><label for="r-crane">Repère du sommet du crâne <output id="o-crane"></output></label><input id="r-crane" type="range" min="-4" max="4" step="0.1"></div>
+          <div class="reglage"><label for="r-dy">Position verticale <output id="o-dy"></output></label><input id="r-dy" type="range" min="-3" max="3" step="0.1"></div>
+          <div class="reglage"><label for="r-dx">Position horizontale <output id="o-dx"></output></label><input id="r-dx" type="range" min="-3" max="3" step="0.1"></div>
+          <div class="reglage"><label for="r-rot">Rotation <output id="o-rot"></output></label><input id="r-rot" type="range" min="-5" max="5" step="0.1"></div>
+          <div class="reglage"><label for="r-lumiere">Luminosité <output id="o-lumiere"></output></label><input id="r-lumiere" type="range" min="-1" max="1" step="0.05"></div>
+          <div class="reglage"><label for="r-ombres">Atténuation des ombres <output id="o-ombres"></output></label><input id="r-ombres" type="range" min="0" max="1" step="0.05"></div>
+          <div class="reglage"><label for="r-temperature">Teinte froide / chaude <output id="o-temperature"></output></label><input id="r-temperature" type="range" min="-1" max="1" step="0.05"></div>
+          <div class="reglage"><label for="r-nettete">Netteté <output id="o-nettete"></output></label><input id="r-nettete" type="range" min="0" max="1.5" step="0.05"></div>
+          <div class="reglage">
+            <label>Fond</label>
+            <div class="fonds" id="fonds"></div>
+          </div>
+        </div>
+        <p class="note" style="margin-top:12px">Le repère « sommet du crâne » doit toucher le haut du crâne, <strong>sous</strong> les cheveux : c'est de là que se mesurent les 32 à 36 mm jusqu'au menton.</p>
+      </div>
+
+      <div class="carte planche">
+        <h2>Planche 10 × 15 — 8 photos</h2>
+        <img id="planche" alt="Planche de 8 photos d'identité au format 10 × 15">
+        <div class="actions">
+          <button class="principal" id="btn-planche">⬇︎ Télécharger la planche 10×15</button>
+          <button id="btn-photo">⬇︎ Photo seule 35×45</button>
+          <button id="btn-partager" class="cache">Partager…</button>
+          <button id="btn-imprimer">🖨️ Imprimer</button>
+        </div>
+        <p class="note" style="margin-top:12px">
+          Faites tirer la planche au format <strong>10×15 « sans recadrage » / « taille réelle »</strong> (labo photo, borne en magasin, imprimante photo).
+          Chaque photo doit mesurer exactement 35 mm de large : vérifiez avec une règle, puis découpez le long des traits gris.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Rappel ANTS : photo de moins de 6 mois, ressemblante, sans retouche du visage. Pour une démarche <em>en ligne</em> (permis de conduire, titre de séjour…), il faut une e-photo avec code numérique, faite chez un photographe ou une cabine agréés : cette appli convient aux dossiers papier (CNI, passeport en mairie, etc.).</p>
+    <p style="margin-top:6px">Traitement 100 % local : détourage <a href="https://github.com/imgly/background-removal-js" target="_blank" rel="noopener">IMG.LY</a> (AGPL), repères du visage <a href="https://ai.google.dev/edge/mediapipe" target="_blank" rel="noopener">MediaPipe</a>.</p>
+  </footer>
+</main>
+
+<script type="module" src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js').catch(() => {}));
+  }
+</script>
+</body>
+</html>
