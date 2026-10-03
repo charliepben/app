@@ -19,6 +19,10 @@ quitte pas l'appareil, pas de serveur, pas de clé d'API.
    - cheveux qui dépassent (volume, chignon) : le repère est plafonné à
      0,9 × la distance pupilles–menton au-dessus des pupilles, réglé à 34,5 mm ;
    - silhouette inutilisable : estimation à 0,85 ×, 34 mm.
+   Ces rapports sont mis à l'échelle de la hauteur du front (point 10 du
+   maillage au-dessus des pupilles, ~0,43 × pupilles–menton chez l'adulte,
+   ~0,52 chez un enfant) : un enfant a un crâne plus grand par rapport au
+   visage, sans quoi sa tête serait trop grossie et ses cheveux coupés.
    Pupilles, menton et sommet détectés sont marqués sur le gabarit.
 4. **Lumière** :
    - balance des blancs : la couleur de la peau varie peu d'une personne à
@@ -32,6 +36,10 @@ quitte pas l'appareil, pas de serveur, pas de clé d'API.
      clarté comprimée pour garder le relief ;
    - ombres : l'éclairage basse fréquence du visage est égalisé (moitié dans
      l'ombre, ombre sous le menton), la texture de la peau est gardée ;
+   - objet collé à la tête : au-dessus du crâne estimé, une zone qui n'a pas
+     la teinte des cheveux (apprise juste au-dessus du front) et qui touche
+     l'extérieur de la silhouette (coussin, dossier) est retirée, par passes
+     depuis l'extérieur ; un reflet ou une mèche grise dans les cheveux reste ;
    - mèches rebelles : un cheveu isolé loin de la chevelure (ou un bout de
      décor détouré par erreur) n'a presque pas de masse opaque autour de lui ;
      il est effacé, le bord de la chevelure reste doux ;

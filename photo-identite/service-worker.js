@@ -1,4 +1,4 @@
-const CACHE = 'photo-identite-v5';
+const CACHE = 'photo-identite-v6';
 const CACHE_MODELES = 'photo-identite-modeles-v1';   // garde entre deux versions de l'appli
 const ASSETS = [
   './',
